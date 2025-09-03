@@ -37,13 +37,13 @@ git commit --allow-empty -m "chore: release 1.1.0-rc.0" -m "Release-As: 1.1.0-rc
 ├── 📁 cmake                          
 │   └── 📄 setup_dependencies.cmake   # Script CMake chargé de lire `dependencies.txt` et cloner/configurer les dépendances dans `/dependencies`
 ├── 📁 dependencies (git ignored)     # Répertoire local contenant les dépendances clonées (ignoré par Git pour ne pas polluer le repo)
-│   ├── 📁 Crzgames_Libraries         # Librairies précompilées (OpenSSL, ONNX Runtime et SDL_shadercross) propres à Crzgames
-│   ├── 📁 Crzgames_ValveGameNetworkingSockets # Librairie réseau UDP (fork)
+│   ├── 📁 Crzgames_Libraries         # Librairies précompilées (OpenSSL) propres à Crzgames
 │   ├── 📁 SDL                        # SDL3 
+│   ├── 📁 Crzgames_RCENet            # Fork ENet 
 │   ├── 📁 hiredis                    # Redis
 │   ├── 📁 Nats                       # Nats broker de message
-│   ├── 📁 jwt-cpp                    # Nats broker de message
-│   ├── 📁 nlohmann_json              # Nats broker de message
+│   ├── 📁 jwt-cpp                    # JWT
+│   ├── 📁 nlohmann_json              # JSON
 ├── 📁 docs                           # Documentation du moteur de serveur (pages Markdown, auto-générées)
 ├── 📁 example                        # Exemples d’utilisation du moteur de serveur de jeu RCNET (projets de démo, test de fonctionnalités)
 ├── 📁 include                        # En-têtes publics exposés aux utilisateurs de la lib (API du moteur de serveur)
@@ -101,7 +101,7 @@ git commit --allow-empty -m "chore: release 1.1.0-rc.0" -m "Release-As: 1.1.0-rc
 | **LZ4**                | Compression/décompression ultra-rapide, utilisée par la librairie `rres` et le module `RC2D_data` | `Statique – Fichiers intégrés directement dans le code source, pas besoin de compilation séparée` |
 | **Monocypher**         | 	Librairie de cryptographie moderne (hashs, signatures, échange de clés), utilisée par la librairie `rres` | `Statique – Fichiers intégrés directement dans le code source, pas besoin de compilation séparée` |
 | **SDL3**               | Moteur principal, gestion entrée/sortie, rendu GPU           | `Obligatoire`                |
-| **Crzgames_ValveGameNetworkingSockets**             | Fork de Valve GameNetworkingSockets (Communication UDP)                             | `Activé par défault mais optionnel`, mais le module `RC2D_net` ne sera pas utilisable si désactiver. Passé à CMake : RC2D_NET_MODULE_ENABLED=OFF/ON |
+| **Crzgames_RCENet**             | Fork de ENet (Communication UDP)                             | `Activé par défault mais optionnel`, mais le module `RC2D_net` ne sera pas utilisable si désactiver. Passé à CMake : RC2D_NET_MODULE_ENABLED=OFF/ON |
 | **OpenSSL**            | Hashing, Chiffrement, Compression..etc                       | `Activé par défault mais optionnel`, mais le module `RC2D_data` ne sera pas utilisable si désactiver. Passé à CMake : RC2D_DATA_MODULE_ENABLED=OFF/ON |
 | **hiredis**            | Hashing, Chiffrement, Compression..etc                       | `Activé par défault mais optionnel`, mais le module `RC2D_data` ne sera pas utilisable si désactiver. Passé à CMake : RC2D_DATA_MODULE_ENABLED=OFF/ON |
 | **Nats**            | Hashing, Chiffrement, Compression..etc                       | `Activé par défault mais optionnel`, mais le module `RC2D_data` ne sera pas utilisable si désactiver. Passé à CMake : RC2D_DATA_MODULE_ENABLED=OFF/ON |
