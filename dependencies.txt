@@ -1,10 +1,10 @@
 # Format: library=repository:tag ou library=repository:commit_sha
 
-SDL=https://github.com/libsdl-org/SDL.git:release-3.2.18
+SDL=https://github.com/libsdl-org/SDL.git:release-3.2.22
 Crzgames_Libraries=https://github.com/CrzGames/Crzgames_Libraries.git:abe4e20941d0e4a0b6025195c62c87c539262c6b
-#Crzgames_ValveGameNetworkingSockets=
+Crzgames_RCENet=https://github.com/CrzGames/Crzgames_RCENet.git:v1.2.1
 Nats=https://github.com/nats-io/nats.c.git:v3.10.1
 hiredis=https://github.com/redis/hiredis.git:v1.3.0
 jwt-cpp=https://github.com/Thalhammer/jwt-cpp.git:v0.7.1
 nlohmann_json=https://github.com/nlohmann/json.git:v3.12.0
-cpp-httplib=https://github.com/yhirose/cpp-httplib.git:v0.23.1
+cpp-httplib=https://github.com/yhirose/cpp-httplib.git:v0.26.0
