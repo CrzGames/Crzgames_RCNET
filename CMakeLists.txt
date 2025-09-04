@@ -7,14 +7,22 @@ project(rcnet LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Configuration des drapeaux du compilateur
-# -Wall : Active tous les avertissements de base
-# -Wextra : Active des avertissements supplémentaires
-# -pedantic : Enforce strictement les standards C
-# -Wno-unused-parameter : Désactive les avertissements pour les paramètres de fonction non utilisés
-# -Wno-error=strict-prototypes : Désactive les erreurs pour les prototypes de fonction stricts
-# -Wno-newline-eof : Désactive les avertissements pour les nouvelles lignes à la fin du fichier
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Wno-unused-parameter -Wno-error=strict-prototypes -Wno-newline-eof")
+if (MSVC)
+  # /W3 : Niveau d'avertissement 3 (equivalent a -Wall)
+  # /W4 : Niveau d'avertissement 4 (equivalent a -Wextra)
+  # /permissive- : Spécifie un mode de compilation strict pour suivre les standards C++ 
+  # /wd4100 : Désactive l'avertissement pour les paramètres de fonction non utilisés (C4100)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W3 /W4 /permissive- /wd4100")
+else()
+  # Configuration des drapeaux du compilateur
+  # -Wall : Active tous les avertissements de base
+  # -Wextra : Active des avertissements supplémentaires
+  # -pedantic : Enforce strictement les standards C
+  # -Wno-unused-parameter : Désactive les avertissements pour les paramètres de fonction non utilisés
+  # -Wno-error=strict-prototypes : Désactive les erreurs pour les prototypes de fonction stricts
+  # -Wno-newline-eof : Désactive les avertissements pour les nouvelles lignes à la fin du fichier
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Wno-unused-parameter -Wno-error=strict-prototypes -Wno-newline-eof")
+endif()
 
 # Option pour construire l'exécutable d'exemple
 option(RCNET_BUILD_EXAMPLE "Build the example executable" ON)
@@ -23,37 +31,52 @@ option(RCNET_BUILD_EXAMPLE "Build the example executable" ON)
 set(DEPENDENCIES_PATH "${PROJECT_SOURCE_DIR}/dependencies")
 set(CRZGAMES_LIBRARIES_PATH "${DEPENDENCIES_PATH}/Crzgames_Libraries")
 
-# Get libraries : CrzGames_Libraries (librairies précompilées qui n'utilise pas CMake)
-find_library(OPENSSL_CRYPTO_LIBRARY NAMES crypto REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/x64" NO_DEFAULT_PATH)
-find_library(OPENSSL_LIBRARY NAMES ssl REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/x64" NO_DEFAULT_PATH)
+# --- Libraries précompilé : trouve les libs selon l'OS
+if (WIN32)
+  # OpenSSL
+  find_library(OPENSSL_CRYPTO_LIBRARY NAMES crypto REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/windows/lib/OpenSSL/x64" NO_DEFAULT_PATH)
+  find_library(OPENSSL_LIBRARY NAMES ssl REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/windows/lib/OpenSSL/x64" NO_DEFAULT_PATH)
+  set(OPENSSL_INCLUDE_DIR "${CRZGAMES_LIBRARIES_PATH}/windows/include")
+
+  # NATS Client C
+  find_library(NATS_LIBRARY NAMES nats_static REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/windows/lib/nats/x64" NO_DEFAULT_PATH)
+
+  # Hiredis
+  find_library(HIREDIS_LIBRARY      NAMES hiredis      REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/windows/lib/hiredis/x64" NO_DEFAULT_PATH)
+  find_library(HIREDIS_SSL_LIBRARY  NAMES hiredis_ssl  REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/windows/lib/hiredis/x64" NO_DEFAULT_PATH)
+elseif(APPLE)
+  # OpenSSL
+  find_library(OPENSSL_CRYPTO_LIBRARY NAMES crypto REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/macos/lib/OpenSSL" NO_DEFAULT_PATH)
+  find_library(OPENSSL_LIBRARY NAMES ssl REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/macos/lib/OpenSSL" NO_DEFAULT_PATH)
+  set(OPENSSL_INCLUDE_DIR "${CRZGAMES_LIBRARIES_PATH}/macos/include")
+else() # Linux
+  # OpenSSL
+  find_library(OPENSSL_CRYPTO_LIBRARY NAMES crypto REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/x64" NO_DEFAULT_PATH)
+  find_library(OPENSSL_LIBRARY NAMES ssl REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/x64" NO_DEFAULT_PATH)
+  set(OPENSSL_INCLUDE_DIR "${CRZGAMES_LIBRARIES_PATH}/linux/include")
+endif()
 
 # Ajoute nlohmann_json en tant que sous-répertoire
 add_subdirectory(dependencies/nlohmann_json)
 
-# Désactiver ce dont tu n'as pas besoin
-set(JWT_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(JWT_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(JWT_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-set(JWT_ENABLE_COVERAGE OFF CACHE BOOL "" FORCE)
-set(JWT_ENABLE_FUZZING OFF CACHE BOOL "" FORCE)
-# Forcer OpenSSL
-set(JWT_SSL_LIBRARY "OpenSSL" CACHE STRING "" FORCE)
-add_subdirectory(dependencies/jwt-cpp EXCLUDE_FROM_ALL)
+if(APPLE OR UNIX)
+  # NATS options
+  set(NATS_BUILD_LIB_STATIC ON CACHE BOOL "" FORCE)  # Pour forcer en static
+  set(NATS_BUILD_LIB_SHARED OFF CACHE BOOL "" FORCE) # Pas besoin de la lib dynamique
+  set(NATS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)  # Pas besoin des exemples
+  set(NATS_BUILD_STREAMING OFF CACHE BOOL "" FORCE)  # Déprécié, maintenant on utilise JetStreaming
+  # Ajouter NATS en tant que sous-répertoire
+  add_subdirectory(dependencies/Nats EXCLUDE_FROM_ALL)
 
-# NATS options
-set(NATS_BUILD_OPENSSL_STATIC_LIBS ON CACHE BOOL "" FORCE)
-set(NATS_BUILD_STREAMING OFF CACHE BOOL "" FORCE)  # Déprécié, maintenant on utilise JetStreaming
-# Ajouter NATS en tant que sous-répertoire
-add_subdirectory(dependencies/Nats EXCLUDE_FROM_ALL)
-
-# Hiredis options
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)       # Pour forcer en static
-set(ENABLE_SSL ON CACHE BOOL "" FORCE)               # Pour activer hiredis_ssl
-set(DISABLE_TESTS ON CACHE BOOL "" FORCE)            # Pas besoin des tests
-set(ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE)         # Pas besoin des exemples
-set(ENABLE_NUGET OFF CACHE BOOL "" FORCE)            # Pas besoin de nuget
-# Ajouter hiredis en tant que sous-répertoire
-add_subdirectory(dependencies/hiredis EXCLUDE_FROM_ALL)
+  # Hiredis options
+  set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)       # Pour forcer en static
+  set(ENABLE_SSL ON CACHE BOOL "" FORCE)               # Pour activer hiredis_ssl
+  set(DISABLE_TESTS ON CACHE BOOL "" FORCE)            # Pas besoin des tests
+  set(ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE)         # Pas besoin des exemples
+  set(ENABLE_NUGET OFF CACHE BOOL "" FORCE)            # Pas besoin de nuget
+  # Ajouter hiredis en tant que sous-répertoire
+  add_subdirectory(dependencies/hiredis EXCLUDE_FROM_ALL)
+endif()
 
 # Ne pas construire les modules vidéo, audio, etc.
 set(SDL_VIDEO OFF CACHE BOOL "" FORCE)
@@ -104,25 +127,40 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DNDEBUG")
 target_include_directories(${PROJECT_NAME} PUBLIC
   "${PROJECT_SOURCE_DIR}/include"
   "${PROJECT_SOURCE_DIR}/include/external"
-  "${CRZGAMES_LIBRARIES_PATH}/linux/include"
   "${DEPENDENCIES_PATH}/Nats/src/include"
   "${DEPENDENCIES_PATH}/Nats/src"
   "${DEPENDENCIES_PATH}/hiredis/"
   "${DEPENDENCIES_PATH}/nlohmann_json/include"
   "${DEPENDENCIES_PATH}/cpp-httplib"
+  "${DEPENDENCIES_PATH}/jwt-cpp/include"
+  "${DEPENDENCIES_PATH}/SDL/include"
+  "${OPENSSL_INCLUDE_DIR}"
 )
 
 # Link les librairies
-target_link_libraries(${PROJECT_NAME}
-  SDL3::SDL3
-  ${OPENSSL_LIBRARY}
-  ${OPENSSL_CRYPTO_LIBRARY}
-  hiredis::hiredis
-  hiredis::hiredis_ssl
-  nats_static
-  jwt-cpp::jwt-cpp
-  nlohmann_json::nlohmann_json
-)
+if (WIN32)
+  target_link_libraries(${PROJECT_NAME} PUBLIC
+    SDL3::SDL3
+    ws2_32 # Pour OpenSSL
+    Crypt32 # Pour OpenSSL
+    ${OPENSSL_LIBRARY}
+    ${OPENSSL_CRYPTO_LIBRARY}
+    ${HIREDIS_LIBRARY}
+    ${HIREDIS_SSL_LIBRARY}
+    ${NATS_LIBRARY}
+    nlohmann_json::nlohmann_json
+  )
+else()
+  target_link_libraries(${PROJECT_NAME} PUBLIC
+    SDL3::SDL3
+    ${OPENSSL_LIBRARY}
+    ${OPENSSL_CRYPTO_LIBRARY}
+    hiredis::hiredis
+    hiredis::hiredis_ssl
+    nats_static
+    nlohmann_json::nlohmann_json
+  )
+endif()
 
 if(RCNET_BUILD_EXAMPLE)
   # Ajouter le fichier source pour l'exécutable de test
@@ -137,23 +175,41 @@ if(RCNET_BUILD_EXAMPLE)
   target_include_directories(rcnet_example PRIVATE
     "${PROJECT_SOURCE_DIR}/include"
     "${PROJECT_SOURCE_DIR}/include/external"
-    "${CRZGAMES_LIBRARIES_PATH}/linux/include"
     "${DEPENDENCIES_PATH}/Nats/src/include"
     "${DEPENDENCIES_PATH}/Nats/src"
     "${DEPENDENCIES_PATH}/hiredis/"
+    "${DEPENDENCIES_PATH}/nlohmann_json/include"
+    "${DEPENDENCIES_PATH}/cpp-httplib"
+    "${DEPENDENCIES_PATH}/jwt-cpp/include"
+    "${DEPENDENCIES_PATH}/SDL/include"
+    "${OPENSSL_INCLUDE_DIR}"
     "${PROJECT_SOURCE_DIR}/example/include"
   )
 
   # Link les librairies
-  target_link_libraries(rcnet_example
-    SDL3::SDL3
-    ${OPENSSL_LIBRARY}
-    ${OPENSSL_CRYPTO_LIBRARY}
-    hiredis::hiredis
-    hiredis::hiredis_ssl
-    nats_static
-    jwt-cpp::jwt-cpp
-    nlohmann_json::nlohmann_json
-    ${PROJECT_NAME}
-  )
+  if (WIN32)
+    target_link_libraries(rcnet_example
+      SDL3::SDL3
+      ws2_32 # Pour OpenSSL
+      Crypt32 # Pour OpenSSL
+      ${OPENSSL_LIBRARY}
+      ${OPENSSL_CRYPTO_LIBRARY}
+      ${HIREDIS_LIBRARY}
+      ${HIREDIS_SSL_LIBRARY}
+      ${NATS_LIBRARY}
+      nlohmann_json::nlohmann_json
+      ${PROJECT_NAME}
+    )
+  else()
+    target_link_libraries(rcnet_example
+      SDL3::SDL3
+      ${OPENSSL_LIBRARY}
+      ${OPENSSL_CRYPTO_LIBRARY}
+      hiredis::hiredis
+      hiredis::hiredis_ssl
+      nats_static
+      nlohmann_json::nlohmann_json
+      ${PROJECT_NAME}
+    )
+  endif()
 endif()

@@ -8,8 +8,8 @@
 // Standard C/C++ Libraries
 #include <stdbool.h> // Required for : bool
 #include <cstdlib>  // Required for : getenv
-#include <time.h> // Required for : nanosleep
 #include <chrono> // Required for : std::chrono
+#include <thread> // Required for : std::this_thread::sleep_for
 using namespace std::chrono;
 
 // ServerLoop
@@ -17,7 +17,7 @@ static bool serverIsRunning = true;
 
 // TickRates
 static int tickRate = 60;
-static unsigned long tickDuration; // Duration of each tick in nanoseconds
+static uint64_t tickDuration; // Duration of each tick in nanoseconds
 static double fixedDeltaTime = 0.0; // Delta fixe pour updates
 
 // Delta time
@@ -109,7 +109,6 @@ static uint64_t rcnet_engine_getCurrentTimeNs(void)
     return static_cast<uint64_t>(duration_cast<nanoseconds>(now.time_since_epoch()).count());
 }
 
-
 /**
  * \brief Définit les callbacks du moteur de jeu.
  * 
@@ -157,28 +156,31 @@ static bool rcnet_engine(void)
 	return true;
 }
 
+static inline void rcnet_sleep_ns(uint64_t ns)
+{
+    if (ns == 0) return;
+    std::this_thread::sleep_for(std::chrono::nanoseconds(ns));
+}
+
 /**
  * \brief Boucle principale du serveur.
  * 
  * Cette fonction gère la boucle principale du serveur, en appelant les callbacks
  * d'update à chaque tick et en gérant le timing pour respecter le tickRate.
  * 
- * \param next_tick_time {unsigned long*} - Pointeur vers le temps du prochain tick.
+ * \param next_tick_time {uint64_t*} - Pointeur vers le temps du prochain tick.
  * 
  * \since Cette fonction est disponible depuis RCNET 1.0.0.
  */
-static void rcnet_engine_serverloop(unsigned long* next_tick_time)
+static void rcnet_engine_serverloop(uint64_t* next_tick_time)
 {
-    unsigned long now = rcnet_engine_getCurrentTimeNs();
+    uint64_t now = rcnet_engine_getCurrentTimeNs();
 
     // Si on est en avance, on dort jusqu'au tick prévu
     if (now < *next_tick_time) 
     {
-        unsigned long sleep_time = *next_tick_time - now;
-        struct timespec ts;
-        ts.tv_sec = sleep_time / 1000000000;
-        ts.tv_nsec = sleep_time % 1000000000;
-        nanosleep(&ts, NULL);
+        uint64_t sleep_time = *next_tick_time - now;
+        rcnet_sleep_ns(sleep_time);
         now = rcnet_engine_getCurrentTimeNs(); // recheck après sleep
     }
 
@@ -270,8 +272,8 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, int tickRateArg)
     if (tickRateArg > 0)
     {
         ::tickRate = tickRateArg;
-        tickDuration = 1000000000UL / ::tickRate;
-        fixedDeltaTime = 1.0 / ::tickRate;
+        tickDuration = static_cast<uint64_t>(1000000000ull) / static_cast<uint64_t>(::tickRate);
+        fixedDeltaTime = 1.0 / static_cast<double>(::tickRate);
     }
 
     // Init GameEngine RCNET
@@ -288,8 +290,8 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, int tickRateArg)
     }
 
     // ServerLoop - Main thread
-    unsigned long next_tick_time = rcnet_engine_getCurrentTimeNs() + tickDuration;
-    while (serverIsRunning) 
+    uint64_t next_tick_time = rcnet_engine_getCurrentTimeNs() + tickDuration;
+    while (serverIsRunning)
     {
         rcnet_engine_serverloop(&next_tick_time);
     }
