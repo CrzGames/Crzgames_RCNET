@@ -143,7 +143,7 @@ add_library(${PROJECT_NAME}
 # Définir des flags de compilation pour le mode Release (NDEBUG = No Debug, donc Release)
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DNDEBUG")
 
-# Ajouter les fichiers include du serveur de jeu
+# Link les fichiers include
 target_include_directories(${PROJECT_NAME} PUBLIC
   "${PROJECT_SOURCE_DIR}/include"
   "${PROJECT_SOURCE_DIR}/include/external"
@@ -207,7 +207,7 @@ if(RCNET_BUILD_EXAMPLE)
   # Créer l'exécutable de test
   add_executable(rcnet_example ${EXAMPLE_SOURCES} ${EXAMPLE_HEADERS})
 
-  # Ajouter les fichiers include pour l'exécutable de test
+  # Link les fichiers include pour l'exécutable de test
   target_include_directories(rcnet_example PRIVATE
     "${PROJECT_SOURCE_DIR}/include"
     "${PROJECT_SOURCE_DIR}/include/external"
@@ -222,7 +222,7 @@ if(RCNET_BUILD_EXAMPLE)
     "${PROJECT_SOURCE_DIR}/example/include"
   )
 
-  # Link les librairies
+  # Link les librairies pour l'exécutable de test
   if (WIN32)
     target_link_libraries(rcnet_example
       SDL3::SDL3
