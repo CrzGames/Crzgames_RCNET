@@ -5,7 +5,7 @@
 - A C++ 17 compiler
 - CI / CD (Github Actions)
 - CMake (Build script)
-- Compiler (GCC)
+- Compiler (GCC, CLANG, CL)
 
 <br /><br /><br /><br />
 
@@ -31,15 +31,14 @@ git commit --allow-empty -m "chore: release 1.1.0-rc.0" -m "Release-As: 1.1.0-rc
 ## 📁 Project Structure
 
 ```
-📦 Crzgames_RCNETCore
+📦 Crzgames_RCNET
 ├── 📁 .github                        # Configuration GitHub (workflows CI/CD)
 ├── 📁 build-scripts                  # Scripts de build, puis les scripts utilise le CMakelists.txt
 ├── 📁 cmake                          
 │   └── 📄 setup_dependencies.cmake   # Script CMake chargé de lire `dependencies.txt` et cloner/configurer les dépendances dans `/dependencies`
 ├── 📁 dependencies (git ignored)     # Répertoire local contenant les dépendances clonées (ignoré par Git pour ne pas polluer le repo)
-│   ├── 📁 Crzgames_Libraries         # Librairies précompilées (OpenSSL) propres à Crzgames
+│   ├── 📁 Crzgames_Libraries         # Librairies précompilées (OpenSSL, hiredis, nats) propres à Crzgames
 │   ├── 📁 SDL                        # SDL3 
-│   ├── 📁 Crzgames_RCENet            # Fork ENet 
 │   ├── 📁 hiredis                    # Redis
 │   ├── 📁 Nats                       # Nats broker de message
 │   ├── 📁 jwt-cpp                    # JWT
@@ -68,6 +67,7 @@ git commit --allow-empty -m "chore: release 1.1.0-rc.0" -m "Release-As: 1.1.0-rc
 |----------|---------------|----------------|------------|
 | **Linux** | x64 | glibc 2.35+ | ✓ |
 | **Windows** | x64 | Windows 10+ | ✓ |
+| **Windows** | arm64 | macOS 15.0+ | ✓ |
 
 <br /><br /><br /><br />
 
@@ -85,6 +85,9 @@ git commit --allow-empty -m "chore: release 1.1.0-rc.0" -m "Release-As: 1.1.0-rc
 ### **Windows (10+)**
 - Windows 10 et plus récent.
 
+### **macOS (15.0+)**
+- Tous les modèles macOS Apple Silicon (M1, M2, M3, M4) et plus récent.
+
 <br /><br /><br /><br />
 
 
@@ -98,7 +101,10 @@ git commit --allow-empty -m "chore: release 1.1.0-rc.0" -m "Release-As: 1.1.0-rc
 ### Windows
 - **Version minimale** : Windows 10+
 - **Raison** :
-  - 
+
+### macOS
+- **Version minimale** : macOS 15.0+ / M1+
+- **Raison** :
 
 <br /><br /><br /><br />
 
@@ -130,8 +136,8 @@ git commit --allow-empty -m "chore: release 1.1.0-rc.0" -m "Release-As: 1.1.0-rc
 2. (optional just for documentation rcnet) Download and Install Node.js >= 18.0.0
 3. Run command :
   ```bash  
-  # Linux :
-  1. Requirements : glibc >= 3.25 (Ubuntu >= 22.04 OR Debian >= 12.0)
+  # Linux - x64 :
+  1. Requirements : glibc >= 2.35 (Ubuntu >= 22.04 OR Debian >= 12.0)
   2. Run command (replace debian for name) : sudo usermod -aG sudo debian
   3. Download and Install brew : /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   4. Après l'installation de homebrew il faut importer les variables d'environnement et installer les deux librairies : 
@@ -142,6 +148,10 @@ git commit --allow-empty -m "chore: release 1.1.0-rc.0" -m "Release-As: 1.1.0-rc
     brew install gcc
   5. Download and Install CMake >= 3.25.0 : brew install cmake
   6. Run command for install dependencies : cmake -P cmake/setup_dependencies.cmake
+
+  # macOS - arm64 :
+
+  # Windows - x64 :
   ```
   
 <br /><br /><br /><br />
@@ -167,6 +177,10 @@ chmod +x ./build-scripts/generate-example/linux-x64.sh
 
 # Windows - x64
 .\build-scripts\generate-example\windows-x64.bat
+
+# macOS - arm64
+chmod +x ./build-scripts/generate-example/macos-arm64.sh
+./build-scripts/generate-example/macos-arm64.sh
 ```
 
 <br /><br /><br /><br />
@@ -187,19 +201,31 @@ chmod +x ./build-scripts/generate-example/linux-x64.sh
 ### ✋ Manual Distribution Process
 1. Generate librarie RCNET for Release and Debug, run command :
 ```bash
-# Linux
-chmod +x ./build-scripts/generate-lib/linux.sh
-./build-scripts/generate-lib/linux.sh
+# Linux - x64
+chmod +x ./build-scripts/generate-lib/linux-x64.sh
+./build-scripts/generate-lib/linux-x64.sh
+
+# Windows - x64
+.\build-scripts\generate-lib\windows-x64.bat
+
+# macOS - arm64
+chmod +x ./build-scripts/generate-lib/macos-arm64.sh
+./build-scripts/generate-lib/macos-arm64.sh
 ```
 2. Get librarie RCNET, steps for different systems :
 ```bash
 # Linux - x64
 1. Go directory 'dist/lib/linux/'
 2. Go in directory 'Release' OR 'Debug'
-3. Get librarie RCNET : librcnet.a
+3. Get librarie RCNET : librcnet_static.a
 
 # Windows x64
 1. Go directory 'dist/lib/windows/'
 2. Go in directory 'Release' OR 'Debug'
-3. Get librarie RCNET : librcnet.a
+3. Get librarie RCNET : rcnet_static.lib
+
+# macOS - arm64
+1. Go directory 'dist/lib/macos/'
+2. Go in directory 'Release' OR 'Debug'
+3. Get librarie RCNET : librcnet_static.a
 ```
