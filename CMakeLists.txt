@@ -49,6 +49,13 @@ elseif(APPLE)
   find_library(OPENSSL_CRYPTO_LIBRARY NAMES crypto REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/macos/lib/OpenSSL" NO_DEFAULT_PATH)
   find_library(OPENSSL_LIBRARY NAMES ssl REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/macos/lib/OpenSSL" NO_DEFAULT_PATH)
   set(OPENSSL_INCLUDE_DIR "${CRZGAMES_LIBRARIES_PATH}/macos/include")
+
+  # NATS Client C
+  find_library(NATS_LIBRARY NAMES nats_static REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/macos/lib/nats" NO_DEFAULT_PATH)
+
+  # Hiredis
+  find_library(HIREDIS_LIBRARY      NAMES hiredis      REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/macos/lib/hiredis" NO_DEFAULT_PATH)
+  find_library(HIREDIS_SSL_LIBRARY  NAMES hiredis_ssl  REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/macos/lib/hiredis" NO_DEFAULT_PATH)
 else() # Linux
   # OpenSSL
   find_library(OPENSSL_CRYPTO_LIBRARY NAMES crypto REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/x64" NO_DEFAULT_PATH)
@@ -59,7 +66,7 @@ endif()
 # Ajoute nlohmann_json en tant que sous-répertoire
 add_subdirectory(dependencies/nlohmann_json)
 
-if(APPLE OR UNIX)
+if(NOT WIN32 AND NOT APPLE)
   # NATS options
   set(NATS_BUILD_LIB_STATIC ON CACHE BOOL "" FORCE)  # Pour forcer en static
   set(NATS_BUILD_LIB_SHARED OFF CACHE BOOL "" FORCE) # Pas besoin de la lib dynamique
@@ -150,7 +157,17 @@ if (WIN32)
     ${NATS_LIBRARY}
     nlohmann_json::nlohmann_json
   )
-else()
+elseif(APPLE)
+  target_link_libraries(${PROJECT_NAME} PUBLIC
+    SDL3::SDL3
+    ${OPENSSL_LIBRARY}
+    ${OPENSSL_CRYPTO_LIBRARY}
+    ${HIREDIS_LIBRARY}
+    ${HIREDIS_SSL_LIBRARY}
+    ${NATS_LIBRARY}
+    nlohmann_json::nlohmann_json
+  )
+else() # Linux
   target_link_libraries(${PROJECT_NAME} PUBLIC
     SDL3::SDL3
     ${OPENSSL_LIBRARY}
@@ -200,7 +217,18 @@ if(RCNET_BUILD_EXAMPLE)
       nlohmann_json::nlohmann_json
       ${PROJECT_NAME}
     )
-  else()
+  elseif(APPLE)
+    target_link_libraries(rcnet_example
+      SDL3::SDL3
+      ${OPENSSL_LIBRARY}
+      ${OPENSSL_CRYPTO_LIBRARY}
+      ${HIREDIS_LIBRARY}
+      ${HIREDIS_SSL_LIBRARY}
+      ${NATS_LIBRARY}
+      nlohmann_json::nlohmann_json
+      ${PROJECT_NAME}
+    )
+  else() # Linux
     target_link_libraries(rcnet_example
       SDL3::SDL3
       ${OPENSSL_LIBRARY}
