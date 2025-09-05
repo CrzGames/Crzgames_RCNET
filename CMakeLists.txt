@@ -123,16 +123,21 @@ add_subdirectory(dependencies/SDL EXCLUDE_FROM_ALL)
 
 # Ajouter les fichiers sources du server de jeu ainsi que les librairies aes, lz4 et monocypher.
 file(GLOB_RECURSE SOURCES 
-  "${PROJECT_SOURCE_DIR}/src/RCNET/*.cpp"
-  "${PROJECT_SOURCE_DIR}/src/external/monocypher/*.c"
-  "${PROJECT_SOURCE_DIR}/src/external/aes/*.c"
-  "${PROJECT_SOURCE_DIR}/src/external/lz4/*.c"
+  "${PROJECT_SOURCE_DIR}/src/*.cpp"
+  "${PROJECT_SOURCE_DIR}/src/*.c"
+)
+
+# Ajouter les fichiers d'en-tête (headers)
+file(GLOB_RECURSE HEADERS 
+  "${PROJECT_SOURCE_DIR}/include/*.hpp"
+  "${PROJECT_SOURCE_DIR}/include/*.h"
 )
 
 # Créer une bibliothèque static
 add_library(${PROJECT_NAME}
   STATIC 
   ${SOURCES}
+  ${HEADERS}
 )
 
 # Définir des flags de compilation pour le mode Release (NDEBUG = No Debug, donc Release)
@@ -193,8 +198,14 @@ if(RCNET_BUILD_EXAMPLE)
     "${PROJECT_SOURCE_DIR}/example/src/*.cpp"
   )
 
+  # Ajouter les fichiers d'en-tête (headers) pour l'exécutable de test
+  file(GLOB_RECURSE EXAMPLE_HEADERS 
+    "${PROJECT_SOURCE_DIR}/example/include/*.hpp"
+    "${PROJECT_SOURCE_DIR}/example/include/*.h"
+  )
+
   # Créer l'exécutable de test
-  add_executable(rcnet_example ${EXAMPLE_SOURCES})
+  add_executable(rcnet_example ${EXAMPLE_SOURCES} ${EXAMPLE_HEADERS})
 
   # Ajouter les fichiers include pour l'exécutable de test
   target_include_directories(rcnet_example PRIVATE
