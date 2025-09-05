@@ -1,7 +1,7 @@
 # Version minimale de CMake requise
 cmake_minimum_required(VERSION 3.25.0)
 
-project(rcnet LANGUAGES C CXX)
+project(rcnet_static LANGUAGES C CXX)
 
 # Spécifier la version C++ du projet
 set(CMAKE_CXX_STANDARD 17)
@@ -115,7 +115,7 @@ file(GLOB_RECURSE SOURCES
 )
 
 # Créer une bibliothèque static
-add_library(${PROJECT_NAME} 
+add_library(${PROJECT_NAME}
   STATIC 
   ${SOURCES}
 )

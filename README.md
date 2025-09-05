@@ -44,6 +44,7 @@ git commit --allow-empty -m "chore: release 1.1.0-rc.0" -m "Release-As: 1.1.0-rc
 │   ├── 📁 Nats                       # Nats broker de message
 │   ├── 📁 jwt-cpp                    # JWT
 │   ├── 📁 nlohmann_json              # JSON
+│   ├── 📁 cpp-httplib                # HTTP
 ├── 📁 docs                           # Documentation du moteur de serveur (pages Markdown, auto-générées)
 ├── 📁 example                        # Exemples d’utilisation du moteur de serveur de jeu RCNET (projets de démo, test de fonctionnalités)
 ├── 📁 include                        # En-têtes publics exposés aux utilisateurs de la lib (API du moteur de serveur)
@@ -66,6 +67,7 @@ git commit --allow-empty -m "chore: release 1.1.0-rc.0" -m "Release-As: 1.1.0-rc
 | Platform | Architectures | System Version | Compatible |
 |----------|---------------|----------------|------------|
 | **Linux** | x64 | glibc 2.35+ | ✓ |
+| **Windows** | x64 | Windows 10+ | ✓ |
 
 <br /><br /><br /><br />
 
@@ -80,6 +82,9 @@ git commit --allow-empty -m "chore: release 1.1.0-rc.0" -m "Release-As: 1.1.0-rc
 - elementary OS 7 et plus récent.
 - CentOS/RHEL 10 et plus récent.
 
+### **Windows (10+)**
+- Windows 10 et plus récent.
+
 <br /><br /><br /><br />
 
 
@@ -89,6 +94,11 @@ git commit --allow-empty -m "chore: release 1.1.0-rc.0" -m "Release-As: 1.1.0-rc
 - **Version minimale** : glibc 2.35+
 - **Raison** :
   - CI/CD basée sur Ubuntu 22.04 LTS (donc librairie RCNET + dépendences construite sur glibc 2.35)
+
+### Windows
+- **Version minimale** : Windows 10+
+- **Raison** :
+  - 
 
 <br /><br /><br /><br />
 
@@ -107,6 +117,7 @@ git commit --allow-empty -m "chore: release 1.1.0-rc.0" -m "Release-As: 1.1.0-rc
 | **Nats**            | Hashing, Chiffrement, Compression..etc                       | `Activé par défault mais optionnel`, mais le module `RC2D_data` ne sera pas utilisable si désactiver. Passé à CMake : RC2D_DATA_MODULE_ENABLED=OFF/ON |
 | **jwt-cpp**            | Hashing, Chiffrement, Compression..etc                       | `Activé par défault mais optionnel`, mais le module `RC2D_data` ne sera pas utilisable si désactiver. Passé à CMake : RC2D_DATA_MODULE_ENABLED=OFF/ON |
 | **nlohmann_json**            | Hashing, Chiffrement, Compression..etc                       | `Activé par défault mais optionnel`, mais le module `RC2D_data` ne sera pas utilisable si désactiver. Passé à CMake : RC2D_DATA_MODULE_ENABLED=OFF/ON |
+| **cpp-httplib**            | Hashing, Chiffrement, Compression..etc                       | `Activé par défault mais optionnel`, mais le module `RC2D_data` ne sera pas utilisable si désactiver. Passé à CMake : RC2D_DATA_MODULE_ENABLED=OFF/ON |
 
 <br /><br /><br /><br />
 
@@ -150,8 +161,12 @@ cmake -P cmake/setup_dependencies.cmake
 ## 🔄 Cycle Development
 1. Générer l'exemple pour tester l'executable
 ```bash
-chmod +x ./build-scripts/generate-example/linux.sh
-./build-scripts/generate-example/linux.sh
+# Linux - x64
+chmod +x ./build-scripts/generate-example/linux-x64.sh
+./build-scripts/generate-example/linux-x64.sh
+
+# Windows - x64
+.\build-scripts\generate-example\windows-x64.bat
 ```
 
 <br /><br /><br /><br />
@@ -178,8 +193,13 @@ chmod +x ./build-scripts/generate-lib/linux.sh
 ```
 2. Get librarie RCNET, steps for different systems :
 ```bash
-# Linux
+# Linux - x64
 1. Go directory 'dist/lib/linux/'
+2. Go in directory 'Release' OR 'Debug'
+3. Get librarie RCNET : librcnet.a
+
+# Windows x64
+1. Go directory 'dist/lib/windows/'
 2. Go in directory 'Release' OR 'Debug'
 3. Get librarie RCNET : librcnet.a
 ```
