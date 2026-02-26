@@ -6,4 +6,4 @@ nats=https://github.com/nats-io/nats.c.git:v3.12.0
 hiredis=https://github.com/redis/hiredis.git:v1.3.0
 cpp-httplib=https://github.com/yhirose/cpp-httplib.git:v0.34.0
 cJSON=https://github.com/DaveGamble/cJSON:v1.7.19
-libsodium=https://github.com/DaveGamble/cJSON:v1.0.21
+sodium=https://github.com/CaffeineMC/sodium:v1.0.21-RELEASE
