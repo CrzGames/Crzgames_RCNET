@@ -4,7 +4,7 @@
 // Standard C/C++ Libraries
 #include <stdarg.h> // Required for : ... (va_list, va_start, va_end)
 
-#include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_assert.h>
 
 /**
  * \brief Macro pour afficher un message de log avec le niveau de priorité spécifié.

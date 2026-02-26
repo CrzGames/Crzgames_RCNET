@@ -163,7 +163,7 @@ endfunction()
 function(rcnet_configure_hiredis target_name)
   if(WIN32) # Windows
     target_include_directories(${target_name} PUBLIC
-      "${CRZGAMES_LIBRARIES_PATH}/windows/include/include_hiredis/nats"
+      "${CRZGAMES_LIBRARIES_PATH}/windows/include/include_hiredis/hiredis"
     )
 
     target_link_directories(${target_name} PUBLIC
