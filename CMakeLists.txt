@@ -461,8 +461,10 @@ endfunction()
 # rcnet_target_compile_definitions
 # ============================================================
 function(rcnet_target_compile_definitions target_name)
-  # Pour libsodium, on doit définir SODIUM_STATIC pour indiquer qu'on utilise la version statique de la librairie.
-  target_compile_definitions(${target_name} PUBLIC SODIUM_STATIC)
+  if(MSVC)
+    # Pour libsodium avec MSVC, on doit définir SODIUM_STATIC pour indiquer qu'on utilise la version statique de la librairie.
+    target_compile_definitions(${target_name} PUBLIC SODIUM_STATIC)
+  endif()
 endfunction()
 
 # ============================================================
