@@ -1,6 +1,7 @@
+#include "server.h"
+
 #include <RCNET/RCNET_engine.h>
 #include <RCNET/RCNET_logger.h>
-#include "server.h"
 
 int main(int argc, char* argv[])
 {
