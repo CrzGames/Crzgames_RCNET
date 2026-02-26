@@ -86,6 +86,15 @@ else()
 endif()
 
 # ============================================================
+# Paths — Dépendances précompilées (Crzgames_Libraries)
+# ============================================================
+# DEPENDENCIES_PATH : racine de ton dossier dependencies/
+# CRZGAMES_LIBRARIES_PATH: dossier où on ranges les libs précompilées (openssl, rcenet etc.) pour chaque plateforme.
+# ============================================================
+set(DEPENDENCIES_PATH "${PROJECT_SOURCE_DIR}/dependencies")
+set(CRZGAMES_LIBRARIES_PATH "${DEPENDENCIES_PATH}/Crzgames_Libraries")
+
+# ============================================================
 # Hiredis — Configuration build
 # ============================================================
 if(UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
@@ -120,26 +129,59 @@ set(ENABLE_CJSON_TEST   OFF CACHE BOOL "" FORCE) # Désactiver les tests
 set(ENABLE_CJSON_UTILS  OFF CACHE BOOL "" FORCE) # Désactiver les outils
 
 # ============================================================
+# libwebsockets - Configuration build
+# ============================================================
+# --- LWS: on veut OpenSSL ---
+set(LWS_WITH_SSL ON  CACHE BOOL "" FORCE)
+
+# Autres options importantes :
+set(LWS_WITH_EXPORT_LWSTARGETS OFF CACHE BOOL "" FORCE)
+
+# Empêcher les backends alternatifs à OpenSSL
+set(LWS_WITH_MBEDTLS   OFF CACHE BOOL "" FORCE)
+set(LWS_WITH_BORINGSSL OFF CACHE BOOL "" FORCE)
+set(LWS_WITH_GNUTLS    OFF CACHE BOOL "" FORCE)
+set(LWS_WITH_WOLFSSL   OFF CACHE BOOL "" FORCE)
+set(LWS_WITH_CYASSL    OFF CACHE BOOL "" FORCE)
+set(LWS_WITH_SCHANNEL  OFF CACHE BOOL "" FORCE)
+
+# Désactiver les exemples et tests (inutile dans un framework)
+set(LWS_WITHOUT_TESTAPPS ON  CACHE BOOL "" FORCE)
+set(LWS_WITH_MINIMAL_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(LWS_WITH_LWSWS OFF CACHE BOOL "" FORCE)
+
+# On veut la lib statique, pas besoin de la dynamique
+set(LWS_WITH_SHARED OFF  CACHE BOOL "" FORCE)
+set(LWS_WITH_STATIC ON CACHE BOOL "" FORCE)
+
+# libwebsockets à besoin des : OPENSSL_INCLUDE_DIR, OPENSSL_ROOT_DIR, OPENSSL_CRYPTO_LIBRARY
+if(APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin") # macOS
+  set(OPENSSL_INCLUDE_DIR "${CRZGAMES_LIBRARIES_PATH}/macos/include/include_openssl" CACHE PATH "" FORCE)
+  set(OPENSSL_ROOT_DIR "${CRZGAMES_LIBRARIES_PATH}/macos/lib/OpenSSL" CACHE PATH "" FORCE)
+  set(OPENSSL_CRYPTO_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/macos/lib/OpenSSL/libcrypto.a" CACHE FILEPATH "" FORCE)
+elseif(WIN32) # Windows
+  set(OPENSSL_INCLUDE_DIR "${CRZGAMES_LIBRARIES_PATH}/windows/include/include_openssl" CACHE PATH "" FORCE)
+  set(OPENSSL_ROOT_DIR "${CRZGAMES_LIBRARIES_PATH}/windows/lib/OpenSSL/x64" CACHE PATH "" FORCE)
+  set(OPENSSL_CRYPTO_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/windows/lib/OpenSSL/x64/libcrypto.lib" CACHE FILEPATH "" FORCE)
+elseif (UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
+  set(OPENSSL_INCLUDE_DIR "${CRZGAMES_LIBRARIES_PATH}/linux/include/include_openssl" CACHE PATH "" FORCE)
+  set(OPENSSL_ROOT_DIR "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/x64" CACHE PATH "" FORCE)
+  set(OPENSSL_CRYPTO_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/x64/libcrypto.a" CACHE FILEPATH "" FORCE)
+endif()
+
+# ============================================================
 # Dépendances vendored — add_subdirectory
 # ============================================================
 # On inclut SDL + modules, et cJSON depuis dependencies/.
 # EXCLUDE_FROM_ALL : évite de builder ces targets si aucune target ne les référence.
 # ============================================================
+add_subdirectory(dependencies/libwebsockets EXCLUDE_FROM_ALL)
 add_subdirectory(dependencies/SDL   EXCLUDE_FROM_ALL)
 add_subdirectory(dependencies/cJSON EXCLUDE_FROM_ALL)
 if(UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
   add_subdirectory(dependencies/hiredis EXCLUDE_FROM_ALL)
   add_subdirectory(dependencies/nats    EXCLUDE_FROM_ALL)
 endif()
-
-# ============================================================
-# Paths — Dépendances précompilées (Crzgames_Libraries)
-# ============================================================
-# DEPENDENCIES_PATH : racine de ton dossier dependencies/
-# CRZGAMES_LIBRARIES_PATH: dossier où on ranges les libs précompilées (openssl, rcenet etc.) pour chaque plateforme.
-# ============================================================
-set(DEPENDENCIES_PATH "${PROJECT_SOURCE_DIR}/dependencies")
-set(CRZGAMES_LIBRARIES_PATH "${DEPENDENCIES_PATH}/Crzgames_Libraries")
 
 # ============================================================
 # rcnet_configure_cpphttplib
@@ -194,6 +236,11 @@ function(rcnet_configure_hiredis target_name)
     target_include_directories(${target_name} PUBLIC
       "${CRZGAMES_LIBRARIES_PATH}/macos/include/include_hiredis"
     )
+
+    target_link_libraries(${target_name} PUBLIC 
+      hiredis 
+      hiredis_ssl
+    )
   endif()
 endfunction()
 
@@ -239,6 +286,10 @@ function(rcnet_configure_nats target_name)
   elseif(UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
     target_include_directories(${target_name} PUBLIC
       "${CRZGAMES_LIBRARIES_PATH}/macos/include/include_nats"
+    )
+
+    target_link_libraries(${target_name} PUBLIC 
+      nats_static
     )
   endif()
 endfunction()
@@ -409,7 +460,11 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 # ===========================================================
 target_link_libraries(${PROJECT_NAME} PUBLIC
   SDL3::SDL3
+  websockets
 )
+
+# ============================================================
+# Link NATS
 
 # OpenSSL
 rcnet_configure_openssl(${PROJECT_NAME})
