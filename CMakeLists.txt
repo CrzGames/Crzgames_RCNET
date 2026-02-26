@@ -444,6 +444,8 @@ add_library(${PROJECT_NAME}
   ${SOURCES}
   ${HEADERS}
 )
+# Rajouter le suffixe "*_static" au nom de la bibliothèque statique, pour éviter les conflits
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "${PROJECT_NAME}_static")
 
 # ============================================================
 # Include Directories (Public API)
