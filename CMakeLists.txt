@@ -156,7 +156,8 @@ set(LWS_WITH_STATIC ON CACHE BOOL "" FORCE)
 
 # libwebsockets à besoin des : OPENSSL_INCLUDE_DIR, OPENSSL_ROOT_DIR, OPENSSL_CRYPTO_LIBRARY
 if(APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin") # macOS
-  set(OPENSSL_INCLUDE_DIR "${CRZGAMES_LIBRARIES_PATH}/macos/include/include_openssl" CACHE PATH "" FORCE)
+  # On utilise l'include de Linux pour macOS aussi, parce que libwebsocket demande un "openssl/.." et pas OpenSSL/.., et que l'include de Linux est déjà organisé comme ça.
+  set(OPENSSL_INCLUDE_DIR "${CRZGAMES_LIBRARIES_PATH}/linux/include/include_openssl" CACHE PATH "" FORCE)
   set(OPENSSL_ROOT_DIR "${CRZGAMES_LIBRARIES_PATH}/macos/lib/OpenSSL" CACHE PATH "" FORCE)
   set(OPENSSL_CRYPTO_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/macos/lib/OpenSSL/libcrypto.a" CACHE FILEPATH "" FORCE)
 elseif(WIN32) # Windows
