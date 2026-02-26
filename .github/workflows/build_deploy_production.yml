@@ -14,7 +14,7 @@ env:
   XCODE_VERSION: "26.3.0"
 
 jobs:
-  build_librc2d:
+  build_librcnet:
     strategy:
       fail-fast: false
       matrix:
@@ -61,7 +61,7 @@ jobs:
           libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev libthai-dev \
           libpipewire-0.3-dev libwayland-dev libdecor-0-dev liburing-dev
 
-      - name: Build RC2D (scripts) - Linux (x64/arm64)
+      - name: Build RCNET (scripts) - Linux (x64)
         if: matrix.config.platform == 'linux'
         shell: bash
         run: |
@@ -69,14 +69,14 @@ jobs:
           chmod +x ./build-scripts/generate-project/linux-x64.sh
           ./build-scripts/generate-project/linux-x64.sh
 
-      - name: Build RC2D (scripts) - Windows (x64/arm64)
+      - name: Build RCNET (scripts) - Windows (x64)
         if: matrix.config.platform == 'windows'
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
           .\build-scripts\generate-project\windows-x64.bat
 
-      - name: Build RC2D (scripts) - macOS (arm64)
+      - name: Build RCNET (scripts) - macOS (arm64)
         if: matrix.config.platform == 'macos'
         shell: bash
         run: |
@@ -85,7 +85,7 @@ jobs:
           ./build-scripts/generate-project/macos-arm64.sh
   
 # build_deploy_website:
-#   needs: build_librc2d
+#   needs: build_librcnet
 #   runs-on: ubuntu-latest
 #   steps:
 #
