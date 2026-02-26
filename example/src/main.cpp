@@ -8,10 +8,10 @@ int main(int argc, char* argv[])
 
 #ifdef NDEBUG // If we are in Release mode
     // Keep only error and critical logs
-    rcnet_logger_setPriority(RCNET_LOG_ERROR);
+    rcnet_logger_set_priority(RCNET_LOG_ERROR);
 #else // If we are in Debug mode
     // Show all log levels
-    rcnet_logger_setPriority(RCNET_LOG_DEBUG);
+    rcnet_logger_set_priority(RCNET_LOG_DEBUG);
 #endif
 
     RCNET_Callbacks myServerCallbacks;
