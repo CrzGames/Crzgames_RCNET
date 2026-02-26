@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.3](https://github.com/CrzGames/Crzgames_RCNET/compare/v1.0.2...v1.0.3) (2026-02-26)
+
+
+### Bug Fixes
+
+* fixed nats include ([92b9a70](https://github.com/CrzGames/Crzgames_RCNET/commit/92b9a70c8627f55bc7b382b34d1160c5acf46643))
+* fixed nats include ([91117c8](https://github.com/CrzGames/Crzgames_RCNET/commit/91117c866e82590c87b06796940a2b6ef181c3e5))
+
 ## [1.0.2](https://github.com/CrzGames/Crzgames_RCNET/compare/v1.0.1...v1.0.2) (2026-02-26)
 
 
