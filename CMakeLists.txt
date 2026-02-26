@@ -135,7 +135,7 @@ add_subdirectory(dependencies/SDL   EXCLUDE_FROM_ALL)
 add_subdirectory(dependencies/cJSON EXCLUDE_FROM_ALL)
 if(UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
   add_subdirectory(dependencies/hiredis EXCLUDE_FROM_ALL)
-  add_subdirectory(dependencies/Nats    EXCLUDE_FROM_ALL)
+  add_subdirectory(dependencies/nats    EXCLUDE_FROM_ALL)
 endif()
 
 # ============================================================
@@ -359,23 +359,6 @@ function(rcnet_configure_cjson target_name)
   # Link la librairie cJSON
   target_link_libraries(${target_name} PUBLIC cjson)
 endfunction()
-
-# Crzgames_Libraries : Libraries précompilé trouve les libs selon l'OS
-if (WIN32) # Windows
-  # NATS Client C
-  find_library(NATS_LIBRARY NAMES nats_static REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/windows/lib/nats/x64" NO_DEFAULT_PATH)
-
-  # Hiredis
-  find_library(HIREDIS_LIBRARY      NAMES hiredis      REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/windows/lib/hiredis/x64" NO_DEFAULT_PATH)
-  find_library(HIREDIS_SSL_LIBRARY  NAMES hiredis_ssl  REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/windows/lib/hiredis/x64" NO_DEFAULT_PATH)
-elseif(APPLE) # macOS
-  # NATS Client C
-  find_library(NATS_LIBRARY NAMES nats_static REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/macos/lib/nats" NO_DEFAULT_PATH)
-
-  # Hiredis
-  find_library(HIREDIS_LIBRARY      NAMES hiredis      REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/macos/lib/hiredis" NO_DEFAULT_PATH)
-  find_library(HIREDIS_SSL_LIBRARY  NAMES hiredis_ssl  REQUIRED PATHS "${CRZGAMES_LIBRARIES_PATH}/macos/lib/hiredis" NO_DEFAULT_PATH)
-endif()
 
 # ============================================================
 # Sources & Headers (RCNET)
