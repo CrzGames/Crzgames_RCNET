@@ -1,15 +1,11 @@
 #ifndef RCNET_NATS_H
 #define RCNET_NATS_H
 
-#include <nats.h>
-
-// Standard C libraries
+// Standard C/C++ Libraries
 #include <stdbool.h>
 #include <stdlib.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <nats.h>
 
 /**
  * @typedef {struct} RCNET_NATSClient
@@ -190,9 +186,5 @@ int rcnet_nats_check_and_create_stream(RCNET_NATSClient *client, const char *str
  * @return {int} 0 en cas de succès, -1 en cas d'erreur.
  */
 int rcnet_nats_update_stream_subjects(RCNET_NATSClient *client, const char *streamName, const char *newSubjects[], int newSubjectsCount);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // RCNET_NATS_H

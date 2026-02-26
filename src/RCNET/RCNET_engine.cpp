@@ -1,16 +1,19 @@
 #include "RCNET/RCNET.h"
 
-// Dependencies Libraries OpenSSL
-#include <openssl/ssl.h>
-#include <openssl/bio.h>
-#include <openssl/err.h>
-
 // Standard C/C++ Libraries
 #include <stdbool.h> // Required for : bool
 #include <cstdlib>  // Required for : getenv
 #include <chrono> // Required for : std::chrono
 #include <thread> // Required for : std::this_thread::sleep_for
 using namespace std::chrono;
+
+// Dependencies Libraries OpenSSL
+#include <openssl/ssl.h>
+#include <openssl/bio.h>
+#include <openssl/err.h>
+
+// Dependencies Libraries RCENet
+#include <rcenet/RCENET_enet.h>
 
 // ServerLoop
 static bool serverIsRunning = true;
@@ -31,6 +34,44 @@ RCNET_Callbacks callbacksServerEngine = {
 };
 
 /**
+ * \brief Initialise la bibliothèque RCENet pour le module réseau.
+ * 
+ * Cette fonction initialise la bibliothèque RCENet.
+ * Elle doit être appelée avant d'utiliser les fonctionnalités réseau.
+ * 
+ * \return true si l'initialisation a réussi, false sinon.
+ * 
+ * \since Cette fonction est disponible depuis RCNET 1.0.0.
+ */
+static bool rcnet_engine_init_rcenet(void)
+{
+    if (enet_initialize() < 0) 
+    {
+        RCNET_log(RCNET_LOG_CRITICAL, "Erreur lors de l'initialisation de RCEnet.");
+        return false;
+    }
+    else 
+    {
+        RCNET_log(RCNET_LOG_INFO, "RCENet initialiser avec succes.");
+        return true;
+    }
+}
+
+/**
+ * \brief Libère les ressources RCNet.
+ * 
+ * Cette fonction libère les ressources allouées par RCENet.
+ * Elle doit être appelée avant de quitter l'application pour éviter les fuites de mémoire.
+ * 
+ * \since Cette fonction est disponible depuis RCNET 1.0.0.
+ */
+static void rcnet_engine_cleanup_rcenet(void)
+{
+    enet_deinitialize();
+    RCNET_log(RCNET_LOG_INFO, "RCENet nettoyer avec succes.");
+}
+
+/**
  * \brief Initialise la bibliothèque OpenSSL avec options de log.
  * 
  * Cette fonction appelle OPENSSL_init_ssl() avec les options standards de chargement
@@ -45,53 +86,23 @@ static bool rcnet_engine_initOpenssl(void)
 {
     if (OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS, NULL) == 0)
     {
-        rcnet_logger_log(RCNET_LOG_ERROR, "Erreur lors de l'initialisation d'OpenSSL : %s", ERR_error_string(ERR_get_error(), NULL));
+        RCNET_log(RCNET_LOG_ERROR, "Erreur lors de l'initialisation d'OpenSSL : %s", ERR_error_string(ERR_get_error(), NULL));
         return false;
     }
     else 
     {
-        rcnet_logger_log(RCNET_LOG_INFO, "OpenSSL initialisé avec succès.");
+        RCNET_log(RCNET_LOG_INFO, "OpenSSL initialisé avec succès.");
         return true;
     }
 }
 
-/**
- * \brief Initialise le client JWT avec la clé publique et l'émetteur.
- * 
- * Cette fonction récupère la clé publique JWT depuis une variable d'environnement,
- * la décode en PEM, puis initialise le client JWT. Elle loggue les erreurs et
- * retourne false si l'initialisation échoue.
- * 
- * \return {bool} - true si l'initialisation réussit, false sinon
- *
- * \since Cette fonction est disponible depuis RCNET 1.0.0.
- */
-static bool rcnet_engine_initClientJWT(void)
+static void rcnet_engine_cleanupOpenssl(void) 
 {
-    const char* keyJWTBase64 = getenv("SEATYRANTS_PUBLIC_KEY_JWT_BASE64");
-    if (!keyJWTBase64) 
-    {
-        rcnet_logger_log(RCNET_LOG_ERROR, "Variable d environnement SEATYRANTS_PUBLIC_KEY_JWT_BASE64 manquante.");
-        return false;
-    }
-
-    char* pemKey = rcnet_jwt_base64Decode(keyJWTBase64);
-    if (!pemKey) 
-    {
-        rcnet_logger_log(RCNET_LOG_ERROR, "Erreur: décodage base64 de la cle publique (SEATYRANTS_PUBLIC_KEY_JWT_BASE64) echoue.");
-        return false;
-    }
-
-    if (!rcnet_jwt_clientInit(pemKey, "SeaTyrants_WebSite_BackEnd")) 
-    {
-        rcnet_logger_log(RCNET_LOG_ERROR, "Erreur: initialisation du client JWT.");
-        free(pemKey);
-        return false;
-    }
-
-    free(pemKey);
-    rcnet_logger_log(RCNET_LOG_INFO, "Client JWT initialiser avec succes.");
-    return true;
+    ERR_free_strings();
+    EVP_cleanup();
+    CRYPTO_cleanup_all_ex_data();
+    SSL_COMP_free_compression_methods();
+    RCNET_log(RCNET_LOG_INFO, "OpenSSL nettoyé avec succès.");
 }
 
 /**
@@ -143,8 +154,8 @@ static bool rcnet_engine(void)
         return false;
     }
 
-    // Initialize JWT Client
-    if (!rcnet_engine_initClientJWT())
+    // Initialize RCENet
+    if (!rcnet_engine_init_rcenet())
     {
         return false;
     }
@@ -172,7 +183,7 @@ static inline void rcnet_sleep_ns(uint64_t ns)
  * 
  * \since Cette fonction est disponible depuis RCNET 1.0.0.
  */
-static void rcnet_engine_serverloop(uint64_t* next_tick_time)
+static void rcnet_engine_update(uint64_t* next_tick_time)
 {
     uint64_t now = rcnet_engine_getCurrentTimeNs();
 
@@ -199,7 +210,7 @@ static void rcnet_engine_serverloop(uint64_t* next_tick_time)
     // Si on a pris du retard, corriger
     if (*next_tick_time < rcnet_engine_getCurrentTimeNs())
     {
-        rcnet_logger_log(RCNET_LOG_WARN, "Le serveur est en retard d’un tick !");
+        RCNET_log(RCNET_LOG_WARN, "Le serveur est en retard d’un tick !");
         *next_tick_time = rcnet_engine_getCurrentTimeNs(); // reset sur maintenant
     }
 }
@@ -228,11 +239,8 @@ static bool rcnet_engine_init(void)
  */
 static void rcnet_engine_quit(void)
 {    
-    // Lib OpenSSL Deinitialize
-    ERR_free_strings();
-    EVP_cleanup();
-    CRYPTO_cleanup_all_ex_data();
-    SSL_COMP_free_compression_methods();
+    rcnet_engine_cleanupOpenssl();
+    rcnet_engine_cleanup_rcenet();
 }
 
 /**
@@ -293,7 +301,7 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, int tickRateArg)
     uint64_t next_tick_time = rcnet_engine_getCurrentTimeNs() + tickDuration;
     while (serverIsRunning)
     {
-        rcnet_engine_serverloop(&next_tick_time);
+        rcnet_engine_update(&next_tick_time);
     }
 
     // Last call the callback to unload the server loop (free memory, etc.)

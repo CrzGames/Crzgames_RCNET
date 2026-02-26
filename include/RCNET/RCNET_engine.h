@@ -1,11 +1,8 @@
 #ifndef RCNET_ENGINE_H
 #define RCNET_ENGINE_H
 
+// Standard C/C++ Libraries
 #include <stdbool.h> // Required for : bool
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /**
  * \brief Callbacks pour l'API du moteur RCNET.
@@ -59,9 +56,5 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacks, int tickRate);
  * \since Cette fonction est disponible depuis RCNET 1.0.0.
  */
 void rcnet_engine_eventQuit(void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif // RCNET_ENGINE_H

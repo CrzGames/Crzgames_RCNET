@@ -1,4 +1,4 @@
-name: Generate RCNET library static (production)
+name: Generate RC2D library static (production)
 
 on:
   release:
@@ -10,92 +10,127 @@ permissions:
   contents: write
   discussions: write
 
+env:
+  XCODE_VERSION: "26.3.0"
+
 jobs:
-  build_librcnet:
+  build_librc2d:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - platform: ubuntu-22.04
-            target: linux
-            generator: Unix Makefiles
-            arch: x86_64
-    runs-on: ${{ matrix.platform }}
+        config:
+        - { runner: windows-2025,     platform: windows,  arch: x64 }
+        - { runner: ubuntu-22.04,     platform: linux,    arch: x64 }
+        - { runner: macos-26,         platform: macos,    arch: arm64, sdk: macosx } 
+    name: ${{ matrix.config.platform }}-${{ matrix.config.arch }}-${{ matrix.config.sdk }}
+    runs-on: ${{ matrix.config.runner }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - name: Configure project with CMake and Run build - Linux
-        uses: threeal/cmake-action@v2.0.0
+      - name: Get dependencies with CMake - All platforms
+        run: cmake -P cmake/setup_dependencies.cmake
+
+      - name: Setup Xcode and Setup Command Line Tools - macOS / iOS
+        if: matrix.config.platform == 'macos'
+        uses: maxim-lobanov/setup-xcode@v1
         with:
-          run-build: true
-          build-dir: build-${{ matrix.target }}-${{ matrix.arch }}
-          generator: ${{ matrix.generator }}
-          c-compiler: gcc
-          cxx-compiler: g++
-          options: CMAKE_BUILD_TYPE=Release
+          xcode-version: ${{ env.XCODE_VERSION }}
 
-      - name: Archive librcnet artifacts - Linux
-        uses: actions/upload-artifact@v4
-        with:
-          name: librcnet-${{ matrix.target }}-${{ matrix.arch }}
-          retention-days: 1
-          path: |
-            build-${{ matrix.target }}-${{ matrix.arch }}/*.a
-
-  deploy_assets_github:
-    needs: build_librcnet
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download Artifacts
-        uses: actions/download-artifact@v4
-
-      - name: Organize Artifacts
+      - name: Determine SDK Path and set SDKROOT - macOS / iOS
+        if: matrix.config.platform == 'macos'
         run: |
-          mkdir -p linux/x86_64/
-          mv librcnet-linux-x86_64/*.a linux/x86_64/
-          tar -czvf linux.tar.gz linux/
-          tar -czvf include.tar.gz include/rcnet
+          sdk="${{ matrix.config.sdk }}"
+          SDKROOT=$(xcrun --sdk "$sdk" --show-sdk-path)
+          SDKVERSION=$(xcrun --sdk "$sdk" --show-sdk-version)
+          echo "SDKROOT=$SDKROOT" >> $GITHUB_ENV
+          echo "Using SDK: $sdk"
+          echo "SDK Path: $SDKROOT"
+          echo "SDK Version: $SDKVERSION"
+        shell: bash
 
-      - name: Deploy assets library - Release Github
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            linux.tar.gz
-            include.tar.gz
+      - name: Install dev dependencies (for SDL3) - Linux (x64)
+        if: matrix.config.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install build-essential git make \
+          pkg-config cmake ninja-build gnome-desktop-testing libasound2-dev libpulse-dev \
+          libaudio-dev libfribidi-dev libjack-dev libsndio-dev libx11-dev libxext-dev \
+          libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev \
+          libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev \
+          libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev libthai-dev \
+          libpipewire-0.3-dev libwayland-dev libdecor-0-dev liburing-dev
 
-  build_deploy_website:
-    needs: deploy_assets_github
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Build RC2D (scripts) - Linux (x64/arm64)
+        if: matrix.config.platform == 'linux'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          chmod +x ./build-scripts/generate-project/linux-x64.sh
+          ./build-scripts/generate-project/linux-x64.sh
 
-      - name: Install Node.js latest LTS
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'lts/*'
+      - name: Build RC2D (scripts) - Windows (x64/arm64)
+        if: matrix.config.platform == 'windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          .\build-scripts\generate-project\windows-x64.bat
 
-      - name: Install dependencies
-        run: npm ci
-        working-directory: ./docs
-
-      - name: Build with VitePress
-        run: npm run build
-        working-directory: ./docs
-
-      - name: Deploy files website static for docs API RCNETCore
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.O2SWITCH_FTP_HOST }}
-          username: ${{ secrets.O2SWITCH_FTP_USERNAME }}
-          password: ${{ secrets.O2SWITCH_FTP_PASSWORD }}
-          port: ${{ secrets.O2SWITCH_FTP_PORT }}
-          protocol: ftp
-          local-dir: ./docs/.vitepress/dist/
-          server-dir: librcnet.crzcommon2.com/
-          exclude: |
-            dist
+      - name: Build RC2D (scripts) - macOS (arm64)
+        if: matrix.config.platform == 'macos'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          chmod +x ./build-scripts/generate-project/macos-arm64.sh
+          ./build-scripts/generate-project/macos-arm64.sh
+  
+# build_deploy_website:
+#   needs: build_librc2d
+#   runs-on: ubuntu-latest
+#   steps:
+#
+#     - name: Checkout repository
+#       uses: actions/checkout@v6
+#
+#     - name: Get latest release tag
+#       id: previoustag
+#       uses: WyriHaximus/github-action-get-previous-tag@v2
+#
+#     - name: Login to DockerHub
+#       uses: docker/login-action@v3
+#       with:
+#         username: ${{ secrets.DOCKER_HUB_USERNAME }}
+#         password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+#
+#     - name: Build and push Docker image - Production version latest
+#       uses: docker/build-push-action@v6
+#       with:
+#         context: .
+#         file: ./docker/production/Dockerfile
+#         push: true
+#         tags: corentin35/librc2d-website-frontend:latest
+#
+#     - name: Build and push Docker image - Production version x.x.x
+#       uses: docker/build-push-action@v6
+#       with:
+#         context: .
+#         file: ./docker/production/Dockerfile
+#         push: true
+#         tags: corentin35/librc2d-website-frontend:${{ steps.previoustag.outputs.tag }}
+#
+#     - name: Replace image tag in deployment.yaml for Kubernetes
+#       run: |
+#         sed -i 's/\${TAG_VERSION}/'${{ steps.previoustag.outputs.tag }}'/g' k8s/production/deployment.yaml
+#
+#     - name: Connect to the cluster K3S for deploy
+#       uses: actions-hub/kubectl@master
+#       env:
+#         # TODO: à changer pour le cluster de production
+#         KUBE_CONFIG: ${{ secrets.KUBECONFIG_CLUSTER_STAGING_CRZGAMES_BASE64 }}
+#       with:
+#         args: |
+#           apply -f k8s/production/namespace.yaml
+#           -f k8s/production/docker-registry-secret.yaml
+#           -f k8s/production/deployment.yaml
+#           -f k8s/production/ingress.yaml
+#           -f k8s/production/service.yaml

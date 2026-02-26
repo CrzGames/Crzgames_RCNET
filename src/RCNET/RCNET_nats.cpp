@@ -25,7 +25,7 @@ int rcnet_nats_initialize(RCNET_NATSClient *client, const char *natsServerURL, c
     status = natsOptions_Create(&opts);
     if (status != NATS_OK) 
     {
-        rcnet_logger_log(RCNET_LOG_ERROR, "Failed to create NATS options: %s\n", natsStatus_GetText(status));
+        RCNET_log(RCNET_LOG_ERROR, "Failed to create NATS options: %s\n", natsStatus_GetText(status));
         return -1;
     }
 
@@ -33,7 +33,7 @@ int rcnet_nats_initialize(RCNET_NATSClient *client, const char *natsServerURL, c
     status = natsOptions_SetPingInterval(opts, 20000);
     if (status != NATS_OK) 
     {
-        rcnet_logger_log(RCNET_LOG_ERROR, "Failed to set Ping interval: %s\n", natsStatus_GetText(status));
+        RCNET_log(RCNET_LOG_ERROR, "Failed to set Ping interval: %s\n", natsStatus_GetText(status));
         natsOptions_Destroy(opts);
         return -1;
     }
@@ -42,7 +42,7 @@ int rcnet_nats_initialize(RCNET_NATSClient *client, const char *natsServerURL, c
     status = natsOptions_SetMaxPingsOut(opts, 5);
     if (status != NATS_OK) 
     {
-        rcnet_logger_log(RCNET_LOG_ERROR, "Failed to set Max Pings Out: %s\n", natsStatus_GetText(status));
+        RCNET_log(RCNET_LOG_ERROR, "Failed to set Max Pings Out: %s\n", natsStatus_GetText(status));
         natsOptions_Destroy(opts);
         return -1;
     }
@@ -54,7 +54,7 @@ int rcnet_nats_initialize(RCNET_NATSClient *client, const char *natsServerURL, c
     if (certFile != NULL && keyFile != NULL) {
         status = natsOptions_LoadCertificatesChain(opts, certFile, keyFile);
         if (status != NATS_OK) {
-            rcnet_logger_log(RCNET_LOG_ERROR, "Failed to load certificates: %s\n", natsStatus_GetText(status));
+            RCNET_log(RCNET_LOG_ERROR, "Failed to load certificates: %s\n", natsStatus_GetText(status));
             natsOptions_Destroy(opts);
             return -1;
         }
@@ -64,7 +64,7 @@ int rcnet_nats_initialize(RCNET_NATSClient *client, const char *natsServerURL, c
     if (caFile != NULL) {
         status = natsOptions_LoadCATrustedCertificates(opts, caFile);
         if (status != NATS_OK) {
-            rcnet_logger_log(RCNET_LOG_ERROR, "Failed to load CA certificates: %s\n", natsStatus_GetText(status));
+            RCNET_log(RCNET_LOG_ERROR, "Failed to load CA certificates: %s\n", natsStatus_GetText(status));
             natsOptions_Destroy(opts);
             return -1;
         }
@@ -74,7 +74,7 @@ int rcnet_nats_initialize(RCNET_NATSClient *client, const char *natsServerURL, c
     if (skipVerifyCertsServer) {
         status = natsOptions_SkipServerVerification(opts, true);
         if (status != NATS_OK) {
-            rcnet_logger_log(RCNET_LOG_ERROR, "Failed to skip server verification: %s\n", natsStatus_GetText(status));
+            RCNET_log(RCNET_LOG_ERROR, "Failed to skip server verification: %s\n", natsStatus_GetText(status));
             natsOptions_Destroy(opts);
             return -1;
         }
@@ -83,7 +83,7 @@ int rcnet_nats_initialize(RCNET_NATSClient *client, const char *natsServerURL, c
     // Set the NKey authentication
     status = natsOptions_SetNKey(opts, publicKeyNKey, customSignatureHandler, privateKeySeedNKey);
     if (status != NATS_OK) {
-        rcnet_logger_log(RCNET_LOG_ERROR, "Failed to set NKey options: %s\n", natsStatus_GetText(status));
+        RCNET_log(RCNET_LOG_ERROR, "Failed to set NKey options: %s\n", natsStatus_GetText(status));
         natsOptions_Destroy(opts);
         return -1;
     }
@@ -94,17 +94,17 @@ int rcnet_nats_initialize(RCNET_NATSClient *client, const char *natsServerURL, c
     // Connect to the NATS server
     status = natsConnection_Connect(&(client->connection), opts);
     if (status != NATS_OK) {
-        rcnet_logger_log(RCNET_LOG_ERROR, "Failed to connect to NATS server: %s\n", natsStatus_GetText(status));
+        RCNET_log(RCNET_LOG_ERROR, "Failed to connect to NATS server: %s\n", natsStatus_GetText(status));
         natsOptions_Destroy(opts);
         return -1;
     } else {
-       rcnet_logger_log(RCNET_LOG_INFO, "Connected to NATS server: %s\n", natsServerURL);
+       RCNET_log(RCNET_LOG_INFO, "Connected to NATS server: %s\n", natsServerURL);
     }
 
     // Create JetStream context
     status = natsConnection_JetStream(&(client->jetStreamContext), client->connection, NULL);
     if (status != NATS_OK) {
-        rcnet_logger_log(RCNET_LOG_ERROR, "Failed to create JetStream context: %s\n", natsStatus_GetText(status));
+        RCNET_log(RCNET_LOG_ERROR, "Failed to create JetStream context: %s\n", natsStatus_GetText(status));
         natsConnection_Close(client->connection);
         natsConnection_Destroy(client->connection);
         natsOptions_Destroy(opts);
@@ -140,7 +140,7 @@ void rcnet_nats_cleanup(RCNET_NATSClient *client)
         // Flush the connection to ensure all messages are sent
         natsStatus status = natsConnection_FlushTimeout(client->connection, 5000); // Timeout of 5 seconds
         if (status != NATS_OK) {
-            rcnet_logger_log(RCNET_LOG_ERROR, "Failed to flush connection: %s\n", natsStatus_GetText(status));
+            RCNET_log(RCNET_LOG_ERROR, "Failed to flush connection: %s\n", natsStatus_GetText(status));
         }
 
         // Drain the connection to ensure all messages are sent
@@ -149,7 +149,7 @@ void rcnet_nats_cleanup(RCNET_NATSClient *client)
             // Wait for the connection to be drained
             natsConnection_DrainTimeout(client->connection, 0);
         } else {
-            rcnet_logger_log(RCNET_LOG_ERROR, "Failed to drain connection: %s\n", natsStatus_GetText(status));
+            RCNET_log(RCNET_LOG_ERROR, "Failed to drain connection: %s\n", natsStatus_GetText(status));
         }
 
         natsConnection_Close(client->connection);
@@ -164,12 +164,12 @@ int rcnet_nats_publish(RCNET_NATSClient *client, const char *subject, const void
 
     // Check if the message was published successfully
     if (status != NATS_OK) {
-        rcnet_logger_log(RCNET_LOG_ERROR, "Failed to publish message: %s\n", natsStatus_GetText(status));
+        RCNET_log(RCNET_LOG_ERROR, "Failed to publish message: %s\n", natsStatus_GetText(status));
         return -1;
     }
 
     // Log success
-    rcnet_logger_log(RCNET_LOG_INFO, "Published message on subject: %s\n", subject);
+    RCNET_log(RCNET_LOG_INFO, "Published message on subject: %s\n", subject);
 
     return 0;
 }
@@ -184,14 +184,14 @@ int rcnet_nats_subscribe(RCNET_NATSClient *client, const char *subject, natsMsgH
     
     // Vérifier si l'abonnement a été créé avec succès
     if (status != NATS_OK) {
-        rcnet_logger_log(RCNET_LOG_ERROR, "Failed to subscribe to subject: %s\n", natsStatus_GetText(status));
+        RCNET_log(RCNET_LOG_ERROR, "Failed to subscribe to subject: %s\n", natsStatus_GetText(status));
         return -1;
     }
 
     // Redimensionner le tableau d'abonnements
     natsSubscription **newSubscriptions = (natsSubscription **)realloc(client->subscriptions, (client->subscriptionCount + 1) * sizeof(natsSubscription*));
     if (newSubscriptions == NULL) {
-        rcnet_logger_log(RCNET_LOG_ERROR, "Failed to allocate memory for new subscription\n");
+        RCNET_log(RCNET_LOG_ERROR, "Failed to allocate memory for new subscription\n");
         natsSubscription_Destroy(newSubscription);
         return -1;
     }
@@ -203,7 +203,7 @@ int rcnet_nats_subscribe(RCNET_NATSClient *client, const char *subject, natsMsgH
     client->subscriptions[client->subscriptionCount++] = newSubscription;
 
     // Log success
-    rcnet_logger_log(RCNET_LOG_INFO, "Subscribed to subject: %s\n", subject);
+    RCNET_log(RCNET_LOG_INFO, "Subscribed to subject: %s\n", subject);
 
     return 0;
 }
@@ -224,8 +224,8 @@ int rcnet_nats_jetstream_publish(RCNET_NATSClient *client, const char *subject, 
     // Publier le message JetStream sur le sujet spécifié
     status = js_Publish(&jetStreamPubAck, client->jetStreamContext, subject, data, dataLength, &jetStreamPublishOptions, &jetStreamErrorCode);
     if (status != NATS_OK) {
-        rcnet_logger_log(RCNET_LOG_ERROR, "Failed to publish JetStream message: %s\n", natsStatus_GetText(status));
-        rcnet_logger_log(RCNET_LOG_ERROR, "Error code: %d\n", jetStreamErrorCode);
+        RCNET_log(RCNET_LOG_ERROR, "Failed to publish JetStream message: %s\n", natsStatus_GetText(status));
+        RCNET_log(RCNET_LOG_ERROR, "Error code: %d\n", jetStreamErrorCode);
         return -1;
     }
 
@@ -233,7 +233,7 @@ int rcnet_nats_jetstream_publish(RCNET_NATSClient *client, const char *subject, 
     jsPubAck_Destroy(jetStreamPubAck);
 
     // Log success
-    rcnet_logger_log(RCNET_LOG_INFO, "Published JetStream message on subject: %s\n", subject);
+    RCNET_log(RCNET_LOG_INFO, "Published JetStream message on subject: %s\n", subject);
 
     return 0;
 }
@@ -257,15 +257,15 @@ int rcnet_nats_jetstream_subscribe(RCNET_NATSClient *client, const char *subject
     // S'abonner au sujet JetStream
     status = js_Subscribe(&newSubscription, client->jetStreamContext, subject, messageHandler, closure, NULL, &jetStreamSubOptions, &jetStreamErrorCode);
     if (status != NATS_OK) {
-        rcnet_logger_log(RCNET_LOG_ERROR, "Failed to subscribe to JetStream subject: %s\n", natsStatus_GetText(status));
-        rcnet_logger_log(RCNET_LOG_ERROR, "Error code: %d\n", jetStreamErrorCode);
+        RCNET_log(RCNET_LOG_ERROR, "Failed to subscribe to JetStream subject: %s\n", natsStatus_GetText(status));
+        RCNET_log(RCNET_LOG_ERROR, "Error code: %d\n", jetStreamErrorCode);
         return -1;
     }
 
     // Redimensionner le tableau d'abonnements
     natsSubscription **newSubscriptions = (natsSubscription **)realloc(client->subscriptions, (client->subscriptionCount + 1) * sizeof(natsSubscription*));
     if (newSubscriptions == NULL) {
-        rcnet_logger_log(RCNET_LOG_ERROR, "Failed to allocate memory for new subscription\n");
+        RCNET_log(RCNET_LOG_ERROR, "Failed to allocate memory for new subscription\n");
         natsSubscription_Destroy(newSubscription);
         return -1;
     }
@@ -277,7 +277,7 @@ int rcnet_nats_jetstream_subscribe(RCNET_NATSClient *client, const char *subject
     client->subscriptions[client->subscriptionCount++] = newSubscription;
 
     // Log success
-    rcnet_logger_log(RCNET_LOG_INFO, "Subscribed to JetStream subject: %s\n", subject);
+    RCNET_log(RCNET_LOG_INFO, "Subscribed to JetStream subject: %s\n", subject);
 
     return 0;
 }
@@ -313,25 +313,25 @@ int rcnet_nats_check_and_create_stream(RCNET_NATSClient *client, const char *str
         status = js_AddStream(&jetStreamInfo, client->jetStreamContext, &jetStreamConfig, NULL, &jetStreamErrorCode);
         if (status != NATS_OK)
         {
-            rcnet_logger_log(RCNET_LOG_ERROR, "Failed to create stream: %s\n", natsStatus_GetText(status));
-            rcnet_logger_log(RCNET_LOG_ERROR, "Error code: %d\n", jetStreamErrorCode);
+            RCNET_log(RCNET_LOG_ERROR, "Failed to create stream: %s\n", natsStatus_GetText(status));
+            RCNET_log(RCNET_LOG_ERROR, "Error code: %d\n", jetStreamErrorCode);
             return -1;
         }
         else
         {
-            rcnet_logger_log(RCNET_LOG_INFO, "Stream created: %s\n", streamName);
+            RCNET_log(RCNET_LOG_INFO, "Stream created: %s\n", streamName);
         }
     }
     else if (status == NATS_OK)
     {
         // Le stream existe déjà
-        rcnet_logger_log(RCNET_LOG_INFO, "Stream already exists: %s\n", streamName);
+        RCNET_log(RCNET_LOG_INFO, "Stream already exists: %s\n", streamName);
     }
     else
     {
         // Une autre erreur s'est produite
-        rcnet_logger_log(RCNET_LOG_ERROR, "Error checking stream existence: %s\n", natsStatus_GetText(status));
-        rcnet_logger_log(RCNET_LOG_ERROR, "Error code: %d\n", jetStreamErrorCode);
+        RCNET_log(RCNET_LOG_ERROR, "Error checking stream existence: %s\n", natsStatus_GetText(status));
+        RCNET_log(RCNET_LOG_ERROR, "Error code: %d\n", jetStreamErrorCode);
         return -1;
     }
 
@@ -352,8 +352,8 @@ int rcnet_nats_update_stream_subjects(RCNET_NATSClient *client, const char *stre
     // Récupérer les informations actuelles du stream
     status = js_GetStreamInfo(&jetStreamInfo, client->jetStreamContext, streamName, NULL, &jetStreamErrorCode);
     if (status != NATS_OK) {
-        rcnet_logger_log(RCNET_LOG_ERROR, "Failed to retrieve stream info: %s\n", natsStatus_GetText(status));
-        rcnet_logger_log(RCNET_LOG_ERROR, "Error code: %d\n", jetStreamErrorCode);
+        RCNET_log(RCNET_LOG_ERROR, "Failed to retrieve stream info: %s\n", natsStatus_GetText(status));
+        RCNET_log(RCNET_LOG_ERROR, "Error code: %d\n", jetStreamErrorCode);
         return -1;
     }
 
@@ -367,7 +367,7 @@ int rcnet_nats_update_stream_subjects(RCNET_NATSClient *client, const char *stre
     // Envoyer la mise à jour du stream
     status = js_UpdateStream(&jetStreamInfo, client->jetStreamContext, &jetStreamConfig, NULL, &jetStreamErrorCode);
     if (status != NATS_OK) {
-        rcnet_logger_log(RCNET_LOG_ERROR, "Failed to update stream: %s\n", natsStatus_GetText(status));
+        RCNET_log(RCNET_LOG_ERROR, "Failed to update stream: %s\n", natsStatus_GetText(status));
         jsStreamInfo_Destroy(jetStreamInfo);
         return -1;
     }
@@ -377,7 +377,7 @@ int rcnet_nats_update_stream_subjects(RCNET_NATSClient *client, const char *stre
         jsStreamInfo_Destroy(jetStreamInfo);
     
     // Log success
-    rcnet_logger_log(RCNET_LOG_INFO, "Stream updated successfully: %s\n", streamName);
+    RCNET_log(RCNET_LOG_INFO, "Stream updated successfully: %s\n", streamName);
 
     return 0;
 }

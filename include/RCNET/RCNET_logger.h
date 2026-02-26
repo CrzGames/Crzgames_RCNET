@@ -1,78 +1,116 @@
 #ifndef RCNET_LOGGER_H
 #define RCNET_LOGGER_H
 
-#include <stdarg.h> // Required for : ... (va_list, va_start, va_end, vsnprintf)
+// Standard C/C++ Libraries
+#include <stdarg.h> // Required for : ... (va_list, va_start, va_end)
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <SDL3/SDL_stdinc.h>
 
 /**
- * \brief Niveaux de journalisation pour RCNET.
+ * \brief Macro pour afficher un message de log avec le niveau de priorité spécifié.
  * 
- * Ces niveaux déterminent la sévérité des messages de journalisation.
+ * Exemple d'utilisation :
+ * RCNET_log(RCNET_LOG_INFO, "La propriété GPU est NULL !");
+ *
+ * Exemple d'affichage :
+ * [info:rcnet_gpu.c:42:rcnet_gpu_getInfo] La propriété GPU est NULL !
  * 
- * \since Cette énumération est disponible depuis RCNET 1.0.0.
+ * \param {RCNET_LogLevel} level - Le niveau de priorité du message.
+ * \param {const char*} format - Le format du message, suivant la syntaxe de printf.
+ * \param {...} - Les arguments à insérer dans le format du message.
+ * 
+ * \threadsafety Cette fonction peut être appelée depuis n'importe quel thread.
+ * 
+ * \since Cette macro est disponible depuis RCNET 1.0.0.
+ */
+#define RCNET_log(level, format, ...) \
+    rcnet_logger_log((level), SDL_FILE, SDL_LINE, SDL_FUNCTION, (format), ##__VA_ARGS__)
+
+/**
+ * \brief Cette enum est utilisée pour définir le niveau de priorité des messages de log.
+ *
+ * \since Cette enum est disponible depuis RCNET 1.0.0.
  */
 typedef enum RCNET_LogLevel {
     /**
-     * \brief Niveau de journalisation pour les messages de débogage.
+     * Niveaux très détaillés pour le traçage.
+     */
+    RCNET_LOG_TRACE,
+
+    /**
+     * Messages verbeux (moins détaillés que TRACE, mais plus que DEBUG).
+     */
+    RCNET_LOG_VERBOSE,
+
+    /**
+     * Messages de débogage.
      */
     RCNET_LOG_DEBUG,
 
     /**
-     * \brief Niveau de journalisation pour les messages d'information.
+     * Messages informatifs.
      */
     RCNET_LOG_INFO,
 
     /**
-     * \brief Niveau de journalisation pour les messages d'avertissement.
+     * Messages d'avertissement.
      */
     RCNET_LOG_WARN,
 
     /**
-     * \brief Niveau de journalisation pour les messages d'erreur.
+     * Messages d'erreur.
      */
     RCNET_LOG_ERROR,
 
     /**
-     * \brief Niveau de journalisation pour les messages critiques.
+     * Messages d'erreur critique.
      */
-    RCNET_LOG_CRITICAL   
+    RCNET_LOG_CRITICAL
 } RCNET_LogLevel;
 
 /**
- * \brief Définit le niveau de journalisation global pour RCNET.
- * 
- * Cette fonction permet de configurer le niveau de journalisation
- * pour contrôler quels messages seront effectivement journalisés.
- * 
- * \param {RCNET_LogLevel} logLevel - Le niveau de journalisation à définir.
- * 
+ * \brief Récupère le niveau de priorité actuel pour les logs RCNET.
+ *
+ * \return Le niveau de priorité courant.
+ *
  * \threadsafety Cette fonction peut être appelée depuis n'importe quel thread.
- * 
+ *
  * \since Cette fonction est disponible depuis RCNET 1.0.0.
  */
-void rcnet_logger_setPriority(const RCNET_LogLevel logLevel);
+RCNET_LogLevel rcnet_logger_get_priority(void);
 
 /**
- * \brief Journalise un message avec un niveau de sévérité spécifique.
+ * \brief Définit le niveau de priorité des messages de log.
+ *
+ * Cette fonction ajuste le niveau de priorité global pour les messages de log,
+ * permettant de filtrer les messages moins importants selon le niveau spécifié.
+ * Les messages ayant un niveau de priorité inférieur au niveau spécifié seront ignorés.
  * 
- * Cette fonction permet de journaliser des messages formatés selon le niveau
- * de sévérité spécifié. Elle utilise `vsnprintf` pour formater le message.
- * 
- * \param {RCNET_LogLevel} logLevel - Le niveau de journalisation du message.
- * \param {const char*} format - Le format du message (similaire à printf).
- * \param {...} - Les arguments à formater dans le message.
+ * \param {RCNET_LogLevel} logLevel - Le niveau de log à définir.
  * 
  * \threadsafety Cette fonction peut être appelée depuis n'importe quel thread.
  * 
  * \since Cette fonction est disponible depuis RCNET 1.0.0.
  */
-void rcnet_logger_log(const RCNET_LogLevel logLevel, const char* format, ...);
+void rcnet_logger_set_priority(const RCNET_LogLevel logLevel);
 
-#ifdef __cplusplus
-}
-#endif
+/**
+ * Affiche un message de log selon le format et les arguments spécifiés.
+ *
+ * Cette fonction affiche un message de log, en utilisant le formatage printf,
+ * si son niveau de priorité est supérieur ou égal au niveau de log actuel.
+ *
+ * \param {RCNET_LogLevel} logLevel - Le niveau de priorité du message.
+ * \param {const char*} file - Le nom du fichier source.
+ * \param {int} line - Le numéro de ligne dans le fichier source.
+ * \param {const char*} function - Le nom de la fonction appelante.
+ * \param {const char*} format - Le format du message, suivant la syntaxe de printf.
+ * \param {...} - Les arguments à insérer dans le format du message.
+ * 
+ * \threadsafety Cette fonction peut être appelée depuis n'importe quel thread.
+ * 
+ * \since Cette fonction est disponible depuis RCNET 1.0.0.
+ */
+void rcnet_logger_log(RCNET_LogLevel logLevel, const char* file, int line, const char* function, const char* format, ...);
 
 #endif // RCNET_LOGGER_H

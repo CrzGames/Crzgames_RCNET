@@ -4,7 +4,10 @@
 .vs
 
 # Build files
-/dist/
+/build/
+
+# macOS files
 .DS_Store
 
+# dependencies
 /dependencies/

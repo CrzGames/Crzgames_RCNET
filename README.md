@@ -7,26 +7,11 @@
 - CMake (Build script)
 - Compiler (GCC, CLANG, CL)
 
-<br /><br /><br /><br />
+<br /><br />
 
+---
 
-## 📦 Versionning
-On utilise la convention SemVer : https://semver.org/lang/fr/ <br /><br />
-Pour une Release classique : MAJOR.MINOR.PATCH <br />
-Pour une Pre-Release, exemples : MAJOR.MINOR.PATCH-rc.0 OR MAJOR.MINOR.PATCH-beta.3 <br /><br />
-
-Nous utilison release-please de Google pour versionner, via Github Actions. <br />
-Pour que cela sois pris en compte il faut utiliser les conventionnal commits : https://www.conventionalcommits.org/en/v1.0.0/ <br />
-Release Please crée une demande d'extraction de version après avoir remarqué que la branche par défaut contient des « unités publiables » depuis la dernière version. Une unité publiable est un commit sur la branche avec l'un des préfixes suivants : `feat` et `fix`. <br /><br />
-
-La première Release que créer release-please automatiquement est la version : 1.0.0 <br />
-Pour créer une Pre-Release faire un commit vide, par exemple si on'ai à la version 1.0.0, on peut faire : 
-```bash
-git commit --allow-empty -m "chore: release 1.1.0-rc.0" -m "Release-As: 1.1.0-rc.0"
-```
-
-<br /><br /><br /><br />
-
+<br /><br />
 
 ## 📁 Project Structure
 
@@ -41,8 +26,7 @@ git commit --allow-empty -m "chore: release 1.1.0-rc.0" -m "Release-As: 1.1.0-rc
 │   ├── 📁 SDL                        # SDL3 
 │   ├── 📁 hiredis                    # Redis
 │   ├── 📁 Nats                       # Nats broker de message
-│   ├── 📁 jwt-cpp                    # JWT
-│   ├── 📁 nlohmann_json              # JSON
+│   ├── 📁 cJSON                      # JSON
 │   ├── 📁 cpp-httplib                # HTTP
 ├── 📁 docs                           # Documentation du moteur de serveur (pages Markdown, auto-générées)
 ├── 📁 example                        # Exemples d’utilisation du moteur de serveur de jeu RCNET (projets de démo, test de fonctionnalités)
@@ -59,18 +43,28 @@ git commit --allow-empty -m "chore: release 1.1.0-rc.0" -m "Release-As: 1.1.0-rc
 
 ```
 
-<br /><br /><br /><br />
+<br /><br />
 
+---
+
+<br /><br />
 
 ## 📋 Plateformes supportées
+- 🟢 supporté
+- 🟡 en cours
+- 🔴 non supporté
+
 | Platform | Architectures | System Version | Compatible |
 |----------|---------------|----------------|------------|
-| **Linux** | x64 | glibc 2.35+ | ✓ |
-| **Windows** | x64 | Windows 10+ | ✓ |
-| **Windows** | arm64 | macOS 15.0+ | ✓ |
+| **Windows** | x64 | Windows 10+ | 🟢 |
+| **macOS** | Apple Silicon arm64 | macOS 15.0+ | 🟢 |
+| **Linux** | x64 | glibc 2.35+ | 🟢 |
 
-<br /><br /><br /><br />
+<br /><br />
 
+---
+
+<br /><br />
 
 ## 📱 Appareils compatibles par plateforme
 
@@ -86,10 +80,13 @@ git commit --allow-empty -m "chore: release 1.1.0-rc.0" -m "Release-As: 1.1.0-rc
 - Windows 10 et plus récent.
 
 ### **macOS (15.0+)**
-- Tous les modèles macOS Apple Silicon (M1, M2, M3, M4) et plus récent.
+- Tous les modèles macOS Apple Silicon (M1, M2, M3, M4, M5) et plus récent.
 
-<br /><br /><br /><br />
+<br /><br />
 
+---
+
+<br /><br />
 
 ## 🎯 Raisons techniques des versions minimales et autres par plateforme
 
@@ -106,56 +103,94 @@ git commit --allow-empty -m "chore: release 1.1.0-rc.0" -m "Release-As: 1.1.0-rc
 - **Version minimale** : macOS 15.0+ / M1+
 - **Raison** :
 
-<br /><br /><br /><br />
+<br /><br />
 
+---
+
+<br /><br />
 
 ## 📦 Dépendances principales
 
-| Librairie              | Utilisation principale                                       | Intégration                |
-|------------------------|--------------------------------------------------------------|----------------------------|
-| **AES**                | Implémentation légère d’AES-128 pour le chiffrement/déchiffrement, utilisée par la librairie `rres` | `Statique – Fichiers intégrés directement dans le code source, pas besoin de compilation séparée` |
-| **LZ4**                | Compression/décompression ultra-rapide, utilisée par la librairie `rres` et le module `RC2D_data` | `Statique – Fichiers intégrés directement dans le code source, pas besoin de compilation séparée` |
-| **Monocypher**         | 	Librairie de cryptographie moderne (hashs, signatures, échange de clés), utilisée par la librairie `rres` | `Statique – Fichiers intégrés directement dans le code source, pas besoin de compilation séparée` |
-| **SDL3**               | Moteur principal, gestion entrée/sortie, rendu GPU           | `Obligatoire`                |
-| **Crzgames_RCENet**             | Fork de ENet (Communication UDP)                             | `Activé par défault mais optionnel`, mais le module `RC2D_net` ne sera pas utilisable si désactiver. Passé à CMake : RC2D_NET_MODULE_ENABLED=OFF/ON |
-| **OpenSSL**            | Hashing, Chiffrement, Compression..etc                       | `Activé par défault mais optionnel`, mais le module `RC2D_data` ne sera pas utilisable si désactiver. Passé à CMake : RC2D_DATA_MODULE_ENABLED=OFF/ON |
-| **hiredis**            | Hashing, Chiffrement, Compression..etc                       | `Activé par défault mais optionnel`, mais le module `RC2D_data` ne sera pas utilisable si désactiver. Passé à CMake : RC2D_DATA_MODULE_ENABLED=OFF/ON |
-| **Nats**            | Hashing, Chiffrement, Compression..etc                       | `Activé par défault mais optionnel`, mais le module `RC2D_data` ne sera pas utilisable si désactiver. Passé à CMake : RC2D_DATA_MODULE_ENABLED=OFF/ON |
-| **jwt-cpp**            | Hashing, Chiffrement, Compression..etc                       | `Activé par défault mais optionnel`, mais le module `RC2D_data` ne sera pas utilisable si désactiver. Passé à CMake : RC2D_DATA_MODULE_ENABLED=OFF/ON |
-| **nlohmann_json**            | Hashing, Chiffrement, Compression..etc                       | `Activé par défault mais optionnel`, mais le module `RC2D_data` ne sera pas utilisable si désactiver. Passé à CMake : RC2D_DATA_MODULE_ENABLED=OFF/ON |
-| **cpp-httplib**            | Hashing, Chiffrement, Compression..etc                       | `Activé par défault mais optionnel`, mais le module `RC2D_data` ne sera pas utilisable si désactiver. Passé à CMake : RC2D_DATA_MODULE_ENABLED=OFF/ON |
+> Les versions sont verrouillées afin de garantir des builds reproductibles sur toutes les plateformes.
 
-<br /><br /><br /><br />
+| Librairie | Version / Commit SHA utilisé par RCNET | Rôle dans RCNET | Statut / Intégration
+|------------|----------------------------------------|----------------|----------------------|
+| **LZ4** | v1.10.0 | Compression des packets UDP | ⭐ Obligatoire (intégré statiquement) |
+| **cJSON** | v1.7.19 | JSON | ⭐ Obligatoire (intégré statiquement) |
+| **SDL3** | commit `29ca920fdf7ccfd0a73f4cb3427bb84815f9b7f3` | Gestion des thread | ⭐ Obligatoire |
+| **RCENet** | v1.4.6 | Communication réseau UDP (fork ENet) | ⭐ Obligatoire |
+| **OpenSSL** | v3.6.1 | Hashing, chiffrement, crypto + cpp-httplib à besoin de OpenSSL >= 3.x.x | ⭐ Obligatoire |
+| **cpp-httplib** | v1.34.0 | HTTP/HTPS | ⭐ Obligatoire |
+| **NATS** | v3.12.0 | Communication inter services | ⭐ Obligatoire |
+| **hiredis** | v1.3.0| Base de donnée en mémoire | ⭐ Obligatoire |
 
+<br /><br />
 
-## ⚙️ Setup Environment
-1. Clone project :
+---
+
+<br /><br />
+
+## ⚙️ Setup Environment Development
+1. Cloner le projet :
   ```bash
-  git clone git@github.com:CrzGames/Crzgames_RCNET.git
+  git clone git@github.com:CrzGames/Crzgames_RNET.git
   ```
-2. (optional just for documentation rcnet) Download and Install Node.js >= 18.0.0
-3. Run command :
+2. Steps by Platform :
   ```bash  
-  # Linux - x64 :
-  1. Requirements : glibc >= 2.35 (Ubuntu >= 22.04 OR Debian >= 12.0)
-  2. Run command (replace debian for name) : sudo usermod -aG sudo debian
-  3. Download and Install brew : /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-  4. Après l'installation de homebrew il faut importer les variables d'environnement et installer les deux librairies : 
-    echo '# Set PATH, MANPATH, etc., for Homebrew.' >> /home/debian/.bashrc && 
-    echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> /home/debian/.bashrc && 
-    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" &&
-    sudo apt-get install -y build-essential &&
-    brew install gcc
-  5. Download and Install CMake >= 3.25.0 : brew install cmake
-  6. Run command for install dependencies : cmake -P cmake/setup_dependencies.cmake
+  # Windows (x64) :
+  1. Requirements : Windows >= 10
+  2. Download and Install Visual Studio == 2022 (MSVC >= v143 + Windows SDK >= 10) : https://visualstudio.microsoft.com/fr/downloads/
+  3. Download and Install CMake >= 3.28.0 : https://cmake.org/download/ and add PATH ENVIRONMENT.
+  4. Activer le support long path dans Windows (Powershell en adminstrateur) : 
+     reg add HKLM\SYSTEM\CurrentControlSet\Control\FileSystem /v LongPathsEnabled /t REG_DWORD /d 1 /f
+  5. Activer long paths dans Git :
+     git config --global core.longpaths true
 
-  # macOS - arm64 :
 
-  # Windows - x64 :
-  ```
+
+  # Linux (x64) :
+  1. Requirements : glibc >= 2.35.0 (Exemple : Ubuntu >= 22.04 OR Debian >= 12.0), checker via : ldd --version
+  2. Download and Install (gcc, g++, make..) :
+     sudo apt update
+     sudo apt install -y build-essential
+  3. Download and Install CMake >= 3.28.0 : sudo apt install -y cmake
+  4. Download and Install dev dependencies for SDL3 :
+    sudo apt-get update
+    sudo apt-get -y install build-essential git make \
+    pkg-config cmake ninja-build gnome-desktop-testing libasound2-dev libpulse-dev \
+    libaudio-dev libfribidi-dev libjack-dev libsndio-dev libx11-dev libxext-dev \
+    libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev \
+    libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev \
+    libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev libthai-dev \
+    ibpipewire-0.3-dev libwayland-dev libdecor-0-dev liburing-dev
+
+
+
+  # macOS (Apple Silicon arm64) :
+  1. Requirements : MacOS X >= 15.0.0
+  2. Download and Install xCode >= 16.4.0
+  3. Download and Install Command Line Tools : xcode-select --install
+  4. Download and Install brew : /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  5. Download and Install CMake >= 3.28.0 : brew install cmake
+```
   
-<br /><br /><br /><br />
+3. Avant toute compilation, exécute le script suivant :
 
+```bash
+cmake -P cmake/setup_dependencies.cmake
+```
+
+Ce script va :
+- Lire `dependencies.txt`
+- Cloner chaque dépôt dans `dependencies/`
+- Faire un `git reset --hard` au commit_sha/tag fourni
+- Initialiser les sous-modules si présents dans les librairies cloner
+
+<br /><br />
+
+---
+
+<br /><br />
 
 ## 🔄 Updating Dependencies
 Pour mettre à jour une ou des dépendance :
@@ -165,67 +200,59 @@ Pour mettre à jour une ou des dépendance :
 cmake -P cmake/setup_dependencies.cmake
 ```
 
-<br /><br /><br /><br />
+<br /><br />
 
+---
 
-## 🔄 Cycle Development
-1. Générer l'exemple pour tester l'executable
+<br /><br />
+
+## 🧱 Générer RCNET (lib statique) + Projet d'exemple
+1. **Par défaut** : ces scripts **génèrent un projet CMake** dans `./build/`, puis **compilent RCNET en bibliothèque statique** et **construisent le projet d’exemple** pour la plateforme choisie.
+
+   - ✅ **Si le projet est déjà généré** (ex: solution **Visual Studio 2022**, projet Xcode, Ninja, etc.) : vous pouvez simplement **recompiler depuis votre IDE** ou via votre outil de build (Build/Run) **sans relancer les scripts**, tant que la configuration CMake ne change pas.
+
+   - 🔁 **Quand relancer les scripts (ou rerun CMake)** :
+     - Si vous modifiez des options CMake / flags / dépendances (ex: activation d’un module, ajout de libs, changement de toolchain, mise à jour `dependencies.txt`, etc.)
+     - Si vous supprimez le dossier `build/` ou changez de plateforme/architecture/générateur.
+
+   - 🧩 **Qu’est-ce qui demande une recompilation ?**
+     - Si vous modifiez `src/RCNET/**` ou `include/RCNET/**` → vous modifiez la **lib RCNET** → **recompiler RCNET** (IDE ou scripts).
+     - Si vous modifiez `example/src/**` ou `example/include/**` → vous modifiez **l’exemple** → **recompiler l’exemple** (IDE ou scripts).
+
 ```bash
 # Linux - x64
-chmod +x ./build-scripts/generate-example/linux-x64.sh
-./build-scripts/generate-example/linux-x64.sh
+chmod +x ./build-scripts/generate-project/linux-x64.sh
+./build-scripts/generate-project/linux-x64.sh
+
+
+# macOS - Apple Silicon arm64
+chmod +x ./build-scripts/generate-project/macos-arm64.sh
+./build-scripts/generate-project/macos-arm64.sh
+
 
 # Windows - x64
-.\build-scripts\generate-example\windows-x64.bat
-
-# macOS - arm64
-chmod +x ./build-scripts/generate-example/macos-arm64.sh
-./build-scripts/generate-example/macos-arm64.sh
+.\build-scripts\generate-project\windows-x64.bat
 ```
+3. Il y a un dossier `build` à la racine qui est générer.
+```bash
+# Pour Windows x64 par exemple, un projet Visual Studio 2022 à été générer au path suivant :
+.\build\windows\x64
 
-<br /><br /><br /><br />
+# La librairie RCNET static + l'exemple générer dans le même dossier :
+Release : .\build\windows\x64\Debug
+Debug : .\build\windows\x64\Release
+```
+4. Ouvrir le projet générer dans votre IDE favoris.
 
+<br /><br />
+
+---
+
+<br /><br />
 
 ## Production
 ### ⚙️➡️ Automatic Distribution Process (CI / CD)
 #### Si c'est un nouveau projet suivez les instructions : 
 1. Ajoutées les SECRETS_GITHUB pour :
-   - O2SWITCH_FTP_HOST
-   - O2SWITCH_FTP_PASSWORD
-   - O2SWITCH_FTP_PORT
-   - O2SWITCH_FTP_USERNAME
+   - ... TODO
    - PAT (crée un nouveau token si besoin sur le site de github puis dans le menu du "Profil" puis -> "Settings" -> "Developper Settings' -> 'Personnal Access Tokens' -> Tokens (classic))
-
-<br /><br />
-
-### ✋ Manual Distribution Process
-1. Generate librarie RCNET for Release and Debug, run command :
-```bash
-# Linux - x64
-chmod +x ./build-scripts/generate-lib/linux-x64.sh
-./build-scripts/generate-lib/linux-x64.sh
-
-# Windows - x64
-.\build-scripts\generate-lib\windows-x64.bat
-
-# macOS - arm64
-chmod +x ./build-scripts/generate-lib/macos-arm64.sh
-./build-scripts/generate-lib/macos-arm64.sh
-```
-2. Get librarie RCNET, steps for different systems :
-```bash
-# Linux - x64
-1. Go directory 'dist/lib/linux/'
-2. Go in directory 'Release' OR 'Debug'
-3. Get librarie RCNET : librcnet_static.a
-
-# Windows x64
-1. Go directory 'dist/lib/windows/'
-2. Go in directory 'Release' OR 'Debug'
-3. Get librarie RCNET : rcnet_static.lib
-
-# macOS - arm64
-1. Go directory 'dist/lib/macos/'
-2. Go in directory 'Release' OR 'Debug'
-3. Get librarie RCNET : librcnet_static.a
-```

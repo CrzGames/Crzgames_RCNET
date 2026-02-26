@@ -4,7 +4,7 @@
 
 int main(int argc, char* argv[])
 {
-    rcnet_logger_log(RCNET_LOG_INFO, "Server Started\n");
+    RCNET_log(RCNET_LOG_INFO, "Server Started\n");
 
 #ifdef NDEBUG // If we are in Release mode
     // Keep only error and critical logs
@@ -22,7 +22,7 @@ int main(int argc, char* argv[])
     bool success = rcnet_engine_run(&myServerCallbacks, 60);
     if (!success) 
     {
-        rcnet_logger_log(RCNET_LOG_ERROR, "Failed to start the engine\n");
+        RCNET_log(RCNET_LOG_ERROR, "Failed to start the engine\n");
         return 1;
     }
 

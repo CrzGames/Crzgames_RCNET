@@ -1,11 +1,9 @@
-# Répertoire contenant les dépendances externes
-set(VENDORED_DIR "${CMAKE_SOURCE_DIR}/dependencies")
+get_filename_component(RCNET_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+set(VENDORED_DIR "${RCNET_ROOT}/dependencies")
+set(DEPENDENCIES_FILE "${RCNET_ROOT}/dependencies.txt")
 
 # Créer le répertoire s'il n'existe pas
 file(MAKE_DIRECTORY ${VENDORED_DIR})
-
-# Fichier contenant la liste des dépendances
-set(DEPENDENCIES_FILE "${CMAKE_SOURCE_DIR}/dependencies.txt")
 
 # Lire le contenu du fichier dependencies.txt
 file(READ ${DEPENDENCIES_FILE} DEPENDENCIES_CONTENT)

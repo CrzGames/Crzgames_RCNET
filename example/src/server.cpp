@@ -14,7 +14,7 @@ RCNET_NATSClient client;
 static void natsMessageHandler(natsConnection *nc, natsSubscription *sub, natsMsg *msg, void *closure)
 {
     // Afficher le sujet et le contenu du message
-    rcnet_logger_log(RCNET_LOG_INFO, "Reçu un message sur le sujet '%s': %.*s\n",
+    RCNET_log(RCNET_LOG_INFO, "Reçu un message sur le sujet '%s': %.*s\n",
            natsMsg_GetSubject(msg),
            natsMsg_GetDataLength(msg),
            natsMsg_GetData(msg));
@@ -30,7 +30,7 @@ void rcnet_unload(void)
     rcnet_nats_cleanup(&client);
 
     // Log
-    rcnet_logger_log(RCNET_LOG_INFO, "Server Unloaded\n");
+    RCNET_log(RCNET_LOG_INFO, "Server Unloaded\n");
 }
 
 void rcnet_load(void)
@@ -54,10 +54,10 @@ void rcnet_load(void)
     rcnet_nats_publish(&client, "subject.test2", "Hello World", strlen("Hello World"));
 
     // Log
-    rcnet_logger_log(RCNET_LOG_INFO, "Server Loaded\n");
+    RCNET_log(RCNET_LOG_INFO, "Server Loaded\n");
 }
 
 void rcnet_update(double dt)
 {
-    rcnet_logger_log(RCNET_LOG_INFO, "Server DeltaTime: %f\n", dt);
+    RCNET_log(RCNET_LOG_INFO, "Server DeltaTime: %f\n", dt);
 }

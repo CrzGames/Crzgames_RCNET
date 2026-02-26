@@ -11,11 +11,11 @@ permissions:
   pull-requests: write
 
 jobs:
-  test_deploy-release:
+  deploy-release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Deploy PR (main) for new Release
         uses: googleapis/release-please-action@v4
