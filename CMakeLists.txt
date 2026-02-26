@@ -190,6 +190,10 @@ function(rcnet_configure_hiredis target_name)
       hiredis
       hiredis_ssl
     )
+  elseif(UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
+    target_include_directories(${target_name} PUBLIC
+      "${CRZGAMES_LIBRARIES_PATH}/macos/include/include_hiredis"
+    )
   endif()
 endfunction()
 
@@ -231,10 +235,6 @@ function(rcnet_configure_nats target_name)
 
     target_link_libraries(${target_name} PUBLIC
       nats_static
-    )
-  elseif(UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
-    target_include_directories(${target_name} PUBLIC
-      "${CRZGAMES_LIBRARIES_PATH}/macos/include/include_nats"
     )
   endif()
 endfunction()
