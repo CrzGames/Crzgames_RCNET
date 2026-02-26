@@ -148,7 +148,7 @@ function(rcnet_configure_cpphttplib target_name)
   target_include_directories(${target_name} PUBLIC
     "${DEPENDENCIES_PATH}/cpp-httplib"
   )
-endif()
+endfunction()
 
 # ============================================================
 # rcnet_configure_hiredis
