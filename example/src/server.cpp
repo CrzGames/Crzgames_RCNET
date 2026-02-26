@@ -1,12 +1,12 @@
 #include "server.h"
 
-// Include necessary headers
-#include <RCNET/RCNET_nats.h>
-#include <RCNET/RCNET_logger.h>
-
 // Standard C libraries
 #include <stdbool.h>
 #include <string.h>
+
+// Include necessary headers
+#include <RCNET/RCNET_nats.h>
+#include <RCNET/RCNET_logger.h>
 
 RCNET_NATSClient client;
 
