@@ -127,7 +127,6 @@ set(ENABLE_CJSON_UTILS  OFF CACHE BOOL "" FORCE) # Désactiver les outils
 # ============================================================
 add_subdirectory(dependencies/SDL   EXCLUDE_FROM_ALL)
 add_subdirectory(dependencies/cJSON EXCLUDE_FROM_ALL)
-add_subdirectory(dependencies/sodium EXCLUDE_FROM_ALL)
 if(UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
   add_subdirectory(dependencies/hiredis EXCLUDE_FROM_ALL)
   add_subdirectory(dependencies/nats    EXCLUDE_FROM_ALL)
@@ -402,7 +401,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 # ===========================================================
 target_link_libraries(${PROJECT_NAME} PUBLIC
   SDL3::SDL3
-  libsodium::sodium
 )
 
 # OpenSSL
