@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.5](https://github.com/CrzGames/Crzgames_RCNET/compare/v1.0.4...v1.0.5) (2026-02-26)
+
+
+### Bug Fixes
+
+* fixed macos include openssl ([f82a9b0](https://github.com/CrzGames/Crzgames_RCNET/commit/f82a9b0dc259a9c6440edb44cd1af26c4f837081))
+* fixed macos include openssl ([c597cb5](https://github.com/CrzGames/Crzgames_RCNET/commit/c597cb5a08362de756a8dd52d4f33fd82a6a2a0e))
+
 ## [1.0.4](https://github.com/CrzGames/Crzgames_RCNET/compare/v1.0.3...v1.0.4) (2026-02-26)
 
 
