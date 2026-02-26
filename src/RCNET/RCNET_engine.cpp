@@ -12,6 +12,9 @@ using namespace std::chrono;
 #include <openssl/bio.h>
 #include <openssl/err.h>
 
+// Dependencies Libraries libsodium
+#include <sodium.h>
+
 // Dependencies Libraries RCENet
 #include <rcenet/RCENET_enet.h>
 
