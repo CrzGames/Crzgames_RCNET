@@ -22,11 +22,10 @@
 ├── 📁 cmake                          
 │   └── 📄 setup_dependencies.cmake   # Script CMake chargé de lire `dependencies.txt` et cloner/configurer les dépendances dans `/dependencies`
 ├── 📁 dependencies (git ignored)     # Répertoire local contenant les dépendances clonées (ignoré par Git pour ne pas polluer le repo)
-│   ├── 📁 Crzgames_Libraries         # Librairies précompilées (OpenSSL, hiredis, nats) propres à Crzgames
+│   ├── 📁 Crzgames_Libraries         # Librairies précompilées (OpenSSL, hiredis, nats, soduim) propres à Crzgames
 │   ├── 📁 SDL                        # SDL3 
 │   ├── 📁 cJSON                      # JSON
 │   ├── 📁 cpp-httplib                # HTTP/HTTPS
-│   ├── 📁 libsoduim                  # Crypt
 ├── 📁 docs                           # Documentation du moteur de serveur (pages Markdown, auto-générées)
 ├── 📁 example                        # Exemples d’utilisation du moteur de serveur de jeu RCNET (projets de démo, test de fonctionnalités)
 ├── 📁 include                        # En-têtes publics exposés aux utilisateurs de la lib (API du moteur de serveur)
