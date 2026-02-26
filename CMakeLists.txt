@@ -163,7 +163,7 @@ endfunction()
 function(rcnet_configure_hiredis target_name)
   if(WIN32) # Windows
     target_include_directories(${target_name} PUBLIC
-      "${CRZGAMES_LIBRARIES_PATH}/windows/include/include_hiredis"
+      "${CRZGAMES_LIBRARIES_PATH}/windows/include/include_hiredis/nats"
     )
 
     target_link_directories(${target_name} PUBLIC
@@ -179,7 +179,7 @@ function(rcnet_configure_hiredis target_name)
 
   elseif(APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin") # macOS
     target_include_directories(${target_name} PUBLIC
-      "${CRZGAMES_LIBRARIES_PATH}/macos/include/include_hiredis"
+      "${CRZGAMES_LIBRARIES_PATH}/macos/include/include_hiredis/hiredis"
     )
 
     target_link_directories(${target_name} PUBLIC
@@ -206,7 +206,7 @@ endfunction()
 function(rcnet_configure_nats target_name)
   if(WIN32) # Windows
     target_include_directories(${target_name} PUBLIC
-      "${CRZGAMES_LIBRARIES_PATH}/windows/include/include_nats"
+      "${CRZGAMES_LIBRARIES_PATH}/windows/include/include_nats/nats"
     )
 
     target_link_directories(${target_name} PUBLIC
@@ -222,7 +222,7 @@ function(rcnet_configure_nats target_name)
 
   elseif(APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin") # macOS
     target_include_directories(${target_name} PUBLIC
-      "${CRZGAMES_LIBRARIES_PATH}/macos/include/include_nats"
+      "${CRZGAMES_LIBRARIES_PATH}/macos/include/include_nats/nats"
     )
 
     target_link_directories(${target_name} PUBLIC
