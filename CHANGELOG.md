@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.2](https://github.com/CrzGames/Crzgames_RCNET/compare/v1.0.1...v1.0.2) (2026-02-26)
+
+
+### Bug Fixes
+
+* fixed for linux ([9162586](https://github.com/CrzGames/Crzgames_RCNET/commit/9162586b35cfa01db39e9e721fbab6cc5864927d))
+* fixed for linux ([f823746](https://github.com/CrzGames/Crzgames_RCNET/commit/f8237465439b5398cc5a9401b596aa409db1dd18))
+* fixed for linux ([3219d2a](https://github.com/CrzGames/Crzgames_RCNET/commit/3219d2a95e7ca94b7e6f50a81aa7b3a2db471426))
+
 ## [1.0.1](https://github.com/CrzGames/Crzgames_RCNET/compare/v1.0.0...v1.0.1) (2026-02-26)
 
 
