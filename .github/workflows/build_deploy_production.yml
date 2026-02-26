@@ -1,4 +1,4 @@
-name: Generate RC2D library static (production)
+name: Generate RCNET library static (production) + Example app
 
 on:
   release:
