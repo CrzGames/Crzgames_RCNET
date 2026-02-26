@@ -185,6 +185,49 @@ if(UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
 endif()
 
 # ============================================================
+# rcnet_configure_libsodium
+# ============================================================
+function(rcnet_configure_libsodium target_name)
+  if(APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin") # macOS
+    target_include_directories(${target_name} PUBLIC
+      "${CRZGAMES_LIBRARIES_PATH}/macos/include/include_libsodium"
+    )
+
+    target_link_directories(${target_name} PUBLIC
+      "${CRZGAMES_LIBRARIES_PATH}/macos/lib/libsodium"
+    )
+
+    target_link_libraries(${target_name} PUBLIC
+      sodium
+    )
+  elseif(WIN32) # Windows
+    target_include_directories(${target_name} PUBLIC
+      "${CRZGAMES_LIBRARIES_PATH}/windows/include/include_libsodium"
+    )
+
+    target_link_directories(${target_name} PUBLIC
+      "${CRZGAMES_LIBRARIES_PATH}/windows/lib/libsodium/x64"
+    )
+
+    target_link_libraries(${target_name} PUBLIC
+      libsodium
+    )
+  elseif(UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
+    target_include_directories(${target_name} PUBLIC
+      "${CRZGAMES_LIBRARIES_PATH}/linux/include/include_libsodium"
+    )
+
+    target_link_directories(${target_name} PUBLIC
+      "${CRZGAMES_LIBRARIES_PATH}/linux/lib/libsodium/x64"
+    )
+
+    target_link_libraries(${target_name} PUBLIC 
+      sodium
+    )
+  endif()
+endfunction()
+
+# ============================================================
 # rcnet_configure_cpphttplib
 # ============================================================
 function(rcnet_configure_cpphttplib target_name)
@@ -415,6 +458,14 @@ function(rcnet_configure_cjson target_name)
 endfunction()
 
 # ============================================================
+# rcnet_target_compile_definitions
+# ============================================================
+function(rcnet_target_compile_definitions target_name)
+  # Pour libsodium, on doit définir SODIUM_STATIC pour indiquer qu'on utilise la version statique de la librairie.
+  target_compile_definitions(${target_name} PUBLIC SODIUM_STATIC)
+endfunction()
+
+# ============================================================
 # Sources & Headers (RCNET)
 # ============================================================
 # Récupère automatiquement tous les fichiers sources C++ du moteur,
@@ -467,7 +518,11 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
 )
 
 # ============================================================
-# Link NATS
+# Compile Definitions (RCNET_* flags)
+# ============================================================
+# Applique à la target RCNET toutes les compile definitions
+# ============================================================
+rcnet_target_compile_definitions(${PROJECT_NAME})
 
 # OpenSSL
 rcnet_configure_openssl(${PROJECT_NAME})
@@ -486,6 +541,13 @@ rcnet_configure_nats(${PROJECT_NAME})
 
 # cpp-httplib (client HTTP léger pour les requêtes REST, webhooks, etc.)
 rcnet_configure_cpphttplib(${PROJECT_NAME})
+
+# Libsodium (cryptographie moderne pour le chiffrement, signatures, etc.)
+rcnet_configure_libsodium(${PROJECT_NAME})
+
+
+
+
 
 
 

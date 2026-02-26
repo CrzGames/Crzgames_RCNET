@@ -1,7 +1,7 @@
 # Format: library=repository:tag ou library=repository:commit_sha
 
 SDL=https://github.com/libsdl-org/SDL.git:29ca920fdf7ccfd0a73f4cb3427bb84815f9b7f3
-Crzgames_Libraries=https://github.com/CrzGames/Crzgames_Libraries.git:498f9029a15fcbfd97140559cb315a54d79302d9
+Crzgames_Libraries=https://github.com/CrzGames/Crzgames_Libraries.git:aa41eb22ca820e8f79849c9205d0ea6c45739434
 nats=https://github.com/nats-io/nats.c.git:v3.12.0
 hiredis=https://github.com/redis/hiredis.git:v1.3.0
 cpp-httplib=https://github.com/yhirose/cpp-httplib.git:v0.34.0
