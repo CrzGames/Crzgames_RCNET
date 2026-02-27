@@ -12,6 +12,9 @@ using namespace std::chrono;
 #include <openssl/bio.h>
 #include <openssl/err.h>
 
+// Dependencies Libraries libsodium
+#include <sodium.h>
+
 // Dependencies Libraries RCENet
 #include <rcenet/RCENET_enet.h>
 
@@ -105,6 +108,20 @@ static void rcnet_engine_cleanupOpenssl(void)
     RCNET_log(RCNET_LOG_INFO, "OpenSSL nettoyé avec succès.");
 }
 
+static bool rcnet_engine_initLibSodium(void)
+{
+    if (sodium_init() < 0) 
+    {
+        RCNET_log(RCNET_LOG_ERROR, "Erreur lors de l'initialisation de libsodium.");
+        return false;
+    }
+    else 
+    {
+        RCNET_log(RCNET_LOG_INFO, "libsodium initialisé avec succès.");
+        return true;
+    }
+}
+
 /**
  * \brief Obtient le temps actuel en nanosecondes depuis l'époque.
  * 
@@ -156,6 +173,12 @@ static bool rcnet_engine(void)
 
     // Initialize RCENet
     if (!rcnet_engine_init_rcenet())
+    {
+        return false;
+    }
+
+    // Initialize libsodium
+    if (!rcnet_engine_initLibSodium())
     {
         return false;
     }
