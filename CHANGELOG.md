@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.0](https://github.com/CrzGames/Crzgames_RCNET/compare/v1.0.5...v1.1.0) (2026-02-27)
+
+
+### Features
+
+* up dependencies ([7f4ed88](https://github.com/CrzGames/Crzgames_RCNET/commit/7f4ed88742d47ea10ceebc396233f703eb889555))
+* up dependencies ([e59cfd6](https://github.com/CrzGames/Crzgames_RCNET/commit/e59cfd600a263137947638ba4a21c16dfed3c5ba))
+
 ## [1.0.5](https://github.com/CrzGames/Crzgames_RCNET/compare/v1.0.4...v1.0.5) (2026-02-26)
 
 
