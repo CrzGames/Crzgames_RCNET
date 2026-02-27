@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/CrzGames/Crzgames_RCNET/compare/v1.1.0...v1.1.1) (2026-02-27)
+
+
+### Bug Fixes
+
+* fixed cmakelist for libsodium unix ([4098df6](https://github.com/CrzGames/Crzgames_RCNET/commit/4098df654e02f916aab9e8468fed702fdc755d24))
+* fixed cmakelist for libsodium unix ([bf29d8b](https://github.com/CrzGames/Crzgames_RCNET/commit/bf29d8b46afd04c5e898dfd2103a0f1b94e9ded7))
+
 ## [1.1.0](https://github.com/CrzGames/Crzgames_RCNET/compare/v1.0.5...v1.1.0) (2026-02-27)
 
 
