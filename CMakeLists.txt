@@ -159,14 +159,17 @@ if(APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin") # macOS
   # On utilise l'include de Linux pour macOS aussi, parce que libwebsocket demande un "openssl/.." et pas OpenSSL/.., et que l'include de Linux est déjà organisé comme ça.
   set(OPENSSL_INCLUDE_DIR "${CRZGAMES_LIBRARIES_PATH}/linux/include/include_openssl" CACHE PATH "" FORCE)
   set(OPENSSL_ROOT_DIR "${CRZGAMES_LIBRARIES_PATH}/macos/lib/OpenSSL" CACHE PATH "" FORCE)
+  set(OPENSSL_SSL_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/macos/lib/OpenSSL/libssl.a" CACHE FILEPATH "" FORCE)
   set(OPENSSL_CRYPTO_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/macos/lib/OpenSSL/libcrypto.a" CACHE FILEPATH "" FORCE)
 elseif(WIN32) # Windows
   set(OPENSSL_INCLUDE_DIR "${CRZGAMES_LIBRARIES_PATH}/windows/include/include_openssl" CACHE PATH "" FORCE)
   set(OPENSSL_ROOT_DIR "${CRZGAMES_LIBRARIES_PATH}/windows/lib/OpenSSL/x64" CACHE PATH "" FORCE)
+  set(OPENSSL_SSL_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/windows/lib/OpenSSL/x64/libssl.lib" CACHE FILEPATH "" FORCE)
   set(OPENSSL_CRYPTO_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/windows/lib/OpenSSL/x64/libcrypto.lib" CACHE FILEPATH "" FORCE)
 elseif (UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
   set(OPENSSL_INCLUDE_DIR "${CRZGAMES_LIBRARIES_PATH}/linux/include/include_openssl" CACHE PATH "" FORCE)
   set(OPENSSL_ROOT_DIR "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/x64" CACHE PATH "" FORCE)
+  set(OPENSSL_SSL_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/x64/libssl.a" CACHE FILEPATH "" FORCE)
   set(OPENSSL_CRYPTO_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/x64/libcrypto.a" CACHE FILEPATH "" FORCE)
 endif()
 
