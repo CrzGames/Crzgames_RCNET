@@ -4,9 +4,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-// Include necessary headers
-#include <RCNET/RCNET_nats.h>
-#include <RCNET/RCNET_logger.h>
+#include <RCNET/RCNET.h>
 
 RCNET_NATSClient client;
 
@@ -22,7 +20,6 @@ static void natsMessageHandler(natsConnection *nc, natsSubscription *sub, natsMs
     // Détruire le message pour libérer les ressources
     natsMsg_Destroy(msg);
 }
-
 
 void rcnet_unload(void)
 {
@@ -57,7 +54,14 @@ void rcnet_load(void)
     RCNET_log(RCNET_LOG_INFO, "Server Loaded\n");
 }
 
-void rcnet_update(double dt)
+void rcnet_simulation_update(double dt)
 {
+    // Ici tu pourrais faire ta logique serveur (état du monde, gameplay, collisions simples, etc.)
     RCNET_log(RCNET_LOG_INFO, "Server DeltaTime: %f\n", dt);
+}
+
+void rcnet_network_update(void)
+{
+    // Ici tu pourrais envoyer des snapshots/deltas à tes clients, traiter les flush, etc.
+    RCNET_log(RCNET_LOG_INFO, "Server Network Tick\n");
 }
