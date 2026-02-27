@@ -564,14 +564,14 @@ rcnet_configure_libsodium(${PROJECT_NAME})
 
 # ============================================================
 #
-# Example Target (exécutable de démonstration)
+# Example Server Target (exécutable de démonstration)
 #
 # ============================================================
 if(RCNET_BUILD_EXAMPLE)
   # ============================================================
   # Nom de la target de l’exécutable d’exemple
   # ============================================================
-  set(RCNET_EXAMPLE_TARGET_NAME rcnet_example)
+  set(RCNET_EXAMPLE_SERVER_TARGET_NAME "rcnet_example_server")
 
   # ============================================================
   # Fichiers source de l’exemple
@@ -580,7 +580,7 @@ if(RCNET_BUILD_EXAMPLE)
   # dans "example/src" pour les compiler dans la target de l’exemple.
   # ============================================================
   file(GLOB_RECURSE EXAMPLE_SOURCES 
-    "${PROJECT_SOURCE_DIR}/example/src/*.cpp"
+    "${PROJECT_SOURCE_DIR}/example-server/src/*.cpp"
   )
 
   # ============================================================
@@ -590,13 +590,13 @@ if(RCNET_BUILD_EXAMPLE)
   # dans "example/include" pour les inclure dans la target de l’exemple.
   # ============================================================
   file(GLOB_RECURSE EXAMPLE_HEADERS 
-    "${PROJECT_SOURCE_DIR}/example/include/*.h"
+    "${PROJECT_SOURCE_DIR}/example-server/include/*.h"
   )
 
   # ============================================================
   # Création de la target exécutable pour l’exemple
   # ============================================================
-  add_executable(${RCNET_EXAMPLE_TARGET_NAME}
+  add_executable(${RCNET_EXAMPLE_SERVER_TARGET_NAME}
     ${EXAMPLE_SOURCES} 
     ${EXAMPLE_HEADERS}
   )
@@ -604,10 +604,10 @@ if(RCNET_BUILD_EXAMPLE)
   # ============================================================
   # Include directories pour l’exemple
   # 
-  # Ajoute le dossier "examples/include" aux include paths privés de la target de l’exemple.
+  # Ajoute le dossier "examples-server/include" aux include paths privés de la target de l’exemple.
   # ============================================================
-  target_include_directories(${RCNET_EXAMPLE_TARGET_NAME} PRIVATE 
-    "${PROJECT_SOURCE_DIR}/example/include"
+  target_include_directories(${RCNET_EXAMPLE_SERVER_TARGET_NAME} PRIVATE 
+    "${PROJECT_SOURCE_DIR}/example-server/include"
   )
 
   # ============================================================
@@ -615,7 +615,65 @@ if(RCNET_BUILD_EXAMPLE)
   #
   # Lie la target de l’exemple à la bibliothèque RCNET pour pouvoir utiliser le moteur dans l’exemple.
   # ============================================================
-  target_link_libraries(${RCNET_EXAMPLE_TARGET_NAME} PRIVATE
+  target_link_libraries(${RCNET_EXAMPLE_SERVER_TARGET_NAME} PRIVATE
+    ${PROJECT_NAME} # RCNET
+  )
+endif()
+
+# ============================================================
+#
+# Example Client Target (exécutable de démonstration)
+#
+# ============================================================
+if(RCNET_BUILD_EXAMPLE)
+  # ============================================================
+  # Nom de la target de l’exécutable d’exemple
+  # ============================================================
+  set(RCNET_EXAMPLE_CLIENT_TARGET_NAME rcnet_example_client)
+
+  # ============================================================
+  # Fichiers source de l’exemple
+  #
+  # Récupère automatiquement tous les fichiers sources .cpp de manière récursive 
+  # dans "example/src" pour les compiler dans la target de l’exemple.
+  # ============================================================
+  file(GLOB_RECURSE EXAMPLE_SOURCES 
+    "${PROJECT_SOURCE_DIR}/example-client/src/*.cpp"
+  )
+
+  # ============================================================
+  # Fichiers d’en-tête (headers) de l’exemple
+  #
+  # Récupère automatiquement tous les fichiers d’en-tête .h de manière récursive 
+  # dans "example/include" pour les inclure dans la target de l’exemple.
+  # ============================================================
+  file(GLOB_RECURSE EXAMPLE_HEADERS 
+    "${PROJECT_SOURCE_DIR}/example-client/include/*.h"
+  )
+
+  # ============================================================
+  # Création de la target exécutable pour l’exemple
+  # ============================================================
+  add_executable(${RCNET_EXAMPLE_CLIENT_TARGET_NAME}
+    ${EXAMPLE_SOURCES} 
+    ${EXAMPLE_HEADERS}
+  )
+
+  # ============================================================
+  # Include directories pour l’exemple
+  # 
+  # Ajoute le dossier "examples-client/include" aux include paths privés de la target de l’exemple.
+  # ============================================================
+  target_include_directories(${RCNET_EXAMPLE_CLIENT_TARGET_NAME} PRIVATE 
+    "${PROJECT_SOURCE_DIR}/example-client/include"
+  )
+
+  # ============================================================
+  # Linker l’exemple avec la bibliothèque RCNET
+  #
+  # Lie la target de l’exemple à la bibliothèque RCNET pour pouvoir utiliser le moteur dans l’exemple.
+  # ============================================================
+  target_link_libraries(${RCNET_EXAMPLE_CLIENT_TARGET_NAME} PRIVATE
     ${PROJECT_NAME} # RCNET
   )
 endif()

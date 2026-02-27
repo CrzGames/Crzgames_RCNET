@@ -6,6 +6,10 @@
 
 #include <SDL3/SDL_assert.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * \brief Macro pour afficher un message de log avec le niveau de priorité spécifié.
  * 
@@ -112,5 +116,9 @@ void rcnet_logger_set_priority(const RCNET_LogLevel logLevel);
  * \since Cette fonction est disponible depuis RCNET 1.0.0.
  */
 void rcnet_logger_log(RCNET_LogLevel logLevel, const char* file, int line, const char* function, const char* format, ...);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // RCNET_LOGGER_H

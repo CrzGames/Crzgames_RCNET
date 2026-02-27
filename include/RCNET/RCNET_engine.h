@@ -4,6 +4,10 @@
 // Standard C/C++ Libraries
 #include <stdbool.h> // bool
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * \brief Callbacks pour l'API du moteur RCNET.
  *
@@ -49,5 +53,9 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacks, int simTickRateHz, int netTick
  * \brief Stop le serveur (thread-safe).
  */
 void rcnet_engine_eventQuit(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // RCNET_ENGINE_H
