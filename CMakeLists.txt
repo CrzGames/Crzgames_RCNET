@@ -198,7 +198,7 @@ function(rcnet_configure_libsodium target_name)
     )
 
     target_link_libraries(${target_name} PUBLIC
-      sodium
+      libsodium
     )
   elseif(WIN32) # Windows
     target_include_directories(${target_name} PUBLIC
@@ -222,7 +222,7 @@ function(rcnet_configure_libsodium target_name)
     )
 
     target_link_libraries(${target_name} PUBLIC 
-      sodium
+      libsodium
     )
   endif()
 endfunction()
