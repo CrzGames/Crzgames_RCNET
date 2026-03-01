@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0](https://github.com/CrzGames/Crzgames_RCNET/compare/v1.1.1...v1.2.0) (2026-03-01)
+
+
+### Features
+
+* refacto example client and serveur, add arch arm64 linux and windows for server ([4ea7894](https://github.com/CrzGames/Crzgames_RCNET/commit/4ea78941649b6b83d7c2a0cbb7ff86353818cf07))
+
+
+### Performance Improvements
+
+* improvement server rcnet ([eecc017](https://github.com/CrzGames/Crzgames_RCNET/commit/eecc0176609054c78de01271ca24fd9b9da63a3f))
+
 ## [1.1.1](https://github.com/CrzGames/Crzgames_RCNET/compare/v1.1.0...v1.1.1) (2026-02-27)
 
 
