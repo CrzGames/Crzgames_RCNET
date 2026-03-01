@@ -54,9 +54,9 @@
 
 | Platform | Architectures | System Version | Compatible |
 |----------|---------------|----------------|------------|
-| **Windows** | x64 | Windows 10+ | 🟢 |
+| **Windows** | x64/arm64 | Windows 10+ | 🟢 |
 | **macOS** | Apple Silicon arm64 | macOS 15.0+ | 🟢 |
-| **Linux** | x64 | glibc 2.35+ | 🟢 |
+| **Linux** | x64/arm64 | glibc 2.35+ | 🟢 |
 
 <br /><br />
 

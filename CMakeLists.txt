@@ -11,7 +11,6 @@ cmake_minimum_required(VERSION 3.28.0)
 # ============================================================
 project(rcnet
   LANGUAGES C CXX
-  VERSION 1.0.0
 )
 
 # ============================================================
@@ -23,8 +22,10 @@ project(rcnet
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Option pour construire l'exécutable d'exemple
-option(RCNET_BUILD_EXAMPLE "Build the example executable" ON)
+# ============================================================
+# Build Options
+# ============================================================
+option(RCNET_BUILD_EXAMPLE "Build the example server and client targets" ON)
 
 # ============================================================
 # Output Directories
@@ -85,6 +86,15 @@ else()
   endif()
 endif()
 
+# Choix de visibilité des deps de rcnet
+# - Si on build les exemples (client qui link RC2D), on N’exporte pas les deps => PRIVATE
+# - Sinon (server template / usage classique), on exporte => PUBLIC
+if(RCNET_BUILD_EXAMPLE)
+  set(RCNET_DEPS_VISIBILITY PRIVATE)
+else()
+  set(RCNET_DEPS_VISIBILITY PUBLIC)
+endif()
+
 # ============================================================
 # Paths — Dépendances précompilées (Crzgames_Libraries)
 # ============================================================
@@ -122,11 +132,13 @@ endif()
 # - Build en statique uniquement
 # - Pas de tests / utilitaires (inutile dans un framework)
 # ============================================================
-set(CMAKE_POLICY_VERSION_MINIMUM "3.5" CACHE STRING "Allow old subprojects" FORCE) # Autoriser les vieux subprojects de CJSON
-set(CJSON_OVERRIDE_BUILD_SHARED_LIBS ON  CACHE BOOL "" FORCE) # ignore BUILD_SHARED_LIBS global
-set(CJSON_BUILD_SHARED_LIBS      OFF CACHE BOOL "" FORCE) # force STATIC pour cJSON
-set(ENABLE_CJSON_TEST   OFF CACHE BOOL "" FORCE) # Désactiver les tests
-set(ENABLE_CJSON_UTILS  OFF CACHE BOOL "" FORCE) # Désactiver les outils
+if(NOT RCNET_BUILD_EXAMPLE)
+  set(CMAKE_POLICY_VERSION_MINIMUM "3.5" CACHE STRING "Allow old subprojects" FORCE) # Autoriser les vieux subprojects de CJSON
+  set(CJSON_OVERRIDE_BUILD_SHARED_LIBS ON  CACHE BOOL "" FORCE) # ignore BUILD_SHARED_LIBS global
+  set(CJSON_BUILD_SHARED_LIBS      OFF CACHE BOOL "" FORCE) # force STATIC pour cJSON
+  set(ENABLE_CJSON_TEST   OFF CACHE BOOL "" FORCE) # Désactiver les tests
+  set(ENABLE_CJSON_UTILS  OFF CACHE BOOL "" FORCE) # Désactiver les outils
+endif()
 
 # ============================================================
 # libwebsockets - Configuration build
@@ -163,14 +175,39 @@ if(APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin") # macOS
   set(OPENSSL_CRYPTO_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/macos/lib/OpenSSL/libcrypto.a" CACHE FILEPATH "" FORCE)
 elseif(WIN32) # Windows
   set(OPENSSL_INCLUDE_DIR "${CRZGAMES_LIBRARIES_PATH}/windows/include/include_openssl" CACHE PATH "" FORCE)
-  set(OPENSSL_ROOT_DIR "${CRZGAMES_LIBRARIES_PATH}/windows/lib/OpenSSL/x64" CACHE PATH "" FORCE)
-  set(OPENSSL_SSL_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/windows/lib/OpenSSL/x64/libssl.lib" CACHE FILEPATH "" FORCE)
-  set(OPENSSL_CRYPTO_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/windows/lib/OpenSSL/x64/libcrypto.lib" CACHE FILEPATH "" FORCE)
+  set(OPENSSL_ROOT_DIR "${CRZGAMES_LIBRARIES_PATH}/windows/lib/OpenSSL/${RCNET_ARCH}" CACHE PATH "" FORCE)
+  set(OPENSSL_SSL_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/windows/lib/OpenSSL/${RCNET_ARCH}/libssl.lib" CACHE FILEPATH "" FORCE)
+  set(OPENSSL_CRYPTO_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/windows/lib/OpenSSL/${RCNET_ARCH}/libcrypto.lib" CACHE FILEPATH "" FORCE)
 elseif (UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
   set(OPENSSL_INCLUDE_DIR "${CRZGAMES_LIBRARIES_PATH}/linux/include/include_openssl" CACHE PATH "" FORCE)
-  set(OPENSSL_ROOT_DIR "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/x64" CACHE PATH "" FORCE)
-  set(OPENSSL_SSL_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/x64/libssl.a" CACHE FILEPATH "" FORCE)
-  set(OPENSSL_CRYPTO_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/x64/libcrypto.a" CACHE FILEPATH "" FORCE)
+  set(OPENSSL_ROOT_DIR "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/${RCNET_ARCH}" CACHE PATH "" FORCE)
+  set(OPENSSL_SSL_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/${RCNET_ARCH}/libssl.a" CACHE FILEPATH "" FORCE)
+  set(OPENSSL_CRYPTO_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/${RCNET_ARCH}/libcrypto.a" CACHE FILEPATH "" FORCE)
+endif()
+
+# ============================================================
+# Exemple client — Configuration build
+# Toutes les options RC2D_* qui permettent d'activer/désactiver
+# des modules, features ou intégrations SDK.
+# ============================================================
+if(RCNET_BUILD_EXAMPLE)
+  set(RC2D_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+  set(RC2D_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
+  set(RC2D_EOS_SDK_ENABLED OFF CACHE BOOL "")
+  set(RC2D_STEAMWORKS_SDK_ENABLED OFF CACHE BOOL "")
+  set(RC2D_GPU_SHADER_HOT_RELOAD_ENABLED OFF CACHE BOOL "")
+  set(RC2D_MEMORY_DEBUG_ENABLED OFF CACHE BOOL "")
+  set(RC2D_DATA_MODULE_ENABLED OFF CACHE BOOL "")
+  set(RC2D_NET_MODULE_ENABLED OFF CACHE BOOL "")
+  set(RC2D_VIDEO_MODULE_ENABLED OFF CACHE BOOL "")
+  set(RC2D_ONNX_MODULE_ENABLED OFF CACHE BOOL "")
+  set(RC2D_ASSERT_LEVEL 3 CACHE STRING "")
+  set(RC2D_BUILDING_SHARED OFF CACHE BOOL "")
+
+  if(WIN32 OR (UNIX AND NOT APPLE AND NOT ANDROID))
+    # Spécifique a l'architecture (pour Windows/Linux, pas besoin de spécifier pour Apple qui build en arm64 par défaut)
+    set(RC2D_ARCH ${RCNET_ARCH} CACHE STRING "Architecture cible pour les builds d'exemple (x64, arm64, etc.)" FORCE)
+  endif()
 endif()
 
 # ============================================================
@@ -179,9 +216,16 @@ endif()
 # On inclut SDL + modules, et cJSON depuis dependencies/.
 # EXCLUDE_FROM_ALL : évite de builder ces targets si aucune target ne les référence.
 # ============================================================
+if(RCNET_BUILD_EXAMPLE)
+  add_subdirectory(dependencies/Crzgames_RC2D EXCLUDE_FROM_ALL)
+endif()
 add_subdirectory(dependencies/libwebsockets EXCLUDE_FROM_ALL)
-add_subdirectory(dependencies/SDL   EXCLUDE_FROM_ALL)
-add_subdirectory(dependencies/cJSON EXCLUDE_FROM_ALL)
+if(NOT TARGET SDL3::SDL3)
+  add_subdirectory(dependencies/SDL EXCLUDE_FROM_ALL)
+endif()
+if(NOT TARGET cjson)
+  add_subdirectory(dependencies/cJSON EXCLUDE_FROM_ALL)
+endif()
 if(UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
   add_subdirectory(dependencies/hiredis EXCLUDE_FROM_ALL)
   add_subdirectory(dependencies/nats    EXCLUDE_FROM_ALL)
@@ -209,7 +253,7 @@ function(rcnet_configure_libsodium target_name)
     )
 
     target_link_directories(${target_name} PUBLIC
-      "${CRZGAMES_LIBRARIES_PATH}/windows/lib/libsodium/x64"
+      "${CRZGAMES_LIBRARIES_PATH}/windows/lib/libsodium/${RCNET_ARCH}"
     )
 
     target_link_libraries(${target_name} PUBLIC
@@ -221,7 +265,7 @@ function(rcnet_configure_libsodium target_name)
     )
 
     target_link_directories(${target_name} PUBLIC
-      "${CRZGAMES_LIBRARIES_PATH}/linux/lib/libsodium/x64"
+      "${CRZGAMES_LIBRARIES_PATH}/linux/lib/libsodium/${RCNET_ARCH}"
     )
 
     target_link_libraries(${target_name} PUBLIC 
@@ -256,7 +300,7 @@ function(rcnet_configure_hiredis target_name)
     )
 
     target_link_directories(${target_name} PUBLIC
-      "${CRZGAMES_LIBRARIES_PATH}/windows/lib/hiredis/x64"
+      "${CRZGAMES_LIBRARIES_PATH}/windows/lib/hiredis/${RCNET_ARCH}"
     )
 
     target_link_libraries(${target_name} PUBLIC
@@ -308,7 +352,7 @@ function(rcnet_configure_nats target_name)
     )
 
     target_link_directories(${target_name} PUBLIC
-      "${CRZGAMES_LIBRARIES_PATH}/windows/lib/nats/x64"
+      "${CRZGAMES_LIBRARIES_PATH}/windows/lib/nats/${RCNET_ARCH}"
     )
 
     target_link_libraries(${target_name} PUBLIC
@@ -365,7 +409,7 @@ function(rcnet_configure_openssl target_name)
     target_include_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/windows/include/include_openssl")
 
     # Rajouter le répertoire de la lib OpenSSL (libssl_static et libcrypto_static), pour le linker ensuite
-    target_link_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/windows/lib/OpenSSL/x64")
+    target_link_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/windows/lib/OpenSSL/${RCNET_ARCH}")
 
     # Link les librairies OpenSSL
     target_link_libraries(${target_name} PUBLIC
@@ -379,7 +423,7 @@ function(rcnet_configure_openssl target_name)
     target_include_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/linux/include/include_openssl")
 
     # Rajouter le répertoire de la lib OpenSSL (libssl_static et libcrypto_static), pour le linker ensuite
-    target_link_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/x64")
+    target_link_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/${RCNET_ARCH}")
 
     # Link les librairies OpenSSL
     target_link_libraries(${target_name} PUBLIC
@@ -405,7 +449,7 @@ function(rcnet_configure_rcenet target_name)
     target_include_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/windows/include/include_rcenet")
 
     # Rajouter le répertoire de la lib RCEnet, pour le linker ensuite
-    target_link_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/windows/lib/rcenet/x64")
+    target_link_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/windows/lib/rcenet/${RCNET_ARCH}")
 
     # Link les librairies RCEnet
     target_link_libraries(${target_name} PUBLIC
@@ -413,7 +457,6 @@ function(rcnet_configure_rcenet target_name)
       ws2_32 # Bibliothèque native à Windows (pour la librairie Enet)
       winmm # Bibliothèque native à Windows (pour la librairie Enet)
     )
-
   elseif(APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin") # macOS
     # Link le dossier include de RCEnet à la target
     target_include_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/macos/include/include_rcenet")
@@ -432,7 +475,7 @@ function(rcnet_configure_rcenet target_name)
     target_include_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/linux/include/include_rcenet")
 
     # Rajouter le répertoire de la lib RCEnet, pour le linker ensuite
-    target_link_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/linux/lib/rcenet/x64")
+    target_link_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/linux/lib/rcenet/${RCNET_ARCH}")
 
     # Link les librairies RCEnet
     target_link_libraries(${target_name} PUBLIC
@@ -450,14 +493,14 @@ endfunction()
 # - Exposer les headers cJSON via include path (PUBLIC)
 # - Lier la lib statique cJSON à la target
 # ============================================================
-function(rcnet_configure_cjson target_name)
+function(rcnet_configure_cjson target_name visibility)
   # Le header cJSON.h est dans dependencies/cJSON/cJSON.h
-  target_include_directories(${target_name} PUBLIC
+  target_include_directories(${target_name} ${visibility}
     "${DEPENDENCIES_PATH}/cJSON"
   )
 
   # Link la librairie cJSON
-  target_link_libraries(${target_name} PUBLIC cjson)
+  target_link_libraries(${target_name} ${visibility} cjson)
 endfunction()
 
 # ============================================================
@@ -520,8 +563,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 # Link Common Dependencies
 # ===========================================================
 target_link_libraries(${PROJECT_NAME} PUBLIC
-  SDL3::SDL3
   websockets
+  SDL3::SDL3
 )
 
 # ============================================================
@@ -538,7 +581,7 @@ rcnet_configure_openssl(${PROJECT_NAME})
 rcnet_configure_rcenet(${PROJECT_NAME})
 
 # cJSON (parsing JSON léger côté runtime)
-rcnet_configure_cjson(${PROJECT_NAME})
+rcnet_configure_cjson(${PROJECT_NAME} ${RCNET_DEPS_VISIBILITY})
 
 # Hiredis (client Redis pour la gestion de cache, sessions, etc.)
 rcnet_configure_hiredis(${PROJECT_NAME})
@@ -618,6 +661,8 @@ if(RCNET_BUILD_EXAMPLE)
   target_link_libraries(${RCNET_EXAMPLE_SERVER_TARGET_NAME} PRIVATE
     ${PROJECT_NAME} # RCNET
   )
+
+  rcnet_configure_cjson(${RCNET_EXAMPLE_SERVER_TARGET_NAME} PRIVATE)
 endif()
 
 # ============================================================
@@ -675,5 +720,6 @@ if(RCNET_BUILD_EXAMPLE)
   # ============================================================
   target_link_libraries(${RCNET_EXAMPLE_CLIENT_TARGET_NAME} PRIVATE
     ${PROJECT_NAME} # RCNET
+    rc2d # RC2D (moteur de jeu 2D utilisé dans l’exemple client)
   )
 endif()

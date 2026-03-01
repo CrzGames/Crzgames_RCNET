@@ -572,9 +572,9 @@ void rcnet_network_update(void)
         ENetPacket* packet = enet_packet_create(
             snapshotJson.data(),
             snapshotJson.size(),
-            ENET_PACKET_FLAG_UNSEQUENCED
+            0 // Unreliable
         );
-
+        
         // Envoi au peer uniquement (pas broadcast)
         enet_peer_send(peer, 0, packet);
     }

@@ -8,8 +8,9 @@ for build_type in Debug Release; do
   # Configure and build the project
   cmake -S . -B build/linux/x64/$build_type \
     -G "Unix Makefiles" \
+    -DRCNET_ARCH="x64" \
     -DCMAKE_BUILD_TYPE=$build_type
-  cmake --build build/linux/x64/$build_type
+  cmake --build build/linux/x64/$build_type 
 done
 
 # Final message

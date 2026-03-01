@@ -20,7 +20,9 @@ jobs:
       matrix:
         config:
         - { runner: windows-2025,     platform: windows,  arch: x64 }
+        - { runner: windows-11-arm,   platform: windows,  arch: arm64 }
         - { runner: ubuntu-22.04,     platform: linux,    arch: x64 }
+        - { runner: ubuntu-22.04-arm, platform: linux,    arch: arm64 }
         - { runner: macos-26,         platform: macos,    arch: arm64, sdk: macosx } 
     name: ${{ matrix.config.platform }}-${{ matrix.config.arch }}-${{ matrix.config.sdk }}
     runs-on: ${{ matrix.config.runner }}
@@ -61,20 +63,29 @@ jobs:
           libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev libthai-dev \
           libpipewire-0.3-dev libwayland-dev libdecor-0-dev liburing-dev
 
-      - name: Build RCNET (scripts) - Linux (x64)
+      - name: Build RCNET (scripts) - Linux (x64/arm64)
         if: matrix.config.platform == 'linux'
         shell: bash
         run: |
           set -euxo pipefail
-          chmod +x ./build-scripts/generate-project/linux-x64.sh
-          ./build-scripts/generate-project/linux-x64.sh
+          if [ "${{ matrix.config.arch }}" = "x64" ]; then
+            chmod +x ./build-scripts/generate-project/linux-x64.sh
+            ./build-scripts/generate-project/linux-x64.sh
+          else
+            chmod +x ./build-scripts/generate-project/linux-arm64.sh
+            ./build-scripts/generate-project/linux-arm64.sh
+          fi
 
-      - name: Build RCNET (scripts) - Windows (x64)
+      - name: Build RCNET (scripts) - Windows (x64/arm64)
         if: matrix.config.platform == 'windows'
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          .\build-scripts\generate-project\windows-x64.bat
+          if ("${{ matrix.config.arch }}" -eq "x64") {
+            .\build-scripts\generate-project\windows-x64.bat
+          } else {
+            .\build-scripts\generate-project\windows-arm64.bat
+          }
 
       - name: Build RCNET (scripts) - macOS (arm64)
         if: matrix.config.platform == 'macos'
@@ -83,54 +94,3 @@ jobs:
           set -euxo pipefail
           chmod +x ./build-scripts/generate-project/macos-arm64.sh
           ./build-scripts/generate-project/macos-arm64.sh
-  
-# build_deploy_website:
-#   needs: build_librcnet
-#   runs-on: ubuntu-latest
-#   steps:
-#
-#     - name: Checkout repository
-#       uses: actions/checkout@v6
-#
-#     - name: Get latest release tag
-#       id: previoustag
-#       uses: WyriHaximus/github-action-get-previous-tag@v2
-#
-#     - name: Login to DockerHub
-#       uses: docker/login-action@v3
-#       with:
-#         username: ${{ secrets.DOCKER_HUB_USERNAME }}
-#         password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-#
-#     - name: Build and push Docker image - Production version latest
-#       uses: docker/build-push-action@v6
-#       with:
-#         context: .
-#         file: ./docker/production/Dockerfile
-#         push: true
-#         tags: corentin35/librc2d-website-frontend:latest
-#
-#     - name: Build and push Docker image - Production version x.x.x
-#       uses: docker/build-push-action@v6
-#       with:
-#         context: .
-#         file: ./docker/production/Dockerfile
-#         push: true
-#         tags: corentin35/librc2d-website-frontend:${{ steps.previoustag.outputs.tag }}
-#
-#     - name: Replace image tag in deployment.yaml for Kubernetes
-#       run: |
-#         sed -i 's/\${TAG_VERSION}/'${{ steps.previoustag.outputs.tag }}'/g' k8s/production/deployment.yaml
-#
-#     - name: Connect to the cluster K3S for deploy
-#       uses: actions-hub/kubectl@master
-#       env:
-#         # TODO: à changer pour le cluster de production
-#         KUBE_CONFIG: ${{ secrets.KUBECONFIG_CLUSTER_STAGING_CRZGAMES_BASE64 }}
-#       with:
-#         args: |
-#           apply -f k8s/production/namespace.yaml
-#           -f k8s/production/docker-registry-secret.yaml
-#           -f k8s/production/deployment.yaml
-#           -f k8s/production/ingress.yaml
-#           -f k8s/production/service.yaml

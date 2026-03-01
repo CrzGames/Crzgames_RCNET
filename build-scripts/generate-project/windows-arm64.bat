@@ -10,19 +10,19 @@ set "RESET=\e[0m"
 
 rem Function: print in green
 set "ESC=[27m"
-call :print_green "Generating Visual Studio 2022 project for Windows x64..."
+call :print_green "Generating Visual Studio 2022 project for Windows arm64..."
 
-cmake -S . -B build\windows\x64 ^
+cmake -S . -B build\windows\arm64 ^
   -G "Visual Studio 17 2022" ^
-  -A x64 ^
-  -DRCNET_ARCH="x64"
+  -A arm64 ^
+  -DRCNET_ARCH=arm64
 
 for %%b in (Debug Release) do (
   call :print_green "Building %%b..."
-  cmake --build build\windows\x64 --config %%b
+  cmake --build build\windows\arm64 --config %%b
 )
 
-call :print_green "Generate lib RCNET for Windows x64 in Release and Debug generated successfully, go to the build\windows\x64 directory..."
+call :print_green "Generate lib RCNET for Windows arm64 in Release and Debug generated successfully, go to the build\windows\arm64 directory..."
 
 goto :eof
 
