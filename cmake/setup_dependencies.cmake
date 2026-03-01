@@ -57,3 +57,13 @@ foreach(LINE IN LISTS DEPENDENCIES_LINES)
   execute_process(COMMAND git submodule update --init --recursive
                   WORKING_DIRECTORY ${CLONE_DIR})
 endforeach()
+
+# Vérifie s'il faut exécuter le setup_dependencies.cmake de Crzgames_RC2D
+set(RC2D_DEPENDENCIES_SCRIPT "${VENDORED_DIR}/Crzgames_RC2D/cmake/setup_dependencies.cmake")
+if(EXISTS "${RC2D_DEPENDENCIES_SCRIPT}")
+  message(STATUS "➡️  Exécution de setup_dependencies.cmake dans Crzgames_RC2D")
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} -P ${RC2D_DEPENDENCIES_SCRIPT}
+    WORKING_DIRECTORY "${VENDORED_DIR}/Crzgames_RC2D"
+  )
+endif()

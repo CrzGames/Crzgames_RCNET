@@ -2,59 +2,60 @@
 #define RCNET_ENGINE_H
 
 // Standard C/C++ Libraries
-#include <stdbool.h> // Required for : bool
+#include <stdbool.h> // bool
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * \brief Callbacks pour l'API du moteur RCNET.
- * 
- * Ces callbacks permettent à l'utilisateur de définir des fonctions
- * pour charger, décharger et mettre à jour le moteur de jeu.
- * 
- * \since Cette structure est disponible depuis RCNET 1.0.0.
+ *
+ * On sépare la simulation (tick fixe) et le réseau (tick fixe aussi mais différent).
+ *
+ * - simulation_update(dt) : logique serveur (état, gameplay, collisions simples, etc.)
+ * - network_update()      : envoi snapshots/deltas, flush réseau, etc.
+ *
+ * \since RCNET 1.0.0 (à adapter selon ta version)
  */
 typedef struct RCNET_Callbacks {
-    /**
-     * \brief Fonction appelée pour décharger le moteur de jeu.
-     * 
-     * Cette fonction est appelée lorsque le moteur de jeu doit être arrêté.
-     */
+    // Appelé avant la boucle (init monde, ressources, etc.)
+    void (*rcnet_load)(void);
+
+    // Appelé après la boucle (free mémoire, fermeture, etc.)
     void (*rcnet_unload)(void);
 
     /**
-     * \brief Fonction appelée pour charger le moteur de jeu.
-     * 
-     * Cette fonction est appelée au démarrage du moteur de jeu.
+     * \brief Tick simulation (logique serveur) à fréquence simTickRate.
+     * \param dt Pas de temps FIXE (ex: 1/60, 1/30).
      */
-    void (*rcnet_load)(void);
+    void (*rcnet_simulation_update)(double dt);
 
     /**
-     * \brief Fonction appelée pour mettre à jour le moteur de jeu.
-     * 
-     * Cette fonction est appelée à chaque tick du moteur de jeu.
+     * \brief Tick réseau à fréquence netTickRate.
+     * Typiquement: envoyer snapshots/deltas, traiter flush, etc.
      */
-    void (*rcnet_update)(double dt);
+    void (*rcnet_network_update)(void);
 } RCNET_Callbacks;
 
 /**
- * \brief Fonction pour initialiser le moteur de jeu RCNET.
- * 
- * \return {bool} - true si l'initialisation réussit, false sinon
- * 
- * \threadsafety Cette fonction peut être appelée depuis n'importe quel thread.
- * 
- * \since Cette fonction est disponible depuis RCNET 1.0.0.
+ * \brief Démarre le moteur RCNET.
+ *
+ * \param callbacks      Pointeur callbacks.
+ * \param simTickRateHz  Fréquence simulation (ex 60, 30, 20).
+ * \param netTickRateHz  Fréquence réseau (ex 20, 10, 30).
+ *
+ * \return true si OK, false sinon.
  */
-bool rcnet_engine_run(RCNET_Callbacks* callbacks, int tickRate);
+bool rcnet_engine_run(RCNET_Callbacks* callbacks, int simTickRateHz, int netTickRateHz);
 
 /**
- * \brief Fonction pour arrêter le moteur de jeu RCNET.
- * 
- * Cette fonction arrête le moteur de jeu en cours d'exécution.
- * 
- * \threadsafety Cette fonction peut être appelée depuis n'importe quel thread.
- * 
- * \since Cette fonction est disponible depuis RCNET 1.0.0.
+ * \brief Stop le serveur (thread-safe).
  */
 void rcnet_engine_eventQuit(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // RCNET_ENGINE_H
