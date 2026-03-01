@@ -7,6 +7,7 @@ cmake_minimum_required(VERSION 3.28.0)
 # Nom du projet : rcnet
 #
 # Langages :
+#   - C     : pour les librairie C externes (SDL3, nats client C, hiredis, cJSON, libwebsockets)
 #   - CXX   : cœur du moteur de serveur de jeu et des exemples
 # ============================================================
 project(rcnet
@@ -16,9 +17,12 @@ project(rcnet
 # ============================================================
 # Language Standards
 # ============================================================
+# C : C99 pour la compatibilité avec les bibliothèques utilisées
 # CXX : C++17 pour les fonctionnalités modernes et 
 #       la compatibilité avec les bibliothèques utilisées
 ## ============================================================
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -65,11 +69,15 @@ endif()
 # Flags d'avertissements et de conformité :
 # - MSVC : /W4, /permissive- (C++ strict), désactivations ciblées
 # - GCC/Clang : -Wall -Wextra -pedantic + exceptions ciblées
+#
+# Note :
+# - Les flags C et CXX ne sont pas toujours identiques (ex: strict-prototypes)
 # ============================================================
 if(MSVC)
   # /W4 : Niveau d'avertissement 4 (equivalent a -Wextra)
   # /permissive- : Spécifie un mode de compilation strict pour suivre les standards C++ 
   # /wd4100 : Désactive l'avertissement pour les paramètres de fonction non utilisés (C4100)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /W4 /wd4100")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4 /permissive- /wd4100")
 else()
   # -Wall : Active tous les avertissements de base
@@ -77,11 +85,13 @@ else()
   # -pedantic : Enforce strictement les standards C++
   # -Wno-unused-parameter : Désactive les avertissements pour les paramètres de fonction non utilisés
   # -Wno-error=strict-prototypes : Désactive les erreurs pour les prototypes de fonction stricts en C.
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -pedantic -Wno-unused-parameter -Wno-error=strict-prototypes")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Wno-unused-parameter")
 
   # Clang a un warning spécifique pour les fichiers qui ne se terminent pas par une nouvelle ligne (newline at end of file).
   # -Wno-newline-eof : Désactive les avertissements pour les nouvelles lignes à la fin du fichier
   if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-newline-eof")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-newline-eof")
   endif()
 endif()
