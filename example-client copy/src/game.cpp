@@ -3,6 +3,7 @@
 #include <RC2D/RC2D.h>
 
 #include <game_screen.h>
+#include <game_client.h>
 
 GameScreen gameScreen;
 

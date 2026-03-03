@@ -1,4 +1,4 @@
-#include "server_authoritative.h"
+#include "server.h"
 
 #include <cstring> // memset
 
@@ -21,12 +21,11 @@ int main(int argc, char* argv[])
     // Appliquer nos callbacks
     myServerCallbacks.rcnet_unload = rcnet_unload;
     myServerCallbacks.rcnet_load = rcnet_load;
-    myServerCallbacks.rcnet_network_incoming_update = rcnet_network_incoming_update;
-    myServerCallbacks.rcnet_network_outgoing_update = rcnet_network_outgoing_update;
+    myServerCallbacks.rcnet_network_update = rcnet_network_update;
     myServerCallbacks.rcnet_simulation_update = rcnet_simulation_update;
 
     // Lancer le moteur avec nos callbacks et les tick rates désirés
-    if(!rcnet_engine_run(&myServerCallbacks, 128, 128, 32))
+    if(!rcnet_engine_run(&myServerCallbacks, 60, 30))
     {
         RCNET_log(RCNET_LOG_ERROR, "Failed to start the engine\n");
         return 1;
