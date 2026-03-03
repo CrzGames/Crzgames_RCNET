@@ -88,11 +88,11 @@ static uint64_t networkOutgoingTickId = 0;
 // 5) Callbacks API Server Engine
 // ======================================================
 RCNET_Callbacks callbacksServerEngine = {
-    NULL, // rcnet_load
-    NULL, // rcnet_unload
-    NULL, // rcnet_simulation_update
-    NULL, // rcnet_network_incoming_update
-    NULL, // rcnet_network_outgoing_update
+    nullptr, // rcnet_load
+    nullptr, // rcnet_unload
+    nullptr, // rcnet_simulation_update
+    nullptr, // rcnet_network_incoming_update
+    nullptr, // rcnet_network_outgoing_update
 };
 
 // ======================================================

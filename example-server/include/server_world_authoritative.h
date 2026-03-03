@@ -22,9 +22,6 @@ struct PlayerControl
 // ============================================================================
 struct ClientSession
 {
-    // Pointeur ENet vers le client connecté
-    ENetPeer* enetPeer = nullptr;
-
     // L'id du compte du client en base de données
     uint64_t accountIdDatabase = 0; 
 
@@ -50,7 +47,7 @@ void example_server_world_reset(void);
 uint32_t example_server_world_on_client_connected(ENetPeer* peerPointer);
 void example_server_world_on_client_disconnected(ENetPeer* peerPointer);
 
-// Réception d’un input et push dans la queue d’inputs du client correspondant
+// Push dans la queue d’inputs du client correspondant
 void example_server_world_push_input_command(ENetPeer* peerPointer, const ClientInputCommand& inputCommand);
 
 // Simulation 120Hz (ou autre tick rate défini dans main.cpp)
