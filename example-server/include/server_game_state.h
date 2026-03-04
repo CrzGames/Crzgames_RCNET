@@ -17,7 +17,7 @@ struct GameState
     uint32_t nextConnectionId = 1;
 
     // Mapping connexion réseau -> compte authentifié
-    std::unordered_map<uint32_t, uint64_t> connectionToAccount;
+    std::unordered_map<uint32_t, uint64_t> connectionToAccount; // key = connectionId, value = accountIdDatabase
 
     // ------------------------------------------------------------------------
     // World state
