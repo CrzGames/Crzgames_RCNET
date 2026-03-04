@@ -29,7 +29,7 @@ int main(int argc, char* argv[])
     RCNET_ServerConfig config{};
     config.port = 12345;
     config.maxClients = 64;
-    config.channelCount = 3; // ex: channel 0 = handshake for encrypt, channel 1 = inputs unreliable, channel 2 = snapshots unreliable, channel 3 = events importants reliable
+    config.channelCount = 4; // ex: channel 0 = handshake / auth / encrypt (reliable), channel 1 = inputs (unreliable), channel 2 = snapshots (unreliable), channel 3 = events importants (reliable)
     config.networkIncomingSleepMs = 1;
     config.networkOutgoingTickHz = 32;
     config.simulationTickHz = 128;
