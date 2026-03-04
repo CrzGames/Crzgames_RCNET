@@ -9,8 +9,21 @@
 
 struct GameState
 {
-    // Id runtime unique pour les entités, généré par le serveur à la création, jamais réutilisé même après destruction
-    // Il seras incrémenté à chaque création d'entité.
+    // ------------------------------------------------------------------------
+    // Connections et sessions
+    // ------------------------------------------------------------------------
+    
+    // Incrémenté à chaque nouvelle connexion pour lui donner un ID unique (différent de l'accountIdDatabase)
+    uint32_t nextConnectionId = 1;
+
+    // Mapping connexion réseau -> compte authentifié
+    std::unordered_map<uint32_t, uint64_t> connectionToAccount;
+
+    // ------------------------------------------------------------------------
+    // World state
+    // ------------------------------------------------------------------------
+
+    // Incrémenté à chaque nouvelle entité pour lui donner un ID unique
     uint32_t nextEntityId = 1;
 
     // --- entities (runtime minimal physique + type) ---

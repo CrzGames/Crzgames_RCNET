@@ -15,7 +15,7 @@ struct PlayerControl
 };
 
 // ============================================================================
-// Données autoritaires spécifiques à un client connecté (ex: quelle entité il contrôle, etc.)
+// Données autoritaires spécifiques à un client connecté.
 // ============================================================================
 struct ClientSession
 {
