@@ -19,18 +19,42 @@ struct PlayerControl
 // ============================================================================
 struct ClientSession
 {
+    // =======================================================================
+    // Identification du client
+    // =======================================================================
+
     // L'id du compte du client en base de données
     uint64_t accountIdDatabase = 0; 
 
-    // Dernier input reçu, appliqué chaque tick dans la simulation serveur
+    // connectionId pour identifier la connexion réseau (ex: pour les connect/disconnect)
+    uint32_t connectionId = 0;
+
+    // ============================================================================
+    // INPUTS
+    // ============================================================================
+
+    // Dernier input reçu de ce client
     ClientInputCommand latestReceivedInputCommand{};
 
-    // Dernière séquence traitée côté serveur pour ce client (pour éviter de traiter plusieurs fois le même input en cas de lag)
+    // Dernier input appliqué dans la simulation serveur (pour savoir si on en a de nouveaux à appliquer)
     uint32_t lastProcessedInputSequenceNumber = 0;
 
-    // Queue des inputs reçus mais pas encore “consommés” par la simulation serveur
+    // Queue d'inputs reçus du client mais pas encore appliqués dans la simulation
     std::deque<ClientInputCommand> pendingInputCommandsQueue;
 
-    // Données autoritaires spécifiques au client (ex: quelle entité le client contrôle.)
+
+    // ============================================================================
+    // Gameplay
+    // ============================================================================
+
+    // L'entité actuellement contrôlée par le client (0 si aucune, ex: en cas de mort)
     PlayerControl control;
+
+
+    // ============================================================================
+    // Réseau
+    // ============================================================================
+    uint32_t lastAckedSnapshotId = 0;   // dernier snapshot ACK par le client
+    uint32_t lastSentSnapshotId  = 0;   // dernier snapshot envoyé
+    uint32_t lastAckedInputSeq   = 0;   // si tu ACK les inputs
 };

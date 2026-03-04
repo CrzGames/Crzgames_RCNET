@@ -10,16 +10,6 @@
 struct GameState
 {
     // ------------------------------------------------------------------------
-    // Connections et sessions
-    // ------------------------------------------------------------------------
-    
-    // Incrémenté à chaque nouvelle connexion pour lui donner un ID unique (différent de l'accountIdDatabase)
-    uint32_t nextConnectionId = 1;
-
-    // Mapping connexion réseau -> compte authentifié
-    std::unordered_map<uint32_t, uint64_t> connectionToAccount; // key = connectionId, value = accountIdDatabase
-
-    // ------------------------------------------------------------------------
     // World state
     // ------------------------------------------------------------------------
 
@@ -31,7 +21,4 @@ struct GameState
 
     // --- runtime spécifique par type ---
     std::unordered_map<uint32_t, PlayerRuntime> players; // key = entityId
-
-    // --- sessions (par compte) ---
-    std::unordered_map<uint64_t, ClientSession> sessions; // key = accountIdDatabase
 };

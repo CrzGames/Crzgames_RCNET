@@ -69,11 +69,12 @@ void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
         return;
 
     GameState& gameState = GetGameState();
+    NetworkState& networkState = GetNetworkState();
     NetworkToSimulationQueue& netToSimQueue = GetNetToSimQueue();
 
     if (event->type == ENET_EVENT_TYPE_CONNECT)
     {
-        uint32_t connectionId = gameState.nextConnectionId++;
+        uint32_t connectionId = networkState.nextConnectionId++;
         event->peer->data = reinterpret_cast<void*>(static_cast<uintptr_t>(connectionId));
 
         NetworkToSimulationMessage message{};
