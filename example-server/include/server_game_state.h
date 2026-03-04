@@ -9,6 +9,10 @@
 
 struct GameState
 {
+    // Id runtime unique pour les entités, généré par le serveur à la création, jamais réutilisé même après destruction
+    // Il seras incrémenté à chaque création d'entité.
+    uint32_t nextEntityId = 1;
+
     // --- entities (runtime minimal physique + type) ---
     std::unordered_map<uint32_t, EntityState> entities; // key = entityId
 

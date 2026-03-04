@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>       // uint16_t, uint32_t, etc.
+#include <deque>         // std::deque pour la queue d'inputs non encore consommés
 
 #include "server_network_clientinput.h" // ClientInputCommand
 
