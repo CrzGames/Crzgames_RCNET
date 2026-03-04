@@ -55,6 +55,3 @@ void example_server_world_simulate_fixed_step(double fixedDeltaSeconds, uint32_t
 
 // Accès snapshot
 const std::unordered_map<uint32_t, ClientSession>& example_server_world_get_connected_clients(void);
-
-// Outils temps
-uint32_t example_server_world_get_server_time_ms_monotonic(void);

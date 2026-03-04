@@ -6,6 +6,8 @@
 
 #include <cstdint> // uint16_t, uint32_t, etc.
 
+#include <RCNET/RCNET.h>
+
 // ============================================================================
 // Types d'entités principaux du jeu
 // ============================================================================
@@ -42,6 +44,10 @@ struct EntityState
     float positionY = 0.0f;
     float velocityX = 0.0f;
     float velocityY = 0.0f;
+
+    // Pour les projectiles et items avec durée de vie limitée,
+    // on peut stocker le tick de simulation où ils doivent être détruits
+    uint64_t endTick = 0;
 };
 
 // ============================================================================
@@ -66,6 +72,7 @@ enum class PlayerType : uint8_t
 struct PlayerConfig
 {
     PlayerType type = PlayerType::None;
+    int32_t health        = 100;        // Points de vie actuels
     int32_t maxHealth      = 100;       // Points de vie max
     float   moveSpeed      = 6.0f;      // Vitesse de déplacement de base (ex: 6 unités/s)
     float   jumpForce      = 10.0f;     // Force appliquée lors d’un saut (ex: 10 unités/s instantané)
@@ -110,19 +117,19 @@ enum class ProjectileType : uint8_t
 struct ProjectileConfig
 {
     ProjectileType type = ProjectileType::None;
-    float damage       = 0.0f; // Dégâts infligés à l’impact
-    float speed        = 0.0f; // Vitesse du projectile (ex: 10 unités/s)
-    uint32_t lifeTicks = 0;    // Durée de vie en ticks (ex: 120 ticks = 1 seconde à 120Hz)
-    float aoeRadius    = 0.0f; // 0 = pas d'AOE (AOE = les dégâts s'appliquent dans une zone autour du point d'impact)
+    float damage       = 0.0f;   // Dégâts infligés à l’impact
+    float speed        = 0.0f;   // Vitesse du projectile (ex: 10 unités/s)
+    uint32_t lifeDurationMs = 0; // Durée de vie en millisecondes avant auto-destruction/despawn (ex: 3000 ms = 3 secondes)
+    float aoeRadius    = 0.0f;   // 0 = pas d'AOE (AOE = les dégâts s'appliquent dans une zone autour du point d'impact)
 };
 
 // Tableau statique indexé directement par ProjectileType pour un accès rapide en simulation
 inline const ProjectileConfig projectileConfigs[] =
 {
-    { ProjectileType::None,     0.0f,  0.0f,   0,   0.0f },
-    { ProjectileType::Fireball, 20.0f, 12.0f, 120,  0.0f },
-    { ProjectileType::Rocket,   60.0f,  8.0f, 180,  2.5f },
-    { ProjectileType::IceBolt,  10.0f, 14.0f, 100,  0.0f },
+    { ProjectileType::None,     0.0f,  0.0f,    0, 0.0f },
+    { ProjectileType::Fireball, 20.0f, 12.0f, 1000, 0.0f },
+    { ProjectileType::Rocket,   60.0f,  8.0f, 2000, 2.5f },
+    { ProjectileType::IceBolt,  10.0f, 14.0f,  100, 0.0f },
 };
 
 inline const ProjectileConfig& GetProjectileConfigFromId(uint8_t id)
@@ -148,23 +155,19 @@ enum class ItemType : uint8_t
 
 struct ItemConfig
 {
-    ItemType type = ItemType::None;  // Type d’item
+    ItemType type = ItemType::None;    // Type d’item
     int32_t    healAmount     = 0;     // Quantité de soin (ex: 25 points de vie rendus)
     float      speedMultiplier = 1.0f; // Multiplicateur de vitesse (ex: 1.3 = +30% de vitesse)
-    uint32_t   durationTicks  = 0;     // Durée de l’effet en ticks (ex: 180 ticks = 1.5 secondes à 120Hz)
+    uint32_t   effectDurationMs = 0;   // Durée de l’effet en ms (ex: 1800 ms = 1.8 secondes, 0 = effet instantané)
+    uint32_t   lifeDurationMs = 0;     // Durée de vie en ms avant auto-destruction/despawn (ex: 30000 ms = 30 secondes, 0 = infinie)
 };
     
 // Tableau statique indexé directement par ItemType pour un accès rapide en simulation
 inline const ItemConfig itemConfigs[] =
 {
-    // None
-    { ItemType::None, 0, 1.0f, 0 },
-
-    // HealthPotion
-    { ItemType::HealthPotion, 25, 1.0f, 0 },
-
-    // SpeedBoost
-    { ItemType::SpeedBoost, 0, 1.3f, 180 },
+    { ItemType::None,         0, 1.0f,    0, 0 },
+    { ItemType::HealthPotion, 25, 1.0f,   0, 5000 },
+    { ItemType::SpeedBoost,   0, 1.3f, 1800, 5000 },
 };
 
 inline const ItemConfig& GetItemConfigFromId(uint8_t id)

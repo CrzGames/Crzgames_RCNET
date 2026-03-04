@@ -12,10 +12,7 @@ void rc2d_unload(void)
     
 void rc2d_load(void)
 {
-    if (initializeClient() != 0)
-    {
-        RC2D_log(RC2D_LOG_DEBUG, "Failed to initialize client.");
-    }
+
 }
 
 void rc2d_update(double dt)

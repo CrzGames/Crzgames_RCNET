@@ -25,8 +25,17 @@ int main(int argc, char* argv[])
     myServerCallbacks.rcnet_network_outgoing_update = rcnet_network_outgoing_update;
     myServerCallbacks.rcnet_simulation_update = rcnet_simulation_update;
 
+    // Configuration serveur (port, tick rates, etc.)
+    RCNET_ServerConfig config{};
+    config.port = 12345;
+    config.maxClients = 64;
+    config.channelCount = 3; // ex: channel 0 = handshake for encrypt, channel 1 = inputs unreliable, channel 2 = snapshots unreliable, channel 3 = events importants reliable
+    config.networkIncomingSleepMs = 1;
+    config.networkOutgoingTickHz = 32;
+    config.simulationTickHz = 128;
+
     // Lancer le moteur avec nos callbacks et les tick rates désirés
-    if(!rcnet_engine_run(&myServerCallbacks, 128, 128, 32))
+    if(!rcnet_engine_run(&myServerCallbacks, &config))
     {
         RCNET_log(RCNET_LOG_ERROR, "Failed to start the engine\n");
         return 1;

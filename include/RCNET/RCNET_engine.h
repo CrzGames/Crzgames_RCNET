@@ -3,66 +3,73 @@
 
 // Standard C/C++ Libraries
 #include <stdbool.h> // bool
-#include <stdint.h> // uint64_t
+#include <stdint.h>  // uint64_t
+
+// ================================
+// Dependencies Libraries RCENet (fork d'ENet)
+// ================================
+#include <rcenet/RCENET_enet.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /**
+ * \brief Configuration serveur RCNET.
+ *
+ * Cette structure centralise tous les paramètres runtime
+ * du moteur réseau et simulation.
+ *
+ * - port                   : Port UDP d'écoute serveur.
+ * - maxClients             : Nombre max de clients connectés.
+ * - channelCount           : Nombre de channels ENet.
+ * - networkIncomingSleepMs : Durée de sleep (en ms) entre chaque tick de réception réseau.
+ * - networkOutgoingTickHz  : Fréquence d’envoi des paquets sortants (snapshots, events, etc.).
+ * - simulationTickHz       : Fréquence simulation serveur.
+ */
+typedef struct RCNET_ServerConfig
+{
+    uint16_t port;                   // ex: 12345 (plage des ports UDP : 0-65535, éviter <1024 réservés)
+    uint32_t maxClients;             // ex: 64 clients max (ENet supporte jusqu'à 4096 clients max)
+    uint32_t channelCount;           // ex: 3 channels (inputs unrealiable, snapshots unreliable, events importants reliable)
+    uint32_t networkIncomingSleepMs; // ex: 1 ms
+    uint32_t networkOutgoingTickHz;  // ex: 32 Hz
+    uint32_t simulationTickHz;       // ex: 128 Hz
+} RCNET_ServerConfig;
+
+/**
  * \brief Callbacks pour l'API du moteur RCNET.
  *
  * On sépare :
- * - Simulation (tick fixe) : logique du monde.
- * - Réseau IN (tick fixe)  : réception des paquets entrants.
- * - Réseau OUT (tick fixe) : envoi des paquets sortants.
+ * - rcnet_load / rcnet_unload : pour l'initialisation et cleanup global du serveur (ex: world, ressources, etc.)
+ * - rcnet_simulation_update : logique du monde, appliquée à chaque tick de simulation.
+ * - rcnet_network_incoming_update : réception des paquets entrants.
+ * - rcnet_network_outgoing_update : envoi des paquets sortants.
  *
- * Objectif :
- * - Réduire la latence de traitement des inputs (IN plus fréquent),
- * - Tout en gardant une cadence d’envoi contrôlée (OUT plus faible).
- *
- * \since RCNET 1.0.0
+ * IMPORTANT :
+ * - rcnet_simulation_update() est exécutée dans le thread simulation.
+ * - rcnet_network_incoming_update / rcnet_network_outgoing_update sont exécutés dans le thread réseau.
  */
 typedef struct RCNET_Callbacks {
-    // Appelé avant la boucle (init monde, ressources, etc.)
     void (*rcnet_load)(void);
-
-    // Appelé après la boucle (free mémoire, fermeture, etc.)
     void (*rcnet_unload)(void);
-
-    /**
-     * \brief Tick simulation.
-     * \param dt Pas de temps FIXE (ex: 1/60, 1/30).
-     */
-    void (*rcnet_simulation_update)(double dt);
-
-    /**
-     * \brief Tick réseau IN.
-     * Traite les paquets entrants (inputs, connect/disconnect, etc.).
-     */
-    void (*rcnet_network_incoming_update)(void);
-
-    /**
-     * \brief Tick réseau OUT.
-     * Envoie les paquets sortants (snapshots, events, etc.).
-     */
+    void (*rcnet_simulation_update)(uint64_t currentTick);
+    void (*rcnet_network_incoming_update)(ENetHost* host, const ENetEvent* event);
     void (*rcnet_network_outgoing_update)(void);
 } RCNET_Callbacks;
 
 /**
- * \brief Démarre le moteur RCNET.
+ * \brief Démarre le moteur RCNET en mode multi-thread.
  *
- * \param callbacks                 Callbacks utilisateur.
- * \param simulationTickRateHz      Fréquence simulation (ex 128, 60, etc.).
- * \param networkIncomingTickRateHz Fréquence réseau IN (ex 256 ou 128, pour réduire la latence d’input).
- * \param networkOutgoingTickRateHz Fréquence réseau OUT (ex 32, pour snapshots).
+ * - 1 thread simulation (tick fixe, logique du monde, etc.)
+ * - 1 thread réseau (réception de paquets, envoi de snapshots, etc.)
+ *
+ * \param callbacks Callbacks utilisateur.
+ * \param config    Configuration serveur complète.
  *
  * \return true si OK, false sinon.
  */
-bool rcnet_engine_run(RCNET_Callbacks* callbacks,
-                      int simulationTickRateHz,
-                      int networkIncomingTickRateHz,
-                      int networkOutgoingTickRateHz);
+bool rcnet_engine_run(RCNET_Callbacks* callbacks, const RCNET_ServerConfig* config);
 
 /**
  * \brief Retourne le tick courant de simulation du serveur (tick logique).
@@ -90,23 +97,48 @@ uint64_t rcnet_engine_getCurrentServerSimulationTick(void);
  *
  * Propriétés :
  * - Monotone : ne recule jamais.
- * - Précis / sans dérive : on accumule des nanosecondes (pas de float, pas de cast ms).
+ * - Précis / sans dérive : on accumule des nanosecondes.
  * - Thread-safe : peut être lu depuis d'autres threads sans verrou.
- * - Temps LOGIQUE : ne reflète pas forcément le temps réel si la machine lag
- *   (ex: backlog droppé => la simulation saute du "temps réel").
- *
- * Usage typique :
- * - Timers gameplay : buffs, cooldowns, durée de vie d'un projectile, timeouts logiques
- * - Mesures internes cohérentes avec la simulation (déterminisme)
+ * - Temps LOGIQUE : ne reflète pas forcément le temps réel si la machine laggue, mais avance de manière stable avec la simulation.
  */
 uint64_t rcnet_engine_getCurrentServerTimeNsMonotonic(void);
 
 /**
- * \brief Getters de configuration (Hz) utilisés par le moteur.
+ * \brief Retourne la fréquence de tick de simulation du serveur en Hz (ex: 128).
  */
 uint32_t rcnet_engine_getSimulationTickRateHz(void);
-uint32_t rcnet_engine_getNetworkIncomingTickRateHz(void);
+
+/**
+ * \brief Retourne la fréquence de tick réseau OUT du serveur en Hz (ex: 32).
+ */
 uint32_t rcnet_engine_getNetworkOutgoingTickRateHz(void);
+
+/**
+ * \brief Retourne la durée de sommeil entre chaque tick réseau IN en ms (ex: 1).
+ */
+uint32_t rcnet_engine_getNetworkIncomingSleepMs(void);
+
+/**
+ * \brief Convertit une durée en millisecondes vers des ticks de simulation.
+ *
+ * Exemple : 1500 ms à 60 Hz = 90 ticks
+ */
+inline uint32_t DurationMsToTicks(uint32_t durationMs)
+{
+    const uint64_t hz = (uint64_t)rcnet_engine_getSimulationTickRateHz();
+    return (uint32_t)(((uint64_t)durationMs * hz + 999ull) / 1000ull); // ceil
+}
+
+/**
+ * \brief Convertit une durée en ticks de simulation vers des millisecondes.
+ *
+ * Exemple : 90 ticks à 60 Hz = 1500 ms
+ */
+inline uint32_t TicksToDurationMs(uint32_t ticks)
+{
+    const uint64_t hz = (uint64_t)rcnet_engine_getSimulationTickRateHz();
+    return (uint32_t)(((uint64_t)ticks * 1000ull) / hz); // floor
+}
 
 /**
  * \brief Stop le serveur (thread-safe).

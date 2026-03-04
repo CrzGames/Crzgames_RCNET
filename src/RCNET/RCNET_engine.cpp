@@ -23,54 +23,62 @@ using namespace std::chrono;
 // ================================
 #include <sodium.h>
 
-// ================================
-// Dependencies Libraries RCENet
-// ================================
-#include <rcenet/RCENET_enet.h>
+// ======================================================
+// 2bis) Simulation time exact (no drift)
+// ======================================================
+static uint64_t g_simTickHz = 128;
+static uint64_t g_simTickBaseNs = 0;
+static uint64_t g_simTickRem = 0;
+static uint64_t g_simTickRemAcc = 0;
+
+// ======================================================
+// X) Configuration serveur (runtime) pour ENet
+// ======================================================
+static uint16_t g_serverPort = 0;
+static uint32_t g_serverMaxClients = 0;
+static uint32_t g_serverChannelCount = 0;
+
+// ======================================================
+// X) Host ENet (thread réseau uniquement)
+// ======================================================
+static ENetHost* g_enetServerHost = nullptr;
 
 // ======================================================
 // 0) Compteurs exposés (thread-safe)
 // ======================================================
 
-// Tick simulation "serveur"
+// Le tick de simulation courant du serveur (tick logique, incrémenté à chaque tick simulation)
 static std::atomic<uint64_t> g_serverSimulationTick{0};
 
-// Temps monotone serveur en ns depuis démarrage moteur (logique, pas wall-clock)
+// Temps monotone serveur en nanoseconds depuis le démarrage moteur (logique, pas wall-clock)
 static std::atomic<uint64_t> g_serverTimeNsMonotonic{0};
 
 // Hz effectivement utilisés
-static std::atomic<uint32_t> g_simulationTickRateHz{60};
-static std::atomic<uint32_t> g_networkIncomingTickRateHz{128};
+static std::atomic<uint32_t> g_simulationTickRateHz{128};
+static std::atomic<uint32_t> g_networkIncomingSleepMs{1};
 static std::atomic<uint32_t> g_networkOutgoingTickRateHz{32};
 
 // ======================================================
 // 1) Etat global serveur (thread-safe)
 // ======================================================
-// On utilise atomic<bool> car rcnet_engine_eventQuit() peut être appelée
-// depuis un autre thread.
 static std::atomic<bool> serverIsRunning{true};
 
 // ======================================================
 // 2) Paramètres Simulation Tick
 // ======================================================
 
-// Fréquence simulation (Hz). Exemple: 60 => 60 ticks/s
-static int simulationTickRateHz = 60;
+// Fréquence simulation (Hz). Exemple: 128 => 128 ticks/s
+static int simulationTickRateHz = 128;
 
 // Durée d'un tick simulation en nanosecondes: 1e9 / simulationTickRateHz
 static uint64_t simulationTickDurationNs = 0;
-
-// dt fixe en secondes: 1.0 / simulationTickRateHz (fourni au callback simulation)
-static double simulationFixedDt = 0.0;
 
 // ======================================================
 // 3) Paramètres Network Tick (IN / OUT)
 // ======================================================
 
-// Fréquence réseau (Hz). Exemple: 128 => 128 envois/s
-static int networkIncomingTickRateHz = 128;
-// Durée d'un tick réseau en nanosecondes: 1e9 / networkIncomingTickRateHz
-static uint64_t networkIncomingTickDurationNs = 0;
+// Durée en ms de sommeil entre chaque tick réseau IN (réception de paquets).
+static uint32_t networkIncomingSleepMs = 1;
 
 // Fréquence réseau (Hz). Exemple: 32 => 32 envois/s
 static int networkOutgoingTickRateHz = 32;
@@ -121,10 +129,10 @@ static void rcnet_engine_cleanupRCENet(void)
 
 static bool rcnet_engine_initOpenssl(void)
 {
-    if (OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS, NULL) == 0)
+    if (OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS, nullptr) == 0)
     {
         RCNET_log(RCNET_LOG_ERROR, "Erreur lors de l'initialisation d'OpenSSL : %s",
-                  ERR_error_string(ERR_get_error(), NULL));
+                  ERR_error_string(ERR_get_error(), nullptr));
         return false;
     }
     RCNET_log(RCNET_LOG_INFO, "OpenSSL initialisé avec succès.");
@@ -242,17 +250,21 @@ static bool rcnet_engine_init(void)
     if (!rcnet_engine_initLibSodium()) return false;
 
     // 2) Calcul tick simulation
-    simulationTickDurationNs = static_cast<uint64_t>(1'000'000'000ull) / static_cast<uint64_t>(simulationTickRateHz);
-    simulationFixedDt        = 1.0 / static_cast<double>(simulationTickRateHz);
+    uint64_t Hz = (simulationTickRateHz > 0) ? (uint64_t)simulationTickRateHz : 128ull;
+    g_simTickHz = Hz;
+    g_simTickBaseNs = 1'000'000'000ull / Hz;
+    g_simTickRem    = 1'000'000'000ull % Hz;
+    g_simTickRemAcc = 0;
+    simulationTickDurationNs = g_simTickBaseNs;
 
-    // 3) Calcul tick réseau IN/OUT
-    networkIncomingTickDurationNs = static_cast<uint64_t>(1'000'000'000ull) / static_cast<uint64_t>(networkIncomingTickRateHz);
-    networkOutgoingTickDurationNs = static_cast<uint64_t>(1'000'000'000ull) / static_cast<uint64_t>(networkOutgoingTickRateHz);
+    // 3) Calcul tick réseau OUT
+    uint64_t outHz = (networkOutgoingTickRateHz > 0) ? (uint64_t)networkOutgoingTickRateHz : 32ull;
+    networkOutgoingTickDurationNs = 1'000'000'000ull / outHz;
 
-    // Expose Hz utilisés
-    g_simulationTickRateHz.store((uint32_t)simulationTickRateHz, std::memory_order_relaxed);
-    g_networkIncomingTickRateHz.store((uint32_t)networkIncomingTickRateHz, std::memory_order_relaxed);
-    g_networkOutgoingTickRateHz.store((uint32_t)networkOutgoingTickRateHz, std::memory_order_relaxed);
+    // Expose paramètres utilisés (thread-safe)
+    g_simulationTickRateHz.store((uint32_t)g_simTickHz, std::memory_order_relaxed);
+    g_networkOutgoingTickRateHz.store((uint32_t)outHz, std::memory_order_relaxed);
+    g_networkIncomingSleepMs.store(networkIncomingSleepMs, std::memory_order_relaxed);
 
     return true;
 }
@@ -268,7 +280,7 @@ static void rcnet_engine_quit(void)
 // ======================================================
 
 // 13.A) Tick simulation (logique serveur)
-static inline void rcnet_engine_simulationTick(void)
+static inline void rcnet_engine_simulationUpdate(void)
 {
     // Incrémente le tick courant du serveur de simulation
     simulationTickId++;
@@ -276,37 +288,44 @@ static inline void rcnet_engine_simulationTick(void)
     // Expose le tick courant (thread-safe)
     g_serverSimulationTick.store(simulationTickId, std::memory_order_relaxed);
     
-    // Expose le temps monotone logique du serveur en ns (thread-safe)
-    g_serverTimeNsMonotonic.fetch_add(simulationTickDurationNs, std::memory_order_relaxed);
+    // Expose le temps monotone logique du serveur en nanosecond (thread-safe)
+    uint64_t incNs = g_simTickBaseNs;
+    g_simTickRemAcc += g_simTickRem;
+    if (g_simTickRemAcc >= g_simTickHz)
+    {
+        g_simTickRemAcc -= g_simTickHz;
+        incNs += 1;
+    }
+    g_serverTimeNsMonotonic.fetch_add(incNs, std::memory_order_relaxed);
 
     // Appel callback utilisateur (si défini)
-    if (callbacksServerEngine.rcnet_simulation_update != NULL)
+    if (callbacksServerEngine.rcnet_simulation_update != nullptr)
     {
-        callbacksServerEngine.rcnet_simulation_update(simulationFixedDt);
+        callbacksServerEngine.rcnet_simulation_update(simulationTickId);
     }
 }
 
 // 13.B) Tick réseau IN (réception de paquets, etc.)
-static inline void rcnet_engine_networkIncomingTick(void)
+static inline void rcnet_engine_networkIncomingUpdate(ENetHost* host, const ENetEvent* event)
 {
     // Incrémente networkIncomingTickId pour le réseau IN
     networkIncomingTickId++;
 
     // Appel callback utilisateur (si défini)
-    if (callbacksServerEngine.rcnet_network_incoming_update != NULL)
+    if (callbacksServerEngine.rcnet_network_incoming_update != nullptr)
     {
-        callbacksServerEngine.rcnet_network_incoming_update();
+        callbacksServerEngine.rcnet_network_incoming_update(host, event);
     }
 }
 
 // 13.C) Tick réseau OUT (envoi de snapshots, etc.)
-static inline void rcnet_engine_networkOutgoingTick(void)
+static inline void rcnet_engine_networkOutgoingUpdate(void)
 {   
     // Incrémente networkOutgoingTickId pour le réseau OUT
     networkOutgoingTickId++;
 
     // Appel callback utilisateur (si défini)
-    if (callbacksServerEngine.rcnet_network_outgoing_update != NULL)
+    if (callbacksServerEngine.rcnet_network_outgoing_update != nullptr)
         callbacksServerEngine.rcnet_network_outgoing_update();
 }
 
@@ -328,9 +347,9 @@ uint32_t rcnet_engine_getSimulationTickRateHz(void)
     return g_simulationTickRateHz.load(std::memory_order_relaxed);
 }
 
-uint32_t rcnet_engine_getNetworkIncomingTickRateHz(void)
+uint32_t rcnet_engine_getNetworkIncomingSleepMs(void)
 {
-    return g_networkIncomingTickRateHz.load(std::memory_order_relaxed);
+    return g_networkIncomingSleepMs.load(std::memory_order_relaxed);
 }
 
 uint32_t rcnet_engine_getNetworkOutgoingTickRateHz(void)
@@ -346,78 +365,15 @@ void rcnet_engine_eventQuit(void)
     serverIsRunning.store(false, std::memory_order_relaxed);
 }
 
-// ======================================================
-// 15) Run boucle principale
-// ======================================================
-bool rcnet_engine_run(RCNET_Callbacks* callbacksUser,
-                      int simTickRateArg,
-                      int networkIncomingTickRateArg,
-                      int networkOutgoingTickRateArg)
+// Thread simulation : tick fixe
+static void rcnet_engine_simulationThreadMain(void)
 {
-    // -----------------------
-    // A) Appliquer callbacks
-    // -----------------------
-    if (callbacksUser != NULL)
-        rcnet_engine_setCallbacks(callbacksUser);
-
-    // -----------------------
-    // B) Lire/valider les Hz
-    // -----------------------
-
-    // Simulation: si <= 0, fallback 60
-    simulationTickRateHz = (simTickRateArg > 0) ? simTickRateArg : 60;
-
-    // Réseau IN: si <= 0, fallback 128
-    networkIncomingTickRateHz = (networkIncomingTickRateArg > 0) ? networkIncomingTickRateArg : 128;
-
-    // Réseau OUT: si <= 0, fallback 32
-    networkOutgoingTickRateHz = (networkOutgoingTickRateArg > 0) ? networkOutgoingTickRateArg : 32;
-
-    // Par sécurité, on recalcule les durées de ticks réseau/simulation même si les arguments sont invalides (ex: -1)
-    if (simulationTickRateHz <= 0) simulationTickRateHz = 60;
-    if (networkIncomingTickRateHz <= 0) networkIncomingTickRateHz = 128;
-    if (networkOutgoingTickRateHz <= 0) networkOutgoingTickRateHz = 32;
-
-    // Reset état run (si jamais rcnet_engine_run est relancé)
-    serverIsRunning.store(true, std::memory_order_relaxed);
-    simulationTickId = 0;
-    networkIncomingTickId = 0;
-    networkOutgoingTickId = 0;
-    g_serverSimulationTick.store(0, std::memory_order_relaxed);
-    g_serverTimeNsMonotonic.store(0, std::memory_order_relaxed);
-
-    // -----------------------
-    // C) Init moteur
-    // -----------------------
-    if (!rcnet_engine_init())
-    {
-        rcnet_engine_quit();
-        return false;
-    }
-
-    // -----------------------
-    // D) Callback load
-    // -----------------------
-    if (callbacksServerEngine.rcnet_load != NULL)
-        callbacksServerEngine.rcnet_load();
-
-    // -----------------------
-    // E) Init boucle timing
-    // -----------------------
-
     // lastTimeNs = dernier timestamp (réel)
     uint64_t lastTimeNs = rcnet_engine_getCurrentTimeNs();
 
     // accumulateur simulation: quantité de "temps" à simuler
     uint64_t accSimNs = 0;
 
-    // accumulateur réseau: quantité de "temps" à traiter pour le réseau
-    uint64_t accNetInNs = 0;
-    uint64_t accNetOutNs = 0;
-
-    // -----------------------
-    // F) Boucle principale
-    // -----------------------
     while (serverIsRunning.load(std::memory_order_relaxed))
     {
         // 1) Mesure temps réel
@@ -431,10 +387,8 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser,
         if (frameNs > kMaxFrameClampNs)
             frameNs = kMaxFrameClampNs;
 
-        // 4) On accumule ce temps pour simulation ET réseau
+        // 4) On accumule ce temps pour simulation
         accSimNs += frameNs;
-        accNetInNs += frameNs;
-        accNetOutNs += frameNs;
 
         // -----------------------------------------
         // 5) Ticks simulation : rattrapage limité
@@ -442,10 +396,11 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser,
         uint32_t catchUpSim = 0;
         while (accSimNs >= simulationTickDurationNs && catchUpSim < kMaxCatchUpTicks)
         {
-            rcnet_engine_simulationTick();
+            rcnet_engine_simulationUpdate();
             accSimNs -= simulationTickDurationNs;
             catchUpSim++;
         }
+
         // Si backlog simulation encore trop grand => drop contrôlé
         if (accSimNs >= simulationTickDurationNs)
         {
@@ -458,80 +413,267 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser,
         }
 
         // -----------------------------------------
-        // 6) Ticks réseau (IN): rattrapage limité
+        // 7) Sleep jusqu'au prochain tick SIM
         // -----------------------------------------
-        uint32_t catchUpIn = 0;
-        while (accNetInNs >= networkIncomingTickDurationNs && catchUpIn < kMaxCatchUpTicks)
-        {
-            rcnet_engine_networkIncomingTick();
-            accNetInNs -= networkIncomingTickDurationNs;
-            catchUpIn++;
-        }
-        // Si backlog réseau encore trop grand => drop contrôlé
-        if (accNetInNs >= networkIncomingTickDurationNs)
-        {
-            RCNET_log(RCNET_LOG_WARN,
-                      "Backlog NET IN trop grand: catch-up atteint (%u). Drop backlog.",
-                      kMaxCatchUpTicks);
-
-            accNetInNs = networkIncomingTickDurationNs;
-        }
-
-        // -----------------------------------------
-        // 6b) Ticks réseau (OUT): rattrapage limité
-        // -----------------------------------------
-        uint32_t catchUpOut = 0;
-        while (accNetOutNs >= networkOutgoingTickDurationNs && catchUpOut < kMaxCatchUpTicks)
-        {
-            rcnet_engine_networkOutgoingTick();
-            accNetOutNs -= networkOutgoingTickDurationNs;
-            catchUpOut++;
-        }
-        // Si backlog réseau encore trop grand => drop contrôlé
-        if (accNetOutNs >= networkOutgoingTickDurationNs)
-        {
-            RCNET_log(RCNET_LOG_WARN,
-                      "Backlog NET OUT trop grand: catch-up atteint (%u). Drop backlog.",
-                      kMaxCatchUpTicks);
-
-            accNetOutNs = networkOutgoingTickDurationNs;
-        }
-
-        // -----------------------------------------
-        // 7) Sleep jusqu'au prochain "événement"
-        // -----------------------------------------
-        // On calcule combien de temps avant le prochain tick SIM et le prochain tick NET,
-        // puis on dort jusqu'au plus proche des deux (minimum).
         uint64_t simRemainingNs = (accSimNs < simulationTickDurationNs) ? (simulationTickDurationNs - accSimNs) : 0;
-        uint64_t inRemainingNs  = (accNetInNs < networkIncomingTickDurationNs) ? (networkIncomingTickDurationNs - accNetInNs) : 0;
-        uint64_t outRemainingNs = (accNetOutNs < networkOutgoingTickDurationNs) ? (networkOutgoingTickDurationNs - accNetOutNs) : 0;
 
-        // Le prochain événement = min(simRemaining, netRemaining) si > 0
-        uint64_t sleepNs = 0;
-
-        // min non-zero
-        sleepNs = simRemainingNs;
-        if (sleepNs == 0 || (inRemainingNs != 0 && inRemainingNs < sleepNs)) sleepNs = inRemainingNs;
-        if (sleepNs == 0 || (outRemainingNs != 0 && outRemainingNs < sleepNs)) sleepNs = outRemainingNs;
-
-        // Dors si on a du temps
-        if (sleepNs > 0)
+        if (simRemainingNs > 0)
         {
-            uint64_t targetWakeNs = rcnet_engine_getCurrentTimeNs() + sleepNs;
+            uint64_t targetWakeNs = rcnet_engine_getCurrentTimeNs() + simRemainingNs;
             rcnet_sleep_until_ns(targetWakeNs);
+        }
+    }
+}
+
+// Thread réseau : SEUL thread autorisé à toucher ENet
+static void rcnet_engine_networkThreadMain(void)
+{
+    // -----------------------
+    // A) Créer le serveur ENet (bind/listen)
+    // -----------------------
+    ENetAddress address;
+    enet_address_build_any(&address, ENET_ADDRESS_TYPE_IPV6);
+    address.port = (enet_uint16)g_serverPort;
+    g_enetServerHost = enet_host_create(ENET_ADDRESS_TYPE_ANY, // dual-stack IPv4/IPv6
+                                        &address,
+                                        (size_t)g_serverMaxClients,   // max clients
+                                        (size_t)g_serverChannelCount, // number of channels
+                                        0,                            // incoming bandwidth (0 = unlimited)
+                                        0                             // outgoing bandwidth (0 = unlimited)
+                                       );
+    if (g_enetServerHost == nullptr)
+    {
+        RCNET_log(RCNET_LOG_CRITICAL, "enet_host_create() a échoué (port=%u, maxClients=%u, channels=%u).",
+                  (unsigned)g_serverPort, (unsigned)g_serverMaxClients, (unsigned)g_serverChannelCount);
+
+        // Stop global : sinon le sim thread tourne dans le vide
+        rcnet_engine_eventQuit();
+        return;
+    }
+    else
+    {
+        RCNET_log(RCNET_LOG_INFO, "ENet server listening on port %u (dual-stack)\n", address.port);
+    }
+
+    // -----------------------
+    // B) Timing OUT (tick Hz)
+    // -----------------------
+    // IMPORTANT :
+    // Ici on déclenche le tick OUT sur une horloge ABSOLUE (deadline),
+    // pas sur "combien de temps a duré la loop précédente".
+    // => Ça réduit fortement le jitter, même si enet_host_service() bloque un peu.
+    const uint64_t outPeriodNs = networkOutgoingTickDurationNs;
+
+    // Prochaine deadline OUT (horloge absolue)
+    uint64_t nextOutNs = 0;
+    if (outPeriodNs > 0)
+        nextOutNs = rcnet_engine_getCurrentTimeNs() + outPeriodNs;
+
+    // marge finale avant deadline OUT : on évite de bloquer ENet trop près de la deadline
+    // (plus petit => plus précis mais plus de CPU)
+    constexpr uint64_t kFinalOutMarginNs = 200'000ull; // 200 µs
+
+    while (serverIsRunning.load(std::memory_order_relaxed))
+    {
+        // -----------------------------------------
+        // 1) Calcul du timeout dynamique pour ENet
+        // -----------------------------------------
+        // Objectif : ne jamais bloquer au-delà du prochain tick OUT.
+        // timeout_ms = min(networkIncomingSleepMs, ms_avant_prochain_out_tick)
+        uint32_t timeoutMs = networkIncomingSleepMs;
+
+        // Temps restant avant deadline OUT (ns)
+        uint64_t outRemainingNs = 0;
+
+        if (outPeriodNs > 0)
+        {
+            uint64_t nowNs = rcnet_engine_getCurrentTimeNs();
+
+            // Temps restant avant le prochain tick OUT (deadline absolue)
+            outRemainingNs = (nowNs < nextOutNs) ? (nextOutNs - nowNs) : 0;
+
+            // PIÈGE jitter #2 :
+            // - ns->ms (entier) + oversleep OS peuvent faire rater la deadline OUT
+            // Solution :
+            // - Tant qu'on est "loin", on peut bloquer via enet_host_service(timeoutMs).
+            // - Dans la marge finale (<= kFinalOutMarginNs), on ne bloque PLUS (timeoutMs = 0).
+            if (outRemainingNs <= kFinalOutMarginNs)
+            {
+                timeoutMs = 0;
+            }
+            else
+            {
+                // On retire une marge finale pour revenir AVANT la deadline OUT.
+                // (sinon un oversleep OS de ~0.2-1ms peut créer du jitter OUT)
+                uint64_t safeWaitNs = outRemainingNs - kFinalOutMarginNs;
+
+                // Convert ns -> ms (floor) sur safeWaitNs (c'est volontaire)
+                // => garantit de ne pas bloquer trop longtemps.
+                uint32_t safeWaitMs = (uint32_t)(safeWaitNs / 1'000'000ull);
+
+                // clamp avec networkIncomingSleepMs
+                if (timeoutMs != 0 && safeWaitMs < timeoutMs)
+                    timeoutMs = safeWaitMs;
+
+                // si safeWaitMs tombe à 0, on met 0 (non-bloquant)
+                if (safeWaitMs == 0)
+                    timeoutMs = 0;
+            }
+        }
+
+        // -----------------------------------------
+        // 2) NETWORK IN : pump ENet via enet_host_service()
+        // -----------------------------------------
+        // On "service" ENet avec un timeout court (ou 0 si on veut non-bloquant).
+        ENetEvent event;
+        int serviceResult = enet_host_service(g_enetServerHost, &event, (enet_uint32)timeoutMs);
+
+        if (serviceResult < 0)
+        {
+            RCNET_log(RCNET_LOG_ERROR, "enet_host_service() error");
+            // Option: rcnet_engine_eventQuit();
+            rcnet_engine_networkIncomingUpdate(g_enetServerHost, nullptr);
+        }
+        // Si on a au moins 1 event, on le traite et on draine les suivants sans attendre (timeout 0).
+        else if (serviceResult > 0)
+        {
+            do
+            {
+                // Appel callback utilisateur (réseau IN)
+                rcnet_engine_networkIncomingUpdate(g_enetServerHost, &event);
+
+                if (event.type == ENET_EVENT_TYPE_RECEIVE)
+                    enet_packet_destroy(event.packet);
+
+                // Continue à vider la file d'events sans bloquer
+                serviceResult = enet_host_service(g_enetServerHost, &event, 0);
+            }
+            while (serviceResult > 0);
+        }
+        else if (serviceResult == 0)
+        {
+            // Pas d'événement ENet, mais on peut quand même laisser la callback "tick IN" tourner
+            rcnet_engine_networkIncomingUpdate(g_enetServerHost, nullptr);
+        }
+
+        // -----------------------------------------
+        // 3) NETWORK OUT : cadencer à tick Hz (horloge absolue)
+        // -----------------------------------------
+        // Ici on tick OUT sur deadline absolue "nextOutNs".
+        // Même si le IN a attendu, le OUT "rattrape" avec catch-up limité.
+        if (outPeriodNs > 0)
+        {
+            uint64_t nowNs = rcnet_engine_getCurrentTimeNs();
+
+            uint32_t catchUpOut = 0;
+            while (nowNs >= nextOutNs && catchUpOut < kMaxCatchUpTicks)
+            {
+                rcnet_engine_networkOutgoingUpdate();
+                nextOutNs += outPeriodNs;
+                catchUpOut++;
+            }
+
+            // Si backlog réseau encore trop grand => drop contrôlé
+            if (nowNs >= nextOutNs)
+            {
+                RCNET_log(RCNET_LOG_WARN,
+                          "Backlog NET OUT trop grand: catch-up atteint (%u). Drop backlog.",
+                          kMaxCatchUpTicks);
+
+                // Re-synchronise : on repart sur "maintenant + 1 période"
+                nextOutNs = nowNs + outPeriodNs;
+            }
+        }
+        else
+        {
+            // Sécurité : si outPeriodNs == 0, on ne tick pas OUT
+            // (config invalide, mais on évite division / boucles infinies)
         }
     }
 
     // -----------------------
-    // G) Callback unload
+    // C) Cleanup ENet host
     // -----------------------
-    if (callbacksServerEngine.rcnet_unload != NULL)
+    if (g_enetServerHost != nullptr)
+    {
+        enet_host_destroy(g_enetServerHost);
+        g_enetServerHost = nullptr;
+    }
+
+    RCNET_log(RCNET_LOG_INFO, "ENet server host détruit (thread réseau terminé).");
+}
+
+// ======================================================
+// 15) Run moteur (multi-thread)
+// ======================================================
+bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, const RCNET_ServerConfig* config)
+{
+    // -----------------------
+    // A) Valider inputs
+    // -----------------------
+    if (config == nullptr)
+        return false;
+
+    // -----------------------
+    // B) Appliquer callbacks
+    // -----------------------
+    if (callbacksUser != nullptr)
+        rcnet_engine_setCallbacks(callbacksUser);
+
+    // -----------------------
+    // C) Lire / valider config
+    // -----------------------
+    simulationTickRateHz      = (config->simulationTickHz > 0) ? config->simulationTickHz : 128;
+    networkOutgoingTickRateHz = (config->networkOutgoingTickHz > 0) ? (int)config->networkOutgoingTickHz : 32;
+    g_serverPort = config->port;
+    g_serverMaxClients = config->maxClients;
+    g_serverChannelCount = config->channelCount;
+    networkIncomingSleepMs = config->networkIncomingSleepMs;
+
+    // Reset état run (si jamais rcnet_engine_run est relancé)
+    serverIsRunning.store(true, std::memory_order_relaxed);
+    simulationTickId = 0;
+    networkIncomingTickId = 0;
+    networkOutgoingTickId = 0;
+    g_serverSimulationTick.store(0, std::memory_order_relaxed);
+    g_serverTimeNsMonotonic.store(0, std::memory_order_relaxed);
+
+    // -----------------------
+    // D) Init moteur
+    // -----------------------
+    if (!rcnet_engine_init())
+    {
+        rcnet_engine_quit();
+        return false;
+    }
+
+    // -----------------------
+    // E) Callback load (thread principal)
+    // -----------------------
+    if (callbacksServerEngine.rcnet_load != nullptr)
+        callbacksServerEngine.rcnet_load();
+
+    // -----------------------
+    // F) Lancer threads
+    // -----------------------
+    std::thread simThread(rcnet_engine_simulationThreadMain);
+    std::thread netThread(rcnet_engine_networkThreadMain);
+
+    // -----------------------
+    // G) Join (bloquant)
+    // -----------------------
+    simThread.join();
+    netThread.join();
+
+    // -----------------------
+    // H) Callback unload (thread principal)
+    // -----------------------
+    if (callbacksServerEngine.rcnet_unload != nullptr)
         callbacksServerEngine.rcnet_unload();
 
     // -----------------------
-    // H) Quit / cleanup
+    // I) Quit / cleanup
     // -----------------------
     rcnet_engine_quit();
-
     return true;
 }
