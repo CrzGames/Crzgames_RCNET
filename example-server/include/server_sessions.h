@@ -21,7 +21,6 @@ struct PlayerControl
     uint32_t controlledEntityId = 0;
 };
 
-
 // ============================================================================
 // Données autoritaires spécifiques à un client connecté.
 // ============================================================================
@@ -39,6 +38,9 @@ struct ClientSession
     // =======================================================================
     // Identification du client
     // =======================================================================
+
+    // Indique si le client a réussi le handshake et est authentifié.
+    bool isAuthenticated = false;
 
     // Identifiant unique du compte joueur dans la base de données.
     // Il est généralement obtenu après le handshake / authentification.
