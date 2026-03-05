@@ -1,13 +1,13 @@
 # Format: library=repository:tag ou library=repository:commit_sha
 
 # Dependencies for lib RCNET :
-SDL=https://github.com/libsdl-org/SDL.git:f600c74c80360eaaf8675da7d4ec69dc1670ac57
-Crzgames_Libraries=https://github.com/CrzGames/Crzgames_Libraries.git:87575e19f617ec86c5b4be76c1fbc3c073353be1
+SDL=https://github.com/libsdl-org/SDL.git:c20a058ff431d046c5806bd22aba0835b25d9904
+Crzgames_Libraries=https://github.com/CrzGames/Crzgames_Libraries.git:8c8e223780a46b97be843615d4e8c1edc0cf1711
 nats=https://github.com/nats-io/nats.c.git:v3.12.0
 hiredis=https://github.com/redis/hiredis.git:v1.3.0
-cpp-httplib=https://github.com/yhirose/cpp-httplib.git:v0.34.0
+cpp-httplib=https://github.com/yhirose/cpp-httplib.git:v0.36.0
 cJSON=https://github.com/DaveGamble/cJSON:v1.7.19
-libwebsockets=https://github.com/warmcat/libwebsockets.git:v4.5.2
+libwebsockets=https://github.com/warmcat/libwebsockets.git:v4.5.3
 
 # Dependencies for executable example client :
-Crzgames_RC2D=https://github.com/CrzGames/Crzgames_RC2D.git:1d8315dd6c6bceb68f946dcbdf71c72b472facce
+Crzgames_RC2D=https://github.com/CrzGames/Crzgames_RC2D.git:8e1b0cb6d681257aa42f48463539e9e7ee790921
