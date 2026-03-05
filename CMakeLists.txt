@@ -672,6 +672,7 @@ if(RCNET_BUILD_EXAMPLE)
     ${PROJECT_NAME} # RCNET
   )
 
+  rcnet_configure_rcenet(${RCNET_EXAMPLE_SERVER_TARGET_NAME} PRIVATE)
   rcnet_configure_cjson(${RCNET_EXAMPLE_SERVER_TARGET_NAME} PRIVATE)
 endif()
 

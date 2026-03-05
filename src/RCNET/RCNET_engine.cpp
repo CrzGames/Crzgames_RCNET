@@ -319,14 +319,14 @@ static inline void rcnet_engine_networkIncomingUpdate(ENetHost* host, const ENet
 }
 
 // 13.C) Tick réseau OUT (envoi de snapshots, etc.)
-static inline void rcnet_engine_networkOutgoingUpdate(void)
+static inline void rcnet_engine_networkOutgoingUpdate(ENetHost* host)
 {   
     // Incrémente networkOutgoingTickId pour le réseau OUT
     networkOutgoingTickId++;
 
     // Appel callback utilisateur (si défini)
     if (callbacksServerEngine.rcnet_network_outgoing_update != nullptr)
-        callbacksServerEngine.rcnet_network_outgoing_update();
+        callbacksServerEngine.rcnet_network_outgoing_update(host);
 }
 
 // ======================================================
@@ -568,7 +568,7 @@ static void rcnet_engine_networkThreadMain(void)
             uint32_t catchUpOut = 0;
             while (nowNs >= nextOutNs && catchUpOut < kMaxCatchUpTicks)
             {
-                rcnet_engine_networkOutgoingUpdate();
+                rcnet_engine_networkOutgoingUpdate(g_enetServerHost);
                 nextOutNs += outPeriodNs;
                 catchUpOut++;
             }
