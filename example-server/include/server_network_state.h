@@ -2,7 +2,6 @@
 
 #include <cstdint>       // uint16_t, uint32_t, etc.
 #include <unordered_map> // std::unordered_map pour stocker les entités, sessions, etc.
-#include <atomic>       // std::atomic pour les compteurs d'ID uniques
 
 #include <rcenet/RCENET_enet.h>
 
@@ -11,15 +10,20 @@
 struct NetworkState
 {
     // ------------------------------------------------------------------------
-    // Connections et sessions
+    // Connections - ATTENTION: Thread RÉSEAU UNIQUEMENT
     // ------------------------------------------------------------------------
     
     // Incrémenté à chaque nouvelle connexion pour lui donner un ID unique (différent de l'accountIdDatabase)
-    std::atomic<uint32_t> nextConnectionId{1};
-
-    // --- sessions (par compte) ---
-    std::unordered_map<uint32_t, ClientSession> sessions; // key = connectionId, value = ClientSession
+    uint32_t nextConnectionId = 1; // commence à 1 pour éviter les confusions avec une valeur "0" non initialisée
 
     // --- mapping de connectionId vers ENetPeer* pour envoyer des messages à un client spécifique ---
     std::unordered_map<uint32_t, ENetPeer*> connectionIdToEnetPeer; // key = connectionId, value = ENetPeer*
+
+
+    // ------------------------------------------------------------------------
+    // Sessions - ATTENTION: Thread SIMULATION UNIQUEMENT
+    // ------------------------------------------------------------------------
+
+    // Mapping de connectionId vers ClientSession (sessions actives pour les clients connectés)
+    std::unordered_map<uint32_t, ClientSession> sessions; // key = connectionId, value = ClientSession
 };

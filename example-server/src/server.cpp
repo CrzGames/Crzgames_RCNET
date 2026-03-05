@@ -30,8 +30,7 @@ void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
     if (event->type == ENET_EVENT_TYPE_CONNECT)
     {
         // Générer un connectionId unique pour cette connexion réseau qui vient d'arriver
-        // (en utilisant un compteur atomique pour éviter les problèmes de concurrence)
-        uint32_t connectionId = networkState.nextConnectionId.fetch_add(1, std::memory_order_relaxed);
+        uint32_t connectionId = networkState.nextConnectionId++;
 
         // Associer ce connectionId à event->peer->data pour pouvoir l'identifier lors de futurs événements (inputs, déconnexion, etc.)
         event->peer->data = reinterpret_cast<void*>(static_cast<uintptr_t>(connectionId));
@@ -58,6 +57,10 @@ void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
         // Supprimer le mapping connectionId -> ENetPeer*
         networkState.connectionIdToEnetPeer.erase(connectionId);
 
+        // Supprimer event->peer->data pour éviter les problèmes si jamais on reçoit d'autres événements pour ce peer après la déconnexion
+        if (event->peer != nullptr)
+            event->peer->data = nullptr;
+
         // Push un message de déconnexion vers la simulation pour nettoyer la session, etc.
         NetworkINToSimulationMessage message{};
         message.type = NetworkINToSimulationMessageType::DISCONNECT;
@@ -72,6 +75,10 @@ void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
         uint32_t connectionId = 0;
         if (event->peer != nullptr && event->peer->data != nullptr)
             connectionId = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(event->peer->data));
+
+        // Si connectionId invalide, ignorer ce message reçu (sécurité)
+        if (connectionId == 0)
+            return;
 
         // channel 0 =  handshake / auth / encrypt (reliable)
         // channel 1 = inputs (unreliable)
@@ -177,6 +184,7 @@ void rcnet_simulation_update(uint64_t currentTick)
             // Créer une session pour ce client avec cette connectionId
             ClientSession session{};
             session.connectionId = msg.connectionId;
+            session.isAuthenticated = false; // pas encore (handshake)
             session.accountIdDatabase = 0; // pas encore (handshake)
             session.serverNextSnapshotId = 1;
             session.serverLastSentSnapshotId = 0;
