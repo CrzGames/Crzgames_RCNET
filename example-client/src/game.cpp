@@ -18,9 +18,8 @@ static void net_connect_localhost(uint16_t port)
     ENetAddress address;
     ENetEvent event;
 
-    // 1) Résoudre "localhost" (ANY -> tente IPv6 puis fallback IPv4)
-    // Tu peux aussi mettre "127.0.0.1" ou "::1" directement.
-    enet_address_set_host(&address, ENET_ADDRESS_TYPE_ANY, "localhost");
+    // 1) Résoudre l'adresse localhost
+    enet_address_set_host(&address, ENET_ADDRESS_TYPE_ANY, "127.0.0.1");
     address.port = port;
 
     // 2) Créer le host client après résolution, en utilisant address.type
