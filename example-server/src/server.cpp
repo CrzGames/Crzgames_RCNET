@@ -49,7 +49,7 @@ void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
         message.connectionId = connectionId;
         netToSimQueue.push(message);
 
-        RCNET_log(RCNET_LOG_INFO, "[NETWORK_IN] [CONNECT] - connectionId=%u\n", connectionId);
+        RCNET_log(RCNET_LOG_INFO, "[SERVER] [NETWORK_IN] [CONNECT] - connectionId=%u\n", connectionId);
     }
     else if (event->type == ENET_EVENT_TYPE_DISCONNECT ||
              event->type == ENET_EVENT_TYPE_DISCONNECT_TIMEOUT)
@@ -72,7 +72,7 @@ void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
         message.connectionId = connectionId;
         netToSimQueue.push(message);
 
-        RCNET_log(RCNET_LOG_INFO, "[NETWORK_IN] [DISCONNECT] - connectionId=%u\n", connectionId);
+        RCNET_log(RCNET_LOG_INFO, "[SERVER] [NETWORK_IN] [DISCONNECT] - connectionId=%u\n", connectionId);
     }
     else if (event->type == ENET_EVENT_TYPE_RECEIVE)
     {
@@ -98,7 +98,7 @@ void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
         {
             if (event->packet != nullptr && event->packet->dataLength == sizeof(ClientInputCommand))
             {
-                RCNET_log(RCNET_LOG_DEBUG, "[NETWORK_IN] [INPUT] - Packet received from connectionId=%u (size=%u bytes)\n",
+                RCNET_log(RCNET_LOG_DEBUG, "[SERVER] [NETWORK_IN] [INPUT] - Packet received from connectionId=%u (size=%u bytes)\n",
                           connectionId,
                           (unsigned)event->packet->dataLength);
 
@@ -167,7 +167,7 @@ void rcnet_network_outgoing_update(ENetHost* host)
             if (packet)
                 enet_peer_send(peer, channelId, packet);
 
-            RCNET_log(RCNET_LOG_DEBUG, "[NETWORK_OUT] [SNAPSHOT_FULL] - Sent snapshotId=%u to connectionId=%u (size=%zu bytes)\n",
+            RCNET_log(RCNET_LOG_DEBUG, "[SERVER] [NETWORK_OUT] [SNAPSHOT_FULL] - Sent snapshotId=%u to connectionId=%u (size=%zu bytes)\n",
                       ((SnapshotHeader*)msg.payload.data())->snapshotId,
                       msg.connectionId,
                       msg.payload.size());
@@ -212,7 +212,7 @@ void rcnet_simulation_update(uint64_t currentTick)
             // Ajouter la session au network state
             networkState.sessions[msg.connectionId] = session;
 
-            RCNET_log(RCNET_LOG_INFO, "[SIMULATION] [CONNECT] - connectionId=%u (session created)\n", msg.connectionId);
+            RCNET_log(RCNET_LOG_INFO, "[SERVER] [SIMULATION] [CONNECT] - connectionId=%u (session created)\n", msg.connectionId);
         }
         else if (msg.type == NetworkINToSimulationMessageType::DISCONNECT)
         {
@@ -223,7 +223,7 @@ void rcnet_simulation_update(uint64_t currentTick)
                 networkState.sessions.erase(sit);
             }
 
-            RCNET_log(RCNET_LOG_INFO, "[SIMULATION] [DISCONNECT] - connectionId=%u (session removed)\n", msg.connectionId);
+            RCNET_log(RCNET_LOG_INFO, "[SERVER] [SIMULATION] [DISCONNECT] - connectionId=%u (session removed)\n", msg.connectionId);
         }
         else if (msg.type == NetworkINToSimulationMessageType::INPUT)
         {
@@ -231,7 +231,7 @@ void rcnet_simulation_update(uint64_t currentTick)
             std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
             if (sit == networkState.sessions.end())
             {
-                RCNET_log(RCNET_LOG_WARN, "[SIMULATION] [INPUT] - Received input for unknown connectionId=%u (ignoring)\n", msg.connectionId);
+                RCNET_log(RCNET_LOG_WARN, "[SERVER] [SIMULATION] [INPUT] - Received input for unknown connectionId=%u (ignoring)\n", msg.connectionId);
                 continue;
             }
 
@@ -255,7 +255,7 @@ void rcnet_simulation_update(uint64_t currentTick)
             // parce que "processed" = doit être mis à jour quand l’input est réellement appliqué au monde (pas au moment où il arrive).
 
             RCNET_log(RCNET_LOG_DEBUG,
-                      "[SIMULATION] [INPUT] - queued connectionId=%u seq=%u clientTick=%u (queue size=%zu)\n",
+                      "[SERVER] [SIMULATION] [INPUT] - queued connectionId=%u seq=%u clientTick=%u (queue size=%zu)\n",
                       msg.connectionId,
                       msg.input.inputSequenceNumber,
                       msg.input.clientTick,

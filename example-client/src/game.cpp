@@ -125,21 +125,19 @@ static void net_pump_events(void)
         switch (event.type)
         {
             case ENET_EVENT_TYPE_CONNECT:
-                puts("ENet: EVENT CONNECT.");
+                printf("[CLIENT] [NETWORK_IN] [CONNECT] - Connected to server.\n");
                 break;
 
             case ENET_EVENT_TYPE_RECEIVE:
                 // event.packet->data / dataLength
-                printf("ENet: RECV %u bytes on channel %u\n",
-                       (unsigned)event.packet->dataLength,
-                       (unsigned)event.channelID);
+                printf("[CLIENT] [NETWORK_IN] [SNAPSHOT] - Packet received from server (size=%u bytes)\n", (unsigned)event.packet->dataLength);
 
                 // IMPORTANT: détruire le packet après usage
                 enet_packet_destroy(event.packet);
                 break;
 
             case ENET_EVENT_TYPE_DISCONNECT:
-                puts("ENet: DISCONNECT.");
+                printf("[CLIENT] [NETWORK_IN] [DISCONNECT] - Disconnected from server.\n");
                 enetServerPeer = NULL;
                 break;
 
