@@ -6,7 +6,7 @@
 #include "server_game_config.h"
 
 // Simulation principale du monde appelée chaque tick serveur
-void ServerWorld_Simulate(GameState& gameState, uint64_t currentTick);
+void ServerWorld_Simulate(GameState& gameState, uint64_t currentTick, uint64_t serverTimeNs, uint64_t dtNs, double dt);
 
 // Spawn d'un joueur
 uint32_t SpawnPlayer(GameState& gameState, PlayerType type);

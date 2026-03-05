@@ -1,6 +1,7 @@
 #include "server_context.h"
 #include "server_network_snapshot_packets.h"
 #include "server_world.h"
+#include "server_debug_network_stats.h"
 
 #include <RCNET/RCNET.h>
 
@@ -135,12 +136,12 @@ static void ServerSimulationUpdate_ProcessIncomingNetworkMessages(
     }
 }
 
-static void ServerSimulationUpdate_RunGameplayLogicAndWorldSimulation(GameState& gameState, uint64_t currentTick)
+static void ServerSimulationUpdate_RunGameplayLogicAndWorldSimulation(GameState& gameState, uint64_t currentTick, uint64_t serverTimeNs, uint64_t dtNs, double dt)
 {
     // ================================================================================
     // SIMULER LE MONDE, APPLIQUER LA LOGIQUE DE JEU, ETC.
     // ================================================================================
-    ServerWorld_Simulate(gameState, currentTick);
+    ServerWorld_Simulate(gameState, currentTick, serverTimeNs, dtNs, dt);
 }   
 
 static bool ServerSimulationUpdate_ShouldBuildAndSendSnapshotsBasedOnNetworkOutgoingRate(uint64_t currentTick)
@@ -162,6 +163,13 @@ static bool ServerSimulationUpdate_ShouldBuildAndSendSnapshotsBasedOnNetworkOutg
     uint32_t outHz = rcnet_engine_getNetworkOutgoingTickRateHz();
     uint32_t period = rcnet_engine_computeSnapshotPeriodFromRates(simHz, outHz);
 
+    /*RCNET_log(RCNET_LOG_DEBUG,
+              "[SERVER] [SIMULATION] currentTick=%llu simHz=%u outHz=%u snapshotPeriod=%u\n",
+              (unsigned long long)currentTick,
+              simHz,
+              outHz,
+              period);*/
+
     // Si on n'est pas sur un tick "d'envoi", on s'arrête ici.
     // (Tu continues évidemment à simuler ton monde au-dessus, mais pas tu ne construis/envoyes de snapshot ce tick)
     if ((period != 0) && ((currentTick % period) != 0))
@@ -177,15 +185,9 @@ static void ServerSimulationUpdate_CreateSnapshotFullAndPushToSimulationToNetwor
     ClientSession& session,
     uint64_t currentTick)
 {
-    // Générer un snapshotId unique pour ce snapshot (incrémenter le compteur de la session)
-    uint32_t snapshotId = session.serverNextSnapshotId++;
-
-    // Mettre à jour le dernier snapshotId envoyé pour cette session
-    session.serverLastSentSnapshotId = snapshotId;
-
     // Construire un snapshot (pour l’instant: header uniquement)
     SnapshotHeader header{};
-    header.snapshotId = snapshotId;
+    header.snapshotId = 0; // sera incrémenté plus tard lors de l'envoie du snapshot
     header.serverTick = currentTick;
 
     // Construire un message de snapshot à envoyer au client via la queue simulation -> réseau
@@ -197,6 +199,9 @@ static void ServerSimulationUpdate_CreateSnapshotFullAndPushToSimulationToNetwor
     std::memcpy(outMsg.payload.data(), &header, sizeof(SnapshotHeader));
 
     simToNetQueue.push(outMsg);
+
+    // Debug stats
+    g_dbg_snapshotsBuilt++;
 }
 
 static void ServerSimulationUpdate_BuildSnapshotsForAllSessionsAndEnqueueToNetworkOut(
@@ -224,7 +229,7 @@ static void ServerSimulationUpdate_BuildSnapshotsForAllSessionsAndEnqueueToNetwo
 // Public entry point called by server_callbacks.cpp
 // ======================================================================================
 
-void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(uint64_t currentTick)
+void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(uint64_t currentTick, uint64_t serverTimeNs, uint64_t dtNs, double dt)
 {
     // 1) Récupérer la queue réseau -> simulation et la queue simulation -> réseau (pour envoyer des messages à la fin de ce tick)
     NetworkINToSimulationQueue& netToSimQueue = GetNetworkINToSimulationQueue();
@@ -242,7 +247,7 @@ void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(uint64_t cur
     ServerSimulationUpdate_ProcessIncomingNetworkMessages(networkState, messages);
 
     // 5) Simuler le monde, appliquer la logique de jeu, etc.
-    ServerSimulationUpdate_RunGameplayLogicAndWorldSimulation(gameState, currentTick);
+    ServerSimulationUpdate_RunGameplayLogicAndWorldSimulation(gameState, currentTick, serverTimeNs, dtNs, dt);
 
     // 6) Bloquer la construction/envoi des snapshots au rythme du NETWORK OUT (ex: 32Hz) et pas de la SIMULATION (ex: 128Hz)
     if (!ServerSimulationUpdate_ShouldBuildAndSendSnapshotsBasedOnNetworkOutgoingRate(currentTick))

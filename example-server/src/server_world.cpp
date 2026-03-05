@@ -27,7 +27,7 @@ uint32_t SpawnPlayer(GameState& gameState, PlayerType type)
     return entityId;
 }
 
-void ServerWorld_Simulate(GameState& gameState, uint64_t currentTick)
+void ServerWorld_Simulate(GameState& gameState, uint64_t currentTick, uint64_t serverTimeNs, uint64_t dtNs, double dt)
 {
     // Appliquer les inputs des joueurs au monde
     ServerWorld_ApplyPlayerInputs(gameState, currentTick);

@@ -53,7 +53,7 @@ typedef struct RCNET_ServerConfig
 typedef struct RCNET_Callbacks {
     void (*rcnet_load)(void);
     void (*rcnet_unload)(void);
-    void (*rcnet_simulation_update)(uint64_t currentTick);
+    void (*rcnet_simulation_update)(uint64_t currentTick, uint64_t serverTimeNs, uint64_t dtNs, double dt);
     void (*rcnet_network_incoming_update)(ENetHost* host, const ENetEvent* event);
     void (*rcnet_network_outgoing_update)(ENetHost* host);
 } RCNET_Callbacks;

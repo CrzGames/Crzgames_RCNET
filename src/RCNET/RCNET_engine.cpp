@@ -282,13 +282,9 @@ static void rcnet_engine_quit(void)
 // 13.A) Tick simulation (logique serveur)
 static inline void rcnet_engine_simulationUpdate(void)
 {
-    // Incrémente le tick courant du serveur de simulation
     simulationTickId++;
-
-    // Expose le tick courant (thread-safe)
     g_serverSimulationTick.store(simulationTickId, std::memory_order_relaxed);
-    
-    // Expose le temps monotone logique du serveur en nanosecond (thread-safe)
+
     uint64_t incNs = g_simTickBaseNs;
     g_simTickRemAcc += g_simTickRem;
     if (g_simTickRemAcc >= g_simTickHz)
@@ -296,13 +292,16 @@ static inline void rcnet_engine_simulationUpdate(void)
         g_simTickRemAcc -= g_simTickHz;
         incNs += 1;
     }
-    g_serverTimeNsMonotonic.fetch_add(incNs, std::memory_order_relaxed);
 
-    // Appel callback utilisateur (si défini)
-    if (callbacksServerEngine.rcnet_simulation_update != nullptr)
-    {
-        callbacksServerEngine.rcnet_simulation_update(simulationTickId);
-    }
+    uint64_t dtNs = incNs;
+    constexpr double kNsToSec = 1.0 / 1'000'000'000.0;
+    double dt = (double)dtNs * kNsToSec;
+
+    uint64_t prev = g_serverTimeNsMonotonic.fetch_add(incNs, std::memory_order_relaxed);
+    uint64_t serverTimeNs = prev + incNs;
+
+    if (callbacksServerEngine.rcnet_simulation_update)
+        callbacksServerEngine.rcnet_simulation_update(simulationTickId, serverTimeNs, dtNs, dt);
 }
 
 // 13.B) Tick réseau IN (réception de paquets, etc.)

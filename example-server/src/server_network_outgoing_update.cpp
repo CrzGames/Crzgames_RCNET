@@ -1,5 +1,6 @@
 #include "server_context.h"
 #include "server_network_snapshot_packets.h"
+#include "server_debug_network_stats.h"
 
 #include <RCNET/RCNET.h>
 
@@ -53,36 +54,58 @@ static ENetPeer* ServerNetworkOutgoingUpdate_FindPeerForConnectionIdOrNull(
 }
 
 static void ServerNetworkOutgoingUpdate_HandleMessageType_SnapshotFull_SendUnreliable(
+    NetworkState& networkState,
     ENetPeer* peer,
     const SimulationToNetworkOUTMessage& msg)
 {
-    // Traiter le message à envoyer en fonction de son type (snapshot full, snapshot delta, event, etc.)
-    if (msg.type == SimulationToNetworkOUTMessageType::SNAPSHOT_FULL)
+    if (msg.type != SimulationToNetworkOUTMessageType::SNAPSHOT_FULL)
+        return;
+
+    if (msg.payload.size() < sizeof(SnapshotHeader))
+        return;
+
+    // 1) Trouver la session pour assigner un snapshotId "envoyé réellement"
+    std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
+    if (sit == networkState.sessions.end())
+        return;
+
+    ClientSession& session = sit->second;
+
+    // 2) Lire le header (copie), patcher snapshotId, réécrire dans payload
+    SnapshotHeader header{};
+    std::memcpy(&header, msg.payload.data(), sizeof(SnapshotHeader));
+
+    const uint32_t snapshotId = session.serverNextSnapshotId++;
+    header.snapshotId = snapshotId;
+    header.serverTimeNs = rcnet_engine_getCurrentServerTimeNsMonotonic();
+
+    // Mettre à jour le "dernier envoyé" maintenant (car c'est VRAIMENT envoyé)
+    session.serverLastSentSnapshotId = snapshotId;
+
+    // Créer un payload patché (car msg est const)
+    std::vector<uint8_t> patchedPayload = msg.payload;
+    std::memcpy(patchedPayload.data(), &header, sizeof(SnapshotHeader));
+
+    // 3) ENet send
+    const enet_uint8 channelId = 2;
+
+    ENetPacket* packet = enet_packet_create(
+        patchedPayload.data(),
+        patchedPayload.size(),
+        0 // UNRELIABLE
+    );
+
+    if (packet)
     {
-        // channel snapshots (ex: 2)
-        const enet_uint8 channelId = 2;
-
-        // Créer un ENetPacket à partir du payload du message (données du snapshot)
-        ENetPacket* packet = enet_packet_create(
-            msg.payload.data(),
-            msg.payload.size(),
-            0 // UNRELIABLE pour snapshot full
-        );
-
-        // Envoyer le packet à ce client sur le channel approprié
-        // Pas vraiment envoyer le packet directement ici, mais plutôt le mettre en queue d'envoi
-        // d'ENet pour qu'il soit envoyé au bon moment (ENet gère ça en interne)
-        if (packet)
-            enet_peer_send(peer, channelId, packet);
-
-        // Log : ici on lit le header qui est au début du payload
-        const SnapshotHeader* header = reinterpret_cast<const SnapshotHeader*>(msg.payload.data());
-        RCNET_log(RCNET_LOG_INFO,
-                  "[SERVER] [NETWORK_OUT] [SNAPSHOT_FULL] - Sent snapshotId=%u to connectionId=%u (size=%zu bytes)\n",
-                  (header != nullptr) ? header->snapshotId : 0u,
-                  msg.connectionId,
-                  msg.payload.size());
+        enet_peer_send(peer, channelId, packet);
+        g_dbg_snapshotsSent++;
     }
+
+    RCNET_log(RCNET_LOG_INFO,
+              "[SERVER] [NETWORK_OUT] [SNAPSHOT_FULL] - Sent snapshotId=%u to connectionId=%u (size=%zu bytes)\n",
+              snapshotId,
+              msg.connectionId,
+              patchedPayload.size());
 }
 
 static void ServerNetworkOutgoingUpdate_SendCoalescedMessagesToAllPeers(
@@ -100,7 +123,7 @@ static void ServerNetworkOutgoingUpdate_SendCoalescedMessagesToAllPeers(
         if (!peer)
             continue;
 
-        ServerNetworkOutgoingUpdate_HandleMessageType_SnapshotFull_SendUnreliable(peer, msg);
+        ServerNetworkOutgoingUpdate_HandleMessageType_SnapshotFull_SendUnreliable(networkState, peer, msg);
     }
 }
 
