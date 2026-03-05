@@ -31,11 +31,7 @@ static void ServerSimulationUpdate_HandleConnectMessage(
     session.connectionId = msg.connectionId;
     session.isAuthenticated = false; // pas encore (handshake)
     session.accountIdDatabase = 0;    // pas encore (handshake)
-    session.serverNextSnapshotId = 1;
-    session.serverLastSentSnapshotId = 0;
-    session.clientLastAckedSnapshotId = 0;
     session.serverLastProcessedInputSequenceNumber = 0;
-    session.serverLastAckedInputSequenceNumberToClient = 0;
 
     // Ajouter la session au network state
     networkState.sessions[msg.connectionId] = session;
@@ -81,6 +77,9 @@ static void ServerSimulationUpdate_HandleInputMessage(
     // Garde le dernier input reçu (utile si on n’a rien de neuf ce tick)
     session.latestReceivedInputCommand = msg.input;
 
+    // Met à jour le dernier snapshot ACKé par le client (pour la reconciliation côté client et pour estimer la latence)
+    session.clientLastAckedSnapshotId = msg.input.lastReceivedSnapshotId;
+
     // Anti-doublons / ordre
     if (msg.input.inputSequenceNumber <= session.serverLastProcessedInputSequenceNumber)
     {
@@ -95,10 +94,9 @@ static void ServerSimulationUpdate_HandleInputMessage(
     // parce que "processed" = doit être mis à jour quand l’input est réellement appliqué au monde (pas au moment où il arrive).
 
     RCNET_log(RCNET_LOG_INFO,
-              "[SERVER] [SIMULATION] [INPUT] - queued connectionId=%u seq=%u clientTick=%u (queue size=%zu)\n",
+              "[SERVER] [SIMULATION] [INPUT] - queued connectionId=%u seq=%u (queue size=%zu)\n",
               msg.connectionId,
               msg.input.inputSequenceNumber,
-              msg.input.clientTick,
               session.pendingInputCommandsQueue.size());
 }
 
@@ -188,8 +186,8 @@ static void ServerSimulationUpdate_CreateSnapshotFullAndPushToSimulationToNetwor
     // Construire un snapshot (pour l’instant: header uniquement)
     SnapshotHeader header{};
     header.serverTick = currentTick;
-    // le reste des propriétés du header (snapshotId, serverTimeNs, lastProcessedInputSequenceNumber) 
-    // seront patchées plus tard au moment de l’envoi réel dans server_network_outgoing_update.cpp
+    header.serverTimeNs = rcnet_engine_getCurrentServerTimeNsMonotonic();
+    header.lastProcessedInputSequenceNumber = session.serverLastProcessedInputSequenceNumber;
 
     // Construire un message de snapshot à envoyer au client via la queue simulation -> réseau
     SimulationToNetworkOUTMessage outMsg{};

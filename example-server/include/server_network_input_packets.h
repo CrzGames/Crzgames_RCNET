@@ -41,13 +41,14 @@ struct ClientInputCommand
     //  - d’envoyer un ACK pour la reconciliation côté client
     uint32_t inputSequenceNumber = 0;
 
-    // Tick logique client au moment où cet input a été généré.
-    // Utilisé pour :
-    //  - debug
-    //  - estimation de latence
-    //  - éventuelle lag compensation (avec validation serveur)
-    uint32_t clientTick = 0;
-
+    // Identifiant du dernier snapshot reçu par le client (ACK implicite).
+    // Utile pour le serveur afin de savoir quel snapshot a été reçu par le client
+    // et ainsi :
+    //  - estimer la latence réseau
+    //  - implémenter une compression différentielle (delta compression)
+    //  - debug réseau.
+    uint32_t lastReceivedSnapshotId = 0;
+    
 
     // =========================================================================
     // MOUVEMENT

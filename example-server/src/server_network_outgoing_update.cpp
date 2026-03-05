@@ -77,8 +77,6 @@ static void ServerNetworkOutgoingUpdate_HandleMessageType_SnapshotFull_SendUnrel
 
     const uint32_t snapshotId = session.serverNextSnapshotId++;
     header.snapshotId = snapshotId;
-    header.serverTimeNs = rcnet_engine_getCurrentServerTimeNsMonotonic();
-    header.lastProcessedInputSequenceNumber = session.serverLastProcessedInputSequenceNumber;
 
     // Mettre à jour le "dernier envoyé" maintenant (car c'est VRAIMENT envoyé)
     session.serverLastSentSnapshotId = snapshotId;

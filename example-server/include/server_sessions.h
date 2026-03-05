@@ -134,16 +134,4 @@ struct ClientSession
     // - de calculer un delta snapshot
     // - de libérer les anciens snapshots en mémoire
     uint32_t clientLastAckedSnapshotId = 0;
-
-
-    // Dernier inputSequenceNumber que le serveur confirme au client.
-    //
-    // Cette valeur est généralement envoyée dans les snapshots.
-    //
-    // Elle permet au client de savoir quels inputs ont été
-    // réellement appliqués par le serveur.
-    //
-    // Le client peut alors supprimer ces inputs de son buffer
-    // de prediction et ne garder que les inputs non confirmés.
-    uint32_t serverLastAckedInputSequenceNumberToClient = 0;
 };
