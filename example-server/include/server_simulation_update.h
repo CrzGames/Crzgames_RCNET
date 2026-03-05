@@ -1,0 +1,3 @@
+#pragma once
+
+void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(uint64_t currentTick);
