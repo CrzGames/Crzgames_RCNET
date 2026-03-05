@@ -4,15 +4,14 @@
 
 #include <RCNET/RCNET.h>
 
-#include <cstdint> // uintptr_t
-#include <cstring> // memcpy
-#include <deque>   // std::deque
-#include <unordered_map> // std::unordered_map
-#include <vector>
+#include <cstdint>         // uintptr_t
+#include <cstring>         // memcpy
+#include <deque>           // std::deque
+#include <unordered_map>   // std::unordered_map
+#include <vector>          // std::vector
 
 void rcnet_load(void)
 {
-
 }
 
 void rcnet_unload(void)
@@ -98,7 +97,8 @@ void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
         {
             if (event->packet != nullptr && event->packet->dataLength == sizeof(ClientInputCommand))
             {
-                RCNET_log(RCNET_LOG_INFO, "[SERVER] [NETWORK_IN] [INPUT] - Packet received from connectionId=%u (size=%u bytes)\n",
+                RCNET_log(RCNET_LOG_INFO,
+                          "[SERVER] [NETWORK_IN] [INPUT] - Packet received from connectionId=%u (size=%u bytes)\n",
                           connectionId,
                           (unsigned)event->packet->dataLength);
 
@@ -110,7 +110,7 @@ void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
 
                 // Push un message vers la simulation pour traiter cet input
                 NetworkINToSimulationMessage message{};
-                message.type = NetworkINToSimulationMessageType::INPUT;
+                message.type = NetworkINToSimulationMessageType::PACKET_INPUT;
                 message.connectionId = connectionId;
                 message.input = inputCmd;
 
@@ -143,12 +143,30 @@ void rcnet_network_outgoing_update(ENetHost* host)
     std::deque<SimulationToNetworkOUTMessage> outMessages;
     simToNetQueue.drain(outMessages);
 
-    // 4) Traiter les messages à envoyer au réseau
+    // 4) COALESCING : garder uniquement le DERNIER message par client (connectionId)
+    //
+    // Pourquoi:
+    // - Si la simulation pousse plus vite que NET OUT (ou backlog), la queue peut contenir plusieurs snapshots par client.
+    // - Envoyer tous les snapshots est inutile : le client veut le dernier état.
+    // - Pour delta compression plus tard, tu feras quelque chose de plus fin (ACK + history), mais ce coalescing reste utile.
+    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage> lastMsgPerConnectionId;
+
     for (std::deque<SimulationToNetworkOUTMessage>::iterator it = outMessages.begin();
          it != outMessages.end();
          ++it)
     {
         SimulationToNetworkOUTMessage& msg = *it;
+
+        // Remplace l'ancien => on conserve le dernier snapshot de cette connectionId
+        lastMsgPerConnectionId[msg.connectionId] = msg;
+    }
+
+    // 5) Envoyer uniquement le dernier snapshot par client
+    for (std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>::iterator it = lastMsgPerConnectionId.begin();
+         it != lastMsgPerConnectionId.end();
+         ++it)
+    {
+        SimulationToNetworkOUTMessage& msg = it->second;
 
         // Identifier le client (ENetPeer*) à qui envoyer ce message en utilisant msg.connectionId et le mapping dans networkState
         std::unordered_map<uint32_t, ENetPeer*>::iterator pit = networkState.connectionIdToEnetPeer.find(msg.connectionId);
@@ -160,23 +178,30 @@ void rcnet_network_outgoing_update(ENetHost* host)
         if (!peer)
             continue;
 
-        // Traiter le message à envoyer en fonction de son type (snapshot full, delta, event, etc.)
+        // Traiter le message à envoyer en fonction de son type (snapshot full, snapshot delta, event, etc.)
         if (msg.type == SimulationToNetworkOUTMessageType::SNAPSHOT_FULL)
         {
             // channel snapshots (ex: 2)
             const enet_uint8 channelId = 2;
 
+            // Créer un ENetPacket à partir du payload du message (données du snapshot)
             ENetPacket* packet = enet_packet_create(
                 msg.payload.data(),
                 msg.payload.size(),
-                0 // UNRELIABLE pour snapshot
+                0 // UNRELIABLE pour snapshot full
             );
 
+            // Envoyer le packet à ce client sur le channel approprié
+            // Pas vraiment envoyer le packet directement ici, mais plutôt le mettre en queue d'envoi 
+            // d'ENet pour qu'il soit envoyé au bon moment (ENet gère ça en interne)
             if (packet)
                 enet_peer_send(peer, channelId, packet);
 
-            RCNET_log(RCNET_LOG_INFO, "[SERVER] [NETWORK_OUT] [SNAPSHOT_FULL] - Sent snapshotId=%u to connectionId=%u (size=%zu bytes)\n",
-                      ((SnapshotHeader*)msg.payload.data())->snapshotId,
+            // Log : ici on lit le header qui est au début du payload
+            const SnapshotHeader* header = reinterpret_cast<const SnapshotHeader*>(msg.payload.data());
+            RCNET_log(RCNET_LOG_INFO,
+                      "[SERVER] [NETWORK_OUT] [SNAPSHOT_FULL] - Sent snapshotId=%u to connectionId=%u (size=%zu bytes)\n",
+                      (header != nullptr) ? header->snapshotId : 0u,
                       msg.connectionId,
                       msg.payload.size());
         }
@@ -197,7 +222,7 @@ void rcnet_simulation_update(uint64_t currentTick)
     GameState& gameState = GetGameState();
     NetworkState& networkState = GetNetworkState();
 
-    // 4) Traiter les messages
+    // 4) Traiter les messages réseau (création/suppression session, input queue, etc.)
     for (std::deque<NetworkINToSimulationMessage>::iterator it = messages.begin();
          it != messages.end();
          ++it)
@@ -210,7 +235,7 @@ void rcnet_simulation_update(uint64_t currentTick)
             ClientSession session{};
             session.connectionId = msg.connectionId;
             session.isAuthenticated = false; // pas encore (handshake)
-            session.accountIdDatabase = 0; // pas encore (handshake)
+            session.accountIdDatabase = 0;    // pas encore (handshake)
             session.serverNextSnapshotId = 1;
             session.serverLastSentSnapshotId = 0;
             session.clientLastAckedSnapshotId = 0;
@@ -220,7 +245,9 @@ void rcnet_simulation_update(uint64_t currentTick)
             // Ajouter la session au network state
             networkState.sessions[msg.connectionId] = session;
 
-            RCNET_log(RCNET_LOG_INFO, "[SERVER] [SIMULATION] [CONNECT] - connectionId=%u (session created)\n", msg.connectionId);
+            RCNET_log(RCNET_LOG_INFO,
+                      "[SERVER] [SIMULATION] [CONNECT] - connectionId=%u (session created)\n",
+                      msg.connectionId);
         }
         else if (msg.type == NetworkINToSimulationMessageType::DISCONNECT)
         {
@@ -231,15 +258,19 @@ void rcnet_simulation_update(uint64_t currentTick)
                 networkState.sessions.erase(sit);
             }
 
-            RCNET_log(RCNET_LOG_INFO, "[SERVER] [SIMULATION] [DISCONNECT] - connectionId=%u (session removed)\n", msg.connectionId);
+            RCNET_log(RCNET_LOG_INFO,
+                      "[SERVER] [SIMULATION] [DISCONNECT] - connectionId=%u (session removed)\n",
+                      msg.connectionId);
         }
-        else if (msg.type == NetworkINToSimulationMessageType::INPUT)
+        else if (msg.type == NetworkINToSimulationMessageType::PACKET_INPUT)
         {
             // Trouver la session du client qui a envoyé cet input
             std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
             if (sit == networkState.sessions.end())
             {
-                RCNET_log(RCNET_LOG_WARN, "[SERVER] [SIMULATION] [INPUT] - Received input for unknown connectionId=%u (ignoring)\n", msg.connectionId);
+                RCNET_log(RCNET_LOG_WARN,
+                          "[SERVER] [SIMULATION] [INPUT] - Received input for unknown connectionId=%u (ignoring)\n",
+                          msg.connectionId);
                 continue;
             }
 
@@ -269,34 +300,64 @@ void rcnet_simulation_update(uint64_t currentTick)
                       msg.input.clientTick,
                       session.pendingInputCommandsQueue.size());
         }
-        else if (msg.type == NetworkINToSimulationMessageType::HANDSHAKE)
+        else if (msg.type == NetworkINToSimulationMessageType::PACKET_HANDSHAKE)
         {
             // Plus tard : valider token, set accountIdDatabase, session.isAuthenticated = true, etc.
         }
+        else if (msg.type == NetworkINToSimulationMessageType::PACKET_EVENT_IMPORTANT)
+        {
+            // Traiter les messages importants du client (ex: events de gameplay, chat, etc.)
+        }
     }
 
-    //RCNET_log(RCNET_LOG_INFO, "Simulation tick %llu\n", currentTick);
+
+    // ================================================================================
+    // SIMULER LE MONDE, APPLIQUER LA LOGIQUE DE JEU, ETC.
+    // ================================================================================
 
 
-    // Ensuite: appliquer inputs dans le monde (ex: move player)
-    // Exemple simplifié : pour chaque session, consommer 0..N inputs
-    // (souvent tu consommes jusqu'à "le plus récent <= currentTick" ou juste 1 par tick)
+    // ==================================================================================
+    // SNAPSHOTS : GATING AU RYTHME NETWORK OUT
+    //
+    // Objectif :
+    // - La SIMULATION tourne à 128Hz
+    // - Le NETWORK OUT tourne à 32Hz
+    // => On ne construit/envoye des snapshots QUE 32 fois/s (1 toutes les 4 ticks simulation)
+    //
+    // Avantages :
+    // - évite de remplir la queue sim->net inutilement
+    // - snapshotId avance au rythme réel d’envoi (propre pour ACK/delta plus tard)
+    // - CPU/mémoire plus stables
+    // ==================================================================================
+    uint32_t simHz = rcnet_engine_getSimulationTickRateHz();
+    uint32_t outHz = rcnet_engine_getNetworkOutgoingTickRateHz();
+    uint32_t period = rcnet_engine_computeSnapshotPeriodFromRates(simHz, outHz);
 
+    // Si on n'est pas sur un tick "d'envoi", on s'arrête ici.
+    // (Tu continues évidemment à simuler ton monde au-dessus, mais pas tu ne construis/envoyes de snapshot ce tick)
+    if ((period != 0) && ((currentTick % period) != 0))
+    {
+        return;
+    }
 
-    // A la fin du tick, construire des snapshots de l'état du monde pour chaque client et les envoyer via la queue simulation -> réseau
+    // ==================================================================================
+    // Construire des snapshots de l'état du monde pour chaque client
+    // et les envoyer via la queue simulation -> réseau
+    // ==================================================================================
     for (std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.begin();
-        sit != networkState.sessions.end();
-        ++sit)
+         sit != networkState.sessions.end();
+         ++sit)
     {
         // Récupérer la session courante dans le tableau de sessions
         ClientSession& session = sit->second;
 
         // Générer un snapshotId unique pour ce snapshot (incrémenter le compteur de la session)
         uint32_t snapshotId = session.serverNextSnapshotId++;
+
         // Mettre à jour le dernier snapshotId envoyé pour cette session
         session.serverLastSentSnapshotId = snapshotId;
 
-        // Construire un snapshot de l'état du monde pour ce client (ex: position de tous les joueurs)
+        // Construire un snapshot (pour l’instant: header uniquement)
         SnapshotHeader header{};
         header.snapshotId = snapshotId;
         header.serverTick = currentTick;

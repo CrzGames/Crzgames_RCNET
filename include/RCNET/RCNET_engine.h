@@ -123,7 +123,7 @@ uint32_t rcnet_engine_getNetworkIncomingSleepMs(void);
  *
  * Exemple : 1500 ms à 60 Hz = 90 ticks
  */
-inline uint32_t DurationMsToTicks(uint32_t durationMs)
+inline uint32_t rcnet_engine_durationMsToTicks(uint32_t durationMs)
 {
     const uint64_t hz = (uint64_t)rcnet_engine_getSimulationTickRateHz();
     return (uint32_t)(((uint64_t)durationMs * hz + 999ull) / 1000ull); // ceil
@@ -134,10 +134,34 @@ inline uint32_t DurationMsToTicks(uint32_t durationMs)
  *
  * Exemple : 90 ticks à 60 Hz = 1500 ms
  */
-inline uint32_t TicksToDurationMs(uint32_t ticks)
+inline uint32_t rcnet_engine_ticksToDurationMs(uint32_t ticks)
 {
     const uint64_t hz = (uint64_t)rcnet_engine_getSimulationTickRateHz();
     return (uint32_t)(((uint64_t)ticks * 1000ull) / hz); // floor
+}
+
+// ======================================================================================
+// Helper : calculer la période de snapshot côté simulation
+// Exemple : rcnet_update_simulation=128Hz, rcnet_network_outgoing=32Hz => period=4 => snapshot tous les 4 ticks
+// ======================================================================================
+inline uint32_t rcnet_engine_computeSnapshotPeriodFromRates(uint32_t simulationHz, uint32_t networkOutHz)
+{
+    // Sécurité : si une des fréquences est invalide, on fallback à 1 (snapshot chaque tick sim)
+    if (simulationHz == 0 || networkOutHz == 0)
+        return 1;
+
+    // Si le netOut est >= sim, tu peux snapshot chaque tick (ou adapter plus tard)
+    if (networkOutHz >= simulationHz)
+        return 1;
+
+    // Base : division entière (ex: 128/32=4)
+    uint32_t period = simulationHz / networkOutHz;
+
+    // Sécurité
+    if (period == 0)
+        period = 1;
+
+    return period;
 }
 
 /**

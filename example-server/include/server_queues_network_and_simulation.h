@@ -11,8 +11,9 @@ enum class NetworkINToSimulationMessageType : uint8_t
 { 
     CONNECT = 0,
     DISCONNECT = 1, 
-    INPUT = 2,
-    HANDSHAKE = 3,
+    PACKET_INPUT = 2,
+    PACKET_HANDSHAKE = 3,
+    PACKET_EVENT_IMPORTANT = 4,
 };
 
 struct NetworkINToSimulationMessage
@@ -23,7 +24,7 @@ struct NetworkINToSimulationMessage
     // Identifier la connexion réseau (connectionId) à partir de event->peer->data
     uint32_t connectionId;
 
-    // L'input du client (valide seulement si type == INPUT)
+    // L'input du client (valide seulement si type == PACKET_INPUT)
     ClientInputCommand input{};
 };
 

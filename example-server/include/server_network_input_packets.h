@@ -12,6 +12,7 @@ enum class MovementFlags : uint8_t
     Down  = 1u << 1,
     Left  = 1u << 2,
     Right = 1u << 3,
+    // etc. (ajoute autant de directions que nécessaire, jusqu’à 8)
 };
 
 enum class ActionFlags : uint64_t
@@ -20,6 +21,8 @@ enum class ActionFlags : uint64_t
     Jump   = 1ull << 0,
     Dash   = 1ull << 1,
     Sprint = 1ull << 2,
+    Attack = 1ull << 3,
+    // etc. (ajoute autant d’actions que nécessaire, jusqu’à 64)
 };
 
 // ============================================================================
