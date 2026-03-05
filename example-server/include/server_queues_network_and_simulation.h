@@ -7,7 +7,7 @@
 
 #include "server_network_input_packets.h"
 
-enum class NetworkToSimulationMessageType : uint8_t 
+enum class NetworkINToSimulationMessageType : uint8_t 
 { 
     CONNECT = 0,
     DISCONNECT = 1, 
@@ -15,31 +15,31 @@ enum class NetworkToSimulationMessageType : uint8_t
     HANDSHAKE = 3,
 };
 
-struct NetworkToSimulationMessage
+struct NetworkINToSimulationMessage
 {
     // Type de message (connect, disconnect, input, etc.)
-    NetworkToSimulationMessageType type;
+    NetworkINToSimulationMessageType type;
 
-    // connectionId pour identifier la connexion réseau
+    // Identifier la connexion réseau (connectionId) à partir de event->peer->data
     uint32_t connectionId;
 
     // L'input du client (valide seulement si type == INPUT)
     ClientInputCommand input{};
 };
 
-struct NetworkToSimulationQueue
+struct NetworkINToSimulationQueue
 {
     std::mutex mtx;
-    std::deque<NetworkToSimulationMessage> q;
+    std::deque<NetworkINToSimulationMessage> q;
 
-    void push(const NetworkToSimulationMessage& m)
+    void push(const NetworkINToSimulationMessage& m)
     {
         std::lock_guard<std::mutex> lock(mtx);
         q.push_back(m);
     }
 
     // drain en une fois (moins de lock)
-    void drain(std::deque<NetworkToSimulationMessage>& out)
+    void drain(std::deque<NetworkINToSimulationMessage>& out)
     {
         std::lock_guard<std::mutex> lock(mtx);
         out.swap(q);
@@ -48,38 +48,36 @@ struct NetworkToSimulationQueue
 
 
 
-enum class SimulationToNetworkMessageType : uint8_t
+enum class SimulationToNetworkOUTMessageType : uint8_t
 {
     SNAPSHOT_FULL = 0,
     // plus tard: SNAPSHOT_DELTA, EVENT, etc.
 };
 
-struct SimulationToNetworkMessage
+struct SimulationToNetworkOUTMessage
 {
-    SimulationToNetworkMessageType type;
+    // Type de message (snapshot full, delta, event, etc.)
+    SimulationToNetworkOUTMessageType type;
 
     // à qui envoyer
     uint32_t connectionId = 0;
-
-    // id snapshot (utile maintenant et indispensable pour ACK/delta plus tard)
-    uint32_t snapshotId = 0;
 
     // payload brut (full snapshot pour commencer)
     std::vector<uint8_t> payload;
 };
 
-struct SimulationToNetworkQueue
+struct SimulationToNetworkOUTQueue
 {
     std::mutex mtx;
-    std::deque<SimulationToNetworkMessage> q;
+    std::deque<SimulationToNetworkOUTMessage> q;
 
-    void push(const SimulationToNetworkMessage& m)
+    void push(const SimulationToNetworkOUTMessage& m)
     {
         std::lock_guard<std::mutex> lock(mtx);
         q.push_back(m);
     }
 
-    void drain(std::deque<SimulationToNetworkMessage>& out)
+    void drain(std::deque<SimulationToNetworkOUTMessage>& out)
     {
         std::lock_guard<std::mutex> lock(mtx);
         out.swap(q);

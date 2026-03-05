@@ -11,7 +11,7 @@ GameState& GetGameState();
 NetworkState& GetNetworkState();
 
 // Accès global aux queues de communication entre réseau et simulation
-NetworkToSimulationQueue& GetNetToSimQueue();
+NetworkINToSimulationQueue& GetNetworkINToSimulationQueue();
 
 // Accès global à la queue de communication de la simulation vers le réseau
-SimulationToNetworkQueue& GetSimToNetQueue();
+SimulationToNetworkOUTQueue& GetSimulationToNetworkOUTQueue();

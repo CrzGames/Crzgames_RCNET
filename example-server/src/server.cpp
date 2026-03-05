@@ -1,5 +1,6 @@
 #include "server_callbacks.h"
 #include "server_context.h"
+#include "server_network_snapshot_packets.h"
 
 #include <RCNET/RCNET.h>
 
@@ -7,6 +8,7 @@
 #include <cstring> // memcpy
 #include <deque>   // std::deque
 #include <unordered_map> // std::unordered_map
+#include <vector>
 
 void rcnet_load(void)
 {
@@ -23,7 +25,7 @@ void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
         return;
 
     NetworkState& networkState = GetNetworkState();
-    NetworkToSimulationQueue& netToSimQueue = GetNetToSimQueue();
+    NetworkINToSimulationQueue& netToSimQueue = GetNetworkINToSimulationQueue();
 
     if (event->type == ENET_EVENT_TYPE_CONNECT)
     {
@@ -38,8 +40,8 @@ void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
         networkState.connectionIdToEnetPeer[connectionId] = event->peer;
 
         // Push un message de connexion vers la simulation pour créer une session, etc.
-        NetworkToSimulationMessage message{};
-        message.type = NetworkToSimulationMessageType::CONNECT;
+        NetworkINToSimulationMessage message{};
+        message.type = NetworkINToSimulationMessageType::CONNECT;
         message.connectionId = connectionId;
         netToSimQueue.push(message);
 
@@ -57,8 +59,8 @@ void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
         networkState.connectionIdToEnetPeer.erase(connectionId);
 
         // Push un message de déconnexion vers la simulation pour nettoyer la session, etc.
-        NetworkToSimulationMessage message{};
-        message.type = NetworkToSimulationMessageType::DISCONNECT;
+        NetworkINToSimulationMessage message{};
+        message.type = NetworkINToSimulationMessageType::DISCONNECT;
         message.connectionId = connectionId;
         netToSimQueue.push(message);
 
@@ -91,8 +93,8 @@ void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
                 std::memcpy(&inputCmd, event->packet->data, sizeof(ClientInputCommand));
 
                 // Push un message vers la simulation pour traiter cet input
-                NetworkToSimulationMessage message{};
-                message.type = NetworkToSimulationMessageType::INPUT;
+                NetworkINToSimulationMessage message{};
+                message.type = NetworkINToSimulationMessageType::INPUT;
                 message.connectionId = connectionId;
                 message.input = inputCmd;
 
@@ -109,11 +111,12 @@ void rcnet_network_outgoing_update(void)
 
 void rcnet_simulation_update(uint64_t currentTick)
 {
-    // 1) Récupérer la queue réseau -> simulation
-    NetworkToSimulationQueue& netToSimQueue = GetNetToSimQueue();
+    // 1) Récupérer la queue réseau -> simulation et la queue simulation -> réseau (pour envoyer des messages à la fin de ce tick)
+    NetworkINToSimulationQueue& netToSimQueue = GetNetworkINToSimulationQueue();
+    SimulationToNetworkOUTQueue& simToNetQueue = GetSimulationToNetworkOUTQueue();
 
     // 2) Drainer la queue (moins de lock)
-    std::deque<NetworkToSimulationMessage> messages;
+    std::deque<NetworkINToSimulationMessage> messages;
     netToSimQueue.drain(messages);
 
     // 3) Accès au state
@@ -121,13 +124,13 @@ void rcnet_simulation_update(uint64_t currentTick)
     NetworkState& networkState = GetNetworkState();
 
     // 4) Traiter les messages
-    for (std::deque<NetworkToSimulationMessage>::iterator it = messages.begin();
+    for (std::deque<NetworkINToSimulationMessage>::iterator it = messages.begin();
          it != messages.end();
          ++it)
     {
-        NetworkToSimulationMessage& msg = *it;
+        NetworkINToSimulationMessage& msg = *it;
 
-        if (msg.type == NetworkToSimulationMessageType::CONNECT)
+        if (msg.type == NetworkINToSimulationMessageType::CONNECT)
         {
             // Créer une session pour ce client avec cette connectionId
             ClientSession session{};
@@ -144,7 +147,7 @@ void rcnet_simulation_update(uint64_t currentTick)
 
             RCNET_log(RCNET_LOG_INFO, "[SIM] CONNECT connectionId=%u (session created)\n", msg.connectionId);
         }
-        else if (msg.type == NetworkToSimulationMessageType::DISCONNECT)
+        else if (msg.type == NetworkINToSimulationMessageType::DISCONNECT)
         {
             // Supprimer la session du client avec cette connectionId
             std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
@@ -155,7 +158,7 @@ void rcnet_simulation_update(uint64_t currentTick)
 
             RCNET_log(RCNET_LOG_INFO, "[SIM] DISCONNECT connectionId=%u (session removed)\n", msg.connectionId);
         }
-        else if (msg.type == NetworkToSimulationMessageType::INPUT)
+        else if (msg.type == NetworkINToSimulationMessageType::INPUT)
         {
             // Trouver la session du client qui a envoyé cet input
             std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
@@ -191,7 +194,7 @@ void rcnet_simulation_update(uint64_t currentTick)
                       msg.input.clientTick,
                       session.pendingInputCommandsQueue.size());
         }
-        else if (msg.type == NetworkToSimulationMessageType::HANDSHAKE)
+        else if (msg.type == NetworkINToSimulationMessageType::HANDSHAKE)
         {
             // Plus tard : valider token, set accountIdDatabase, session.isAuthenticated = true, etc.
         }
@@ -199,7 +202,38 @@ void rcnet_simulation_update(uint64_t currentTick)
 
     RCNET_log(RCNET_LOG_DEBUG, "Simulation tick %llu\n", currentTick);
 
+
     // Ensuite: appliquer inputs dans le monde (ex: move player)
     // Exemple simplifié : pour chaque session, consommer 0..N inputs
     // (souvent tu consommes jusqu'à "le plus récent <= currentTick" ou juste 1 par tick)
+
+
+    // A la fin du tick, construire des snapshots de l'état du monde pour chaque client et les envoyer via la queue simulation -> réseau
+    for (std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.begin();
+        sit != networkState.sessions.end();
+        ++sit)
+    {
+        // Récupérer la session courante dans le tableau de sessions
+        ClientSession& session = sit->second;
+
+        // Générer un snapshotId unique pour ce snapshot (incrémenter le compteur de la session)
+        uint32_t snapshotId = session.serverNextSnapshotId++;
+        // Mettre à jour le dernier snapshotId envoyé pour cette session
+        session.serverLastSentSnapshotId = snapshotId;
+
+        // Construire un snapshot de l'état du monde pour ce client (ex: position de tous les joueurs)
+        SnapshotHeader header{};
+        header.snapshotId = snapshotId;
+        header.serverTick = currentTick;
+
+        // Construire un message de snapshot à envoyer au client via la queue simulation -> réseau
+        SimulationToNetworkOUTMessage outMsg{};
+        outMsg.type = SimulationToNetworkOUTMessageType::SNAPSHOT_FULL;
+        outMsg.connectionId = session.connectionId;
+
+        outMsg.payload.resize(sizeof(SnapshotHeader));
+        std::memcpy(outMsg.payload.data(), &header, sizeof(SnapshotHeader));
+
+        simToNetQueue.push(outMsg);
+    }
 }

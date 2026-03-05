@@ -2,8 +2,8 @@
 
 static GameState g_gameState;
 static NetworkState g_networkState;
-static NetworkToSimulationQueue g_netToSimQueue;
-static SimulationToNetworkQueue g_simToNetQueue;
+static NetworkINToSimulationQueue g_netToSimQueue;
+static SimulationToNetworkOUTQueue g_simToNetQueue;
 
 GameState& GetGameState()
 {
@@ -15,12 +15,12 @@ NetworkState& GetNetworkState()
     return g_networkState;
 }
 
-NetworkToSimulationQueue& GetNetToSimQueue()
+NetworkINToSimulationQueue& GetNetworkINToSimulationQueue()
 {
     return g_netToSimQueue;
 }
 
-SimulationToNetworkQueue& GetSimToNetQueue()
+SimulationToNetworkOUTQueue& GetSimulationToNetworkOUTQueue()
 {
     return g_simToNetQueue;
 }
