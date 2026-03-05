@@ -21,12 +21,17 @@ void rcnet_unload(void)
 
 void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
 {
+    // Sécurité : vérifier que les pointeurs ne sont pas nuls avant de les utiliser
     if (host == nullptr || event == nullptr)
         return;
 
+    // Accès au state pour identifier la connexion réseau (connectionId) à partir de event->peer et pour stocker le mapping connectionId <-> ENetPeer*
     NetworkState& networkState = GetNetworkState();
+
+    // Accès à la queue réseau -> simulation pour push des messages à traiter par la simulation (ex: connexion, déconnexion, inputs reçus, etc.)
     NetworkINToSimulationQueue& netToSimQueue = GetNetworkINToSimulationQueue();
 
+    // Traiter les événements réseau (connexion, déconnexion, message reçu)
     if (event->type == ENET_EVENT_TYPE_CONNECT)
     {
         // Générer un connectionId unique pour cette connexion réseau qui vient d'arriver
