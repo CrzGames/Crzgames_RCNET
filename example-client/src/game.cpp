@@ -129,8 +129,24 @@ static void net_pump_events(void)
                 break;
 
             case ENET_EVENT_TYPE_RECEIVE:
-                // event.packet->data / dataLength
-                RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [SNAPSHOT] - Packet received from server (size=%u bytes)\n", (unsigned)event.packet->dataLength);
+                if(event.channelID == 0) // channel handshake/auth/encrypt
+                {
+                    // Traiter le message de handshake du serveur (ex: token, accountIdDatabase, etc.)
+                    RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [HANDSHAKE] - Packet received from server (size=%u bytes)\n", (unsigned)event.packet->dataLength);
+                }
+                else if (event.channelID == 1) // channel inputs
+                {
+                    // Ignorer côté client, on n’attend rien du serveur sur ce channel (c’est pour les inputs du client vers le serveur), donc on peut juste ignorer les messages reçus.
+                }
+                else if (event.channelID == 2) // channel snapshots (ex: position de tous les joueurs, etc.)
+                {
+                    RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [SNAPSHOT] - Packet received from server (size=%u bytes)\n", (unsigned)event.packet->dataLength);
+                }
+                else if (event.channelID == 3) // channel events importants (ex: events de gameplay, chat, etc.)
+                {
+                    // Traiter les messages importants du serveur (ex: events de gameplay, chat, etc.)
+                    RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [EVENT] - Packet received from server (size=%u bytes)\n", (unsigned)event.packet->dataLength);
+                }
 
                 // IMPORTANT: détruire le packet après usage
                 enet_packet_destroy(event.packet);
