@@ -106,7 +106,49 @@ void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
 
 void rcnet_network_outgoing_update(void)
 {
+    // 1) Récupérer la queue simulation -> réseau pour envoyer des messages à la fin de ce tick
+    SimulationToNetworkOUTQueue& simToNetQueue = GetSimulationToNetworkOUTQueue();
 
+    // 2) Accès au network state pour récupérer le mapping connectionId -> ENetPeer*
+    NetworkState& networkState = GetNetworkState();
+
+    // 3) Drainer la queue simulation -> réseau (moins de lock)
+    std::deque<SimulationToNetworkOUTMessage> outMessages;
+    simToNetQueue.drain(outMessages);
+
+    // 4) Traiter les messages à envoyer au réseau
+    for (std::deque<SimulationToNetworkOUTMessage>::iterator it = outMessages.begin();
+         it != outMessages.end();
+         ++it)
+    {
+        SimulationToNetworkOUTMessage& msg = *it;
+
+        // Identifier le client (ENetPeer*) à qui envoyer ce message en utilisant msg.connectionId et le mapping dans networkState
+        std::unordered_map<uint32_t, ENetPeer*>::iterator pit = networkState.connectionIdToEnetPeer.find(msg.connectionId);
+        if (pit == networkState.connectionIdToEnetPeer.end())
+            continue;
+
+        // ENetPeer* trouvé pour ce connectionId, envoyer le message à ce client
+        ENetPeer* peer = pit->second;
+        if (!peer)
+            continue;
+
+        // Traiter le message à envoyer en fonction de son type (snapshot full, delta, event, etc.)
+        if (msg.type == SimulationToNetworkOUTMessageType::SNAPSHOT_FULL)
+        {
+            // channel snapshots (ex: 2)
+            const enet_uint8 channelId = 2;
+
+            ENetPacket* packet = enet_packet_create(
+                msg.payload.data(),
+                msg.payload.size(),
+                0 // UNRELIABLE pour snapshot
+            );
+
+            if (packet)
+                enet_peer_send(peer, channelId, packet);
+        }
+    }
 }
 
 void rcnet_simulation_update(uint64_t currentTick)
