@@ -17,6 +17,96 @@ void rcnet_unload(void)
 {
 }
 
+void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
+{
+    if (host == nullptr || event == nullptr)
+        return;
+
+    NetworkState& networkState = GetNetworkState();
+    NetworkToSimulationQueue& netToSimQueue = GetNetToSimQueue();
+
+    if (event->type == ENET_EVENT_TYPE_CONNECT)
+    {
+        // Générer un connectionId unique pour cette connexion réseau qui vient d'arriver
+        // (en utilisant un compteur atomique pour éviter les problèmes de concurrence)
+        uint32_t connectionId = networkState.nextConnectionId.fetch_add(1, std::memory_order_relaxed);
+
+        // Associer ce connectionId à event->peer->data pour pouvoir l'identifier lors de futurs événements (inputs, déconnexion, etc.)
+        event->peer->data = reinterpret_cast<void*>(static_cast<uintptr_t>(connectionId));
+
+        // Stocker le mapping connectionId -> ENetPeer* pour pouvoir envoyer des messages à ce client plus tard
+        networkState.connectionIdToEnetPeer[connectionId] = event->peer;
+
+        // Push un message de connexion vers la simulation pour créer une session, etc.
+        NetworkToSimulationMessage message{};
+        message.type = NetworkToSimulationMessageType::CONNECT;
+        message.connectionId = connectionId;
+        netToSimQueue.push(message);
+
+        RCNET_log(RCNET_LOG_INFO, "Client connecté. connectionId=%u\n", connectionId);
+    }
+    else if (event->type == ENET_EVENT_TYPE_DISCONNECT ||
+             event->type == ENET_EVENT_TYPE_DISCONNECT_TIMEOUT)
+    {
+        // Identifier la connexion réseau (connectionId) à partir de event->peer->data
+        uint32_t connectionId = 0;
+        if (event->peer != nullptr && event->peer->data != nullptr)
+            connectionId = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(event->peer->data));
+
+        // Supprimer le mapping connectionId -> ENetPeer*
+        networkState.connectionIdToEnetPeer.erase(connectionId);
+
+        // Push un message de déconnexion vers la simulation pour nettoyer la session, etc.
+        NetworkToSimulationMessage message{};
+        message.type = NetworkToSimulationMessageType::DISCONNECT;
+        message.connectionId = connectionId;
+        netToSimQueue.push(message);
+
+        RCNET_log(RCNET_LOG_INFO, "Client déconnecté. connectionId=%u\n", connectionId);
+    }
+    else if (event->type == ENET_EVENT_TYPE_RECEIVE)
+    {
+        // Identifier la connexion réseau (connectionId) à partir de event->peer->data
+        uint32_t connectionId = 0;
+        if (event->peer != nullptr && event->peer->data != nullptr)
+            connectionId = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(event->peer->data));
+
+        // channel 0 =  handshake / auth / encrypt (reliable)
+        // channel 1 = inputs (unreliable)
+        // channel 2 = snapshots (unreliable)
+        // channel 3 = events importants (reliable)
+        if (event->channelID == 0)
+        {
+            // TODO: traiter handshake (token / accountIdDatabase / etc.)
+            // Puis push un message HANDSHAKE vers la simulation.
+        }
+        else if (event->channelID == 1)
+        {
+            if (event->packet != nullptr && event->packet->dataLength == sizeof(ClientInputCommand))
+            {
+                // Initialiser une struct d'input à partir des données du packet reçu
+                ClientInputCommand inputCmd{};
+
+                // Copier les données du packet dans notre struct d'input (attention à la taille et à l'ordre des données)
+                std::memcpy(&inputCmd, event->packet->data, sizeof(ClientInputCommand));
+
+                // Push un message vers la simulation pour traiter cet input
+                NetworkToSimulationMessage message{};
+                message.type = NetworkToSimulationMessageType::INPUT;
+                message.connectionId = connectionId;
+                message.input = inputCmd;
+
+                netToSimQueue.push(message);
+            }
+        }
+    }
+}
+
+void rcnet_network_outgoing_update(void)
+{
+
+}
+
 void rcnet_simulation_update(uint64_t currentTick)
 {
     // 1) Récupérer la queue réseau -> simulation
@@ -112,75 +202,4 @@ void rcnet_simulation_update(uint64_t currentTick)
     // Ensuite: appliquer inputs dans le monde (ex: move player)
     // Exemple simplifié : pour chaque session, consommer 0..N inputs
     // (souvent tu consommes jusqu'à "le plus récent <= currentTick" ou juste 1 par tick)
-}
-
-void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
-{
-    if (host == nullptr || event == nullptr)
-        return;
-
-    GameState& gameState = GetGameState();
-    NetworkState& networkState = GetNetworkState();
-    NetworkToSimulationQueue& netToSimQueue = GetNetToSimQueue();
-
-    if (event->type == ENET_EVENT_TYPE_CONNECT)
-    {
-        uint32_t connectionId = networkState.nextConnectionId++;
-        event->peer->data = reinterpret_cast<void*>(static_cast<uintptr_t>(connectionId));
-
-        NetworkToSimulationMessage message{};
-        message.type = NetworkToSimulationMessageType::CONNECT;
-        message.connectionId = connectionId;
-        netToSimQueue.push(message);
-
-        RCNET_log(RCNET_LOG_INFO, "Client connecté. connectionId=%u\n", connectionId);
-    }
-    else if (event->type == ENET_EVENT_TYPE_DISCONNECT ||
-             event->type == ENET_EVENT_TYPE_DISCONNECT_TIMEOUT)
-    {
-        uint32_t connectionId = 0;
-        if (event->peer != nullptr && event->peer->data != nullptr)
-            connectionId = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(event->peer->data));
-
-        NetworkToSimulationMessage message{};
-        message.type = NetworkToSimulationMessageType::DISCONNECT;
-        message.connectionId = connectionId;
-        netToSimQueue.push(message);
-
-        RCNET_log(RCNET_LOG_INFO, "Client déconnecté. connectionId=%u\n", connectionId);
-    }
-    else if (event->type == ENET_EVENT_TYPE_RECEIVE)
-    {
-        // Identifier la connexion réseau (connectionId) à partir de event->peer->data
-        uint32_t connectionId = 0;
-        if (event->peer != nullptr && event->peer->data != nullptr)
-            connectionId = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(event->peer->data));
-
-        // channel 0 = handshake, channel 1 = inputs
-        if (event->channelID == 1)
-        {
-            if (event->packet != nullptr && event->packet->dataLength == sizeof(ClientInputCommand))
-            {
-                ClientInputCommand cmd{};
-                std::memcpy(&cmd, event->packet->data, sizeof(ClientInputCommand));
-
-                NetworkToSimulationMessage message{};
-                message.type = NetworkToSimulationMessageType::INPUT;
-                message.connectionId = connectionId;
-                message.input = cmd;
-
-                netToSimQueue.push(message);
-            }
-        }
-        else if (event->channelID == 0)
-        {
-            // TODO: traiter handshake (token / accountIdDatabase / etc.)
-            // Puis push un message HANDSHAKE vers la simulation.
-        }
-    }
-}
-
-void rcnet_network_outgoing_update(void)
-{
-
 }

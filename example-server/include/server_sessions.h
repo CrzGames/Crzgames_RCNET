@@ -3,8 +3,7 @@
 #include <cstdint>       // uint16_t, uint32_t, etc.
 #include <deque>         // std::deque pour la queue d'inputs non encore consommés
 
-#include "server_network_clientinput.h" // ClientInputCommand
-
+#include "server_network_input_packets.h" // ClientInputCommand
 
 // ============================================================================
 // Données autoritaires spécifiques à une entité contrôlée par un client.

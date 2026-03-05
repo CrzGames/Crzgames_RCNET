@@ -5,12 +5,12 @@
 #include <cstdint> // uint16_t, uint32_t, etc.
 #include <vector>  // std::vector pour le payload des messages de la simulation vers le réseau
 
-#include "server_network_clientinput.h"
+#include "server_network_input_packets.h"
 
 enum class NetworkToSimulationMessageType : uint8_t 
 { 
     CONNECT = 0,
-    DISCONNECT = 1,
+    DISCONNECT = 1, 
     INPUT = 2,
     HANDSHAKE = 3,
 };
@@ -20,7 +20,7 @@ struct NetworkToSimulationMessage
     // Type de message (connect, disconnect, input, etc.)
     NetworkToSimulationMessageType type;
 
-    // connectionId pour identifier la connexion réseau (ex: pour les connect/disconnect)
+    // connectionId pour identifier la connexion réseau
     uint32_t connectionId;
 
     // L'input du client (valide seulement si type == INPUT)

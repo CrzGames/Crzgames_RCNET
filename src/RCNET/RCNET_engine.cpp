@@ -596,6 +596,10 @@ static void rcnet_engine_networkThreadMain(void)
     // -----------------------
     if (g_enetServerHost != nullptr)
     {
+        // Flush avant de détruire pour éviter de perdre des paquets en buffer
+        enet_host_flush(g_enetServerHost);
+
+        // Détruire le host ENet (ferme les connexions, libère les ressources, etc.)
         enet_host_destroy(g_enetServerHost);
         g_enetServerHost = nullptr;
     }
