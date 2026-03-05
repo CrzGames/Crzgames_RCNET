@@ -117,6 +117,14 @@ void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
                 netToSimQueue.push(message);
             }
         }
+        else if (event->channelID == 2)
+        {
+            // Pour ce channel, on n'attend rien du client, donc on peut juste ignorer les messages reçus.
+        }
+        else if (event->channelID == 3)
+        {
+            // Traiter les messages importants du client (ex: events de gameplay, chat, etc.)
+        }
     }
 }
 

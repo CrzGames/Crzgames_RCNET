@@ -74,7 +74,7 @@ static void net_connect_to_server()
     );
     if (!enetClientHost)
     {
-        RC2D_log(RCNET_LOG_INFO, "ENet: échec de la création du host client.\n");
+        RC2D_log(RC2D_LOG_INFO, "ENet: échec de la création du host client.\n");
         net_disconnect_and_destroy();
         exit(EXIT_FAILURE);
     }
@@ -85,7 +85,7 @@ static void net_connect_to_server()
     enetServerPeer = enet_host_connect(enetClientHost, &serverAddress, 4 /* channels */, 0);
     if (!enetServerPeer)
     {
-        RC2D_log(RCNET_LOG_INFO, "ENet: échec de la connexion au serveur.\n");
+        RC2D_log(RC2D_LOG_INFO, "ENet: échec de la connexion au serveur.\n");
         net_disconnect_and_destroy();
         exit(EXIT_FAILURE);
     }
@@ -96,13 +96,13 @@ static void net_connect_to_server()
     ENetEvent event;
     if (enet_host_service(enetClientHost, &event, 5000) > 0 && event.type == ENET_EVENT_TYPE_CONNECT)
     {
-        RC2D_log(RCNET_LOG_INFO, "ENet: connexion au serveur réussie.\n");
+        RC2D_log(RC2D_LOG_INFO, "ENet: connexion au serveur réussie.\n");
         isConnected = true;
     }
     else
     {
         net_disconnect_and_destroy();
-        RC2D_log(RCNET_LOG_INFO, "ENet: connexion au serveur FAIL.\n");
+        RC2D_log(RC2D_LOG_INFO, "ENet: connexion au serveur FAIL.\n");
     }
 }
 
@@ -125,19 +125,19 @@ static void net_pump_events(void)
         switch (event.type)
         {
             case ENET_EVENT_TYPE_CONNECT:
-                RC2D_log(RCNET_LOG_INFO, "[CLIENT] [NETWORK_IN] [CONNECT] - Connected to server.\n");
+                RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [CONNECT] - Connected to server.\n");
                 break;
 
             case ENET_EVENT_TYPE_RECEIVE:
                 // event.packet->data / dataLength
-                RC2D_log(RCNET_LOG_INFO, "[CLIENT] [NETWORK_IN] [SNAPSHOT] - Packet received from server (size=%u bytes)\n", (unsigned)event.packet->dataLength);
+                RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [SNAPSHOT] - Packet received from server (size=%u bytes)\n", (unsigned)event.packet->dataLength);
 
                 // IMPORTANT: détruire le packet après usage
                 enet_packet_destroy(event.packet);
                 break;
 
             case ENET_EVENT_TYPE_DISCONNECT:
-                RC2D_log(RCNET_LOG_INFO, "[CLIENT] [NETWORK_IN] [DISCONNECT] - Disconnected from server.\n");
+                RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [DISCONNECT] - Disconnected from server.\n");
                 enetServerPeer = NULL;
                 break;
 
