@@ -98,7 +98,7 @@ void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
         {
             if (event->packet != nullptr && event->packet->dataLength == sizeof(ClientInputCommand))
             {
-                RCNET_log(RCNET_LOG_DEBUG, "[SERVER] [NETWORK_IN] [INPUT] - Packet received from connectionId=%u (size=%u bytes)\n",
+                RCNET_log(RCNET_LOG_INFO, "[SERVER] [NETWORK_IN] [INPUT] - Packet received from connectionId=%u (size=%u bytes)\n",
                           connectionId,
                           (unsigned)event->packet->dataLength);
 
@@ -167,7 +167,7 @@ void rcnet_network_outgoing_update(ENetHost* host)
             if (packet)
                 enet_peer_send(peer, channelId, packet);
 
-            RCNET_log(RCNET_LOG_DEBUG, "[SERVER] [NETWORK_OUT] [SNAPSHOT_FULL] - Sent snapshotId=%u to connectionId=%u (size=%zu bytes)\n",
+            RCNET_log(RCNET_LOG_INFO, "[SERVER] [NETWORK_OUT] [SNAPSHOT_FULL] - Sent snapshotId=%u to connectionId=%u (size=%zu bytes)\n",
                       ((SnapshotHeader*)msg.payload.data())->snapshotId,
                       msg.connectionId,
                       msg.payload.size());
@@ -254,7 +254,7 @@ void rcnet_simulation_update(uint64_t currentTick)
             // NOTE : on ne met PAS serverLastProcessedInputSequenceNumber ici
             // parce que "processed" = doit être mis à jour quand l’input est réellement appliqué au monde (pas au moment où il arrive).
 
-            RCNET_log(RCNET_LOG_DEBUG,
+            RCNET_log(RCNET_LOG_INFO,
                       "[SERVER] [SIMULATION] [INPUT] - queued connectionId=%u seq=%u clientTick=%u (queue size=%zu)\n",
                       msg.connectionId,
                       msg.input.inputSequenceNumber,
@@ -267,7 +267,7 @@ void rcnet_simulation_update(uint64_t currentTick)
         }
     }
 
-    //RCNET_log(RCNET_LOG_DEBUG, "Simulation tick %llu\n", currentTick);
+    //RCNET_log(RCNET_LOG_INFO, "Simulation tick %llu\n", currentTick);
 
 
     // Ensuite: appliquer inputs dans le monde (ex: move player)
