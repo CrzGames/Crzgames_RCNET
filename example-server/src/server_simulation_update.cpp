@@ -187,8 +187,9 @@ static void ServerSimulationUpdate_CreateSnapshotFullAndPushToSimulationToNetwor
 {
     // Construire un snapshot (pour l’instant: header uniquement)
     SnapshotHeader header{};
-    header.snapshotId = 0; // sera incrémenté plus tard lors de l'envoie du snapshot
     header.serverTick = currentTick;
+    // le reste des propriétés du header (snapshotId, serverTimeNs, lastProcessedInputSequenceNumber) 
+    // seront patchées plus tard au moment de l’envoi réel dans server_network_outgoing_update.cpp
 
     // Construire un message de snapshot à envoyer au client via la queue simulation -> réseau
     SimulationToNetworkOUTMessage outMsg{};
