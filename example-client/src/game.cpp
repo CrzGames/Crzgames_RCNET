@@ -13,7 +13,7 @@ GameScreen gameScreen;
 
 static ENetHost* enetClientHost = NULL;
 static ENetPeer* enetServerPeer = NULL;
-static bool isConnected = false;
+static bool isConnectedToServer = false;
 
 static void net_disconnect_and_destroy(void)
 {
@@ -97,7 +97,7 @@ static void net_connect_to_server()
     if (enet_host_service(enetClientHost, &event, 5000) > 0 && event.type == ENET_EVENT_TYPE_CONNECT)
     {
         RC2D_log(RC2D_LOG_INFO, "ENet: connexion au serveur réussie.\n");
-        isConnected = true;
+        isConnectedToServer = true;
     }
     else
     {
@@ -139,6 +139,7 @@ static void net_pump_events(void)
             case ENET_EVENT_TYPE_DISCONNECT:
                 RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [DISCONNECT] - Disconnected from server.\n");
                 enetServerPeer = NULL;
+                isConnectedToServer = false;
                 break;
 
             default:
@@ -173,7 +174,7 @@ void rc2d_draw(void)
 void rc2d_keypressed(const char *key, SDL_Scancode scancode, SDL_Keycode keycode, SDL_Keymod mod, bool isrepeat, SDL_KeyboardID keyboardID)
 {
     // Exemple: envoyer un message quand tu appuies sur espace
-    if (enetServerPeer && keycode == SDLK_SPACE && !isrepeat)
+    if (enetServerPeer && isConnectedToServer && keycode == SDLK_SPACE && !isrepeat)
     {
         const char* msg = "ping";
         ENetPacket* p = enet_packet_create(msg, strlen(msg) + 1, 0 /* UNRELIABLE */);
