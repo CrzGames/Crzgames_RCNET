@@ -12,7 +12,7 @@ void ServerWorld_Simulate(GameState& gameState, uint64_t currentTick, uint64_t s
 uint32_t SpawnPlayer(GameState& gameState, PlayerType type);
 
 // Internal world simulation steps
-void ServerWorld_ApplyPlayerInputs(GameState& gameState, uint64_t currentTick);
-void ServerWorld_RunPhysics(GameState& gameState, uint64_t currentTick);
-void ServerWorld_UpdateEntities(GameState& gameState, uint64_t currentTick);
-void ServerWorld_RunGameplay(GameState& gameState, uint64_t currentTick);
+void ServerWorld_ApplyPlayerInputs(GameState& gameState, uint64_t currentTick, uint64_t serverTimeNs, uint64_t dtNs, double dt);
+void ServerWorld_RunPhysics(GameState& gameState, uint64_t currentTick, uint64_t serverTimeNs, uint64_t dtNs, double dt);
+void ServerWorld_UpdateEntities(GameState& gameState, uint64_t currentTick, uint64_t serverTimeNs, uint64_t dtNs, double dt);
+void ServerWorld_RunGameplay(GameState& gameState, uint64_t currentTick, uint64_t serverTimeNs, uint64_t dtNs, double dt);
