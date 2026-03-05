@@ -208,7 +208,7 @@ if(RCNET_BUILD_EXAMPLE)
   set(RC2D_GPU_SHADER_HOT_RELOAD_ENABLED OFF CACHE BOOL "")
   set(RC2D_MEMORY_DEBUG_ENABLED OFF CACHE BOOL "")
   set(RC2D_DATA_MODULE_ENABLED OFF CACHE BOOL "")
-  set(RC2D_NET_MODULE_ENABLED OFF CACHE BOOL "")
+  set(RC2D_NET_MODULE_ENABLED ON CACHE BOOL "")
   set(RC2D_VIDEO_MODULE_ENABLED OFF CACHE BOOL "")
   set(RC2D_ONNX_MODULE_ENABLED OFF CACHE BOOL "")
   set(RC2D_ASSERT_LEVEL 3 CACHE STRING "")
@@ -453,42 +453,42 @@ endfunction()
 # - Lier rcenet
 # - Ajouter les libs système nécessaires (Windows : ws2_32, winmm)
 # ============================================================
-function(rcnet_configure_rcenet target_name)
+function(rcnet_configure_rcenet target_name visibility)
   if (WIN32) # Windows
     # Link le dossier include de RCEnet à la target
-    target_include_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/windows/include/include_rcenet")
+    target_include_directories(${target_name} ${visibility} "${CRZGAMES_LIBRARIES_PATH}/windows/include/include_rcenet")
 
     # Rajouter le répertoire de la lib RCEnet, pour le linker ensuite
-    target_link_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/windows/lib/rcenet/${RCNET_ARCH}")
+    target_link_directories(${target_name} ${visibility} "${CRZGAMES_LIBRARIES_PATH}/windows/lib/rcenet/${RCNET_ARCH}")
 
     # Link les librairies RCEnet
-    target_link_libraries(${target_name} PUBLIC
+    target_link_libraries(${target_name} ${visibility}
       rcenet
       ws2_32 # Bibliothèque native à Windows (pour la librairie Enet)
       winmm # Bibliothèque native à Windows (pour la librairie Enet)
     )
   elseif(APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin") # macOS
     # Link le dossier include de RCEnet à la target
-    target_include_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/macos/include/include_rcenet")
+    target_include_directories(${target_name} ${visibility} "${CRZGAMES_LIBRARIES_PATH}/macos/include/include_rcenet")
 
     # Ajouter explicitement la lib .dylib à linker
-    target_link_directories(${target_name} PUBLIC
+    target_link_directories(${target_name} ${visibility}
       "${CRZGAMES_LIBRARIES_PATH}/macos/lib/rcenet"
     )
 
     # Link la librairies RCEnet
-    target_link_libraries(${target_name} PUBLIC
+    target_link_libraries(${target_name} ${visibility}
       rcenet
     )
   elseif (UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
     # Link le dossier include de RCEnet à la target
-    target_include_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/linux/include/include_rcenet")
+    target_include_directories(${target_name} ${visibility} "${CRZGAMES_LIBRARIES_PATH}/linux/include/include_rcenet")
 
     # Rajouter le répertoire de la lib RCEnet, pour le linker ensuite
-    target_link_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/linux/lib/rcenet/${RCNET_ARCH}")
+    target_link_directories(${target_name} ${visibility} "${CRZGAMES_LIBRARIES_PATH}/linux/lib/rcenet/${RCNET_ARCH}")
 
     # Link les librairies RCEnet
-    target_link_libraries(${target_name} PUBLIC
+    target_link_libraries(${target_name} ${visibility}
       rcenet
     )
   endif()
@@ -588,7 +588,7 @@ rcnet_target_compile_definitions(${PROJECT_NAME})
 rcnet_configure_openssl(${PROJECT_NAME})
 
 # RCEnet / ENet
-rcnet_configure_rcenet(${PROJECT_NAME})
+rcnet_configure_rcenet(${PROJECT_NAME} ${RCNET_DEPS_VISIBILITY})
 
 # cJSON (parsing JSON léger côté runtime)
 rcnet_configure_cjson(${PROJECT_NAME} ${RCNET_DEPS_VISIBILITY})
