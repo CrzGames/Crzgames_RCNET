@@ -7,63 +7,120 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 GameScreen gameScreen;
 
-static ENetHost* g_client = NULL;
-static ENetPeer* g_peer   = NULL;
+static ENetHost* enetClientHost = NULL;
+static ENetPeer* enetServerPeer = NULL;
+static bool isConnected = false;
 
-static void net_connect_localhost(uint16_t port)
+static void net_disconnect_and_destroy(void)
 {
-    ENetAddress address;
-    ENetEvent event;
+    if (!enetClientHost) return;
 
-    // 1) Résoudre l'adresse localhost
-    enet_address_set_host(&address, ENET_ADDRESS_TYPE_ANY, "127.0.0.1");
-    address.port = port;
+    if (enetServerPeer)
+    {
+        // Demande de disconnect propre
+        enet_peer_disconnect(enetServerPeer, 0);
 
-    // 2) Créer le host client après résolution, en utilisant address.type
-    g_client = enet_host_create(address.type,
-                                NULL,  // client host
-                                1,     // 1 connexion sortante
-                                4,     // 4 channels (0, 1, 2, 3)
-                                0, 0); // bandwidth illimité (assumé)
-    if (!g_client)
+        // On pompe un peu pour recevoir DISCONNECT
+        ENetEvent event;
+        while (enet_host_service(enetClientHost, &event, 3000) > 0)
+        {
+            if (event.type == ENET_EVENT_TYPE_RECEIVE)
+                enet_packet_destroy(event.packet);
+            else if (event.type == ENET_EVENT_TYPE_DISCONNECT)
+                break;
+        }
+
+        // Au cas où
+        enet_peer_reset(enetServerPeer);
+        enetServerPeer = NULL;
+    }
+
+    enet_host_destroy(enetClientHost);
+    enetClientHost = NULL;
+}
+
+static void net_connect_to_server()
+{
+    // ------------------------------------------------------------
+    // Serveur ENet : se connecter à localhost:12345
+    // ------------------------------------------------------------
+    const char* serverHost = "127.0.0.1";
+    uint16_t serverPort = 12345;
+
+    // ------------------------------------------------------------
+    // 1) Résoudre adresse serveur
+    // ------------------------------------------------------------
+    ENetAddress serverAddress;
+    memset(&serverAddress, 0, sizeof(serverAddress));
+
+    enet_address_set_host(&serverAddress, ENET_ADDRESS_TYPE_ANY, serverHost);
+    serverAddress.port = serverPort;
+
+    // ------------------------------------------------------------
+    // 2) Créer le host client
+    // channels = 4 (comme le serveur)
+    // ------------------------------------------------------------
+    enetClientHost = enet_host_create(
+        serverAddress.type,   // IPv4/IPv6 selon ce qui a été résolu
+        NULL,                 // NULL => client host
+        1,                    // 1 connexion sortante max
+        4,                    // channels
+        0,                    // incoming bandwidth
+        0                     // outgoing bandwidth
+    );
+    if (!enetClientHost)
     {
         fprintf(stderr, "ENet: impossible de créer le host client.\n");
+        net_disconnect_and_destroy();
         exit(EXIT_FAILURE);
     }
 
-    // 3) Se connecter
-    g_peer = enet_host_connect(g_client, &address, 4 /* channels */, 0);
-    if (!g_peer)
+    // ------------------------------------------------------------
+    // 3) Connect au serveur ENet : localhost:12345
+    // ------------------------------------------------------------
+    enetServerPeer = enet_host_connect(enetClientHost, &serverAddress, 4 /* channels */, 0);
+    if (!enetServerPeer)
     {
         fprintf(stderr, "ENet: aucun peer dispo pour initier la connexion.\n");
+        net_disconnect_and_destroy();
         exit(EXIT_FAILURE);
     }
 
-    // 4) Attendre l'event CONNECT (max 5s)
-    if (enet_host_service(g_client, &event, 5000) > 0 &&
-        event.type == ENET_EVENT_TYPE_CONNECT)
+    // ------------------------------------------------------------
+    // 4) Attendre l'event CONNECT (max 5 secondes)
+    // ------------------------------------------------------------
+    ENetEvent event;
+    if (enet_host_service(enetClientHost, &event, 5000) > 0 && event.type == ENET_EVENT_TYPE_CONNECT)
     {
-        puts("ENet: connexion localhost OK.");
+        puts("ENet: connexion au serveur réussie.");
+        isConnected = true;
     }
     else
     {
-        enet_peer_reset(g_peer);
-        g_peer = NULL;
-        puts("ENet: connexion localhost FAIL.");
+        net_disconnect_and_destroy();
+        puts("ENet: connexion au serveur FAIL.");
     }
 }
 
 static void net_pump_events(void)
 {
-    if (!g_client) return;
+    if (!enetClientHost) return;
 
-    ENetEvent event;
+    // ------------------------------------------------------------
+    // Boucle client simple :
+    // - service events (receive/disconnect)
+    // - envoyer input JSON toutes les ~16ms (≈60Hz)
+    // ------------------------------------------------------------
+    uint32_t clientTickId = 0;
+    uint32_t inputSequenceNumber = 0;
 
     // 0 ms => non bloquant, parfait pour un loop jeu
-    while (enet_host_service(g_client, &event, 0) > 0)
+    ENetEvent event;
+    while (enet_host_service(enetClientHost, &event, 0) > 0)
     {
         switch (event.type)
         {
@@ -83,41 +140,13 @@ static void net_pump_events(void)
 
             case ENET_EVENT_TYPE_DISCONNECT:
                 puts("ENet: DISCONNECT.");
-                g_peer = NULL;
+                enetServerPeer = NULL;
                 break;
 
             default:
                 break;
         }
     }
-}
-
-static void net_disconnect_and_destroy(void)
-{
-    if (!g_client) return;
-
-    if (g_peer)
-    {
-        // Demande de disconnect propre
-        enet_peer_disconnect(g_peer, 0);
-
-        // On pompe un peu pour recevoir DISCONNECT
-        ENetEvent event;
-        while (enet_host_service(g_client, &event, 3000) > 0)
-        {
-            if (event.type == ENET_EVENT_TYPE_RECEIVE)
-                enet_packet_destroy(event.packet);
-            else if (event.type == ENET_EVENT_TYPE_DISCONNECT)
-                break;
-        }
-
-        // Au cas où
-        enet_peer_reset(g_peer);
-        g_peer = NULL;
-    }
-
-    enet_host_destroy(g_client);
-    g_client = NULL;
 }
 
 /* -------------------- RC2D lifecycle -------------------- */
@@ -129,7 +158,7 @@ void rc2d_unload(void)
 
 void rc2d_load(void)
 {
-    net_connect_localhost(1234);
+    net_connect_to_server();
 }
 
 void rc2d_update(double dt)
@@ -146,12 +175,12 @@ void rc2d_draw(void)
 void rc2d_keypressed(const char *key, SDL_Scancode scancode, SDL_Keycode keycode, SDL_Keymod mod, bool isrepeat, SDL_KeyboardID keyboardID)
 {
     // Exemple: envoyer un message quand tu appuies sur espace
-    if (g_peer && keycode == SDLK_SPACE && !isrepeat)
+    if (enetServerPeer && keycode == SDLK_SPACE && !isrepeat)
     {
         const char* msg = "ping";
         ENetPacket* p = enet_packet_create(msg, strlen(msg) + 1, 0 /* UNRELIABLE */);
-        enet_peer_send(g_peer, 0, p);
-        enet_host_flush(g_client); // optionnel, force l'envoi immédiat
+        enet_peer_send(enetServerPeer, 0, p);
+        enet_host_flush(enetClientHost); // optionnel, force l'envoi immédiat
     }
 }
 
