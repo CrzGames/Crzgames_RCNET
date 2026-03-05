@@ -267,7 +267,7 @@ void rcnet_simulation_update(uint64_t currentTick)
         }
     }
 
-    RCNET_log(RCNET_LOG_DEBUG, "Simulation tick %llu\n", currentTick);
+    //RCNET_log(RCNET_LOG_DEBUG, "Simulation tick %llu\n", currentTick);
 
 
     // Ensuite: appliquer inputs dans le monde (ex: move player)
