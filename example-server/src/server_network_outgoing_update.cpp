@@ -72,11 +72,13 @@ static void ServerNetworkOutgoingUpdate_ClassifyOutgoingMessages(
     {
         const SimulationToNetworkOUTMessage& msg = *it;
 
-        if (msg.type == SimulationToNetworkOUTMessageType::MATCH_INIT_RELIABLE)
+        if (msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_INIT_RELIABLE ||
+            msg.type == SimulationToNetworkOUTMessageType::SERVER_WORLD_STATIC_STATE_INIT_RELIABLE ||
+            msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_START_RELIABLE)
         {
             reliableMessages.push_back(msg);
         }
-        else if (msg.type == SimulationToNetworkOUTMessageType::SNAPSHOT_FULL_UNRELIABLE)
+        else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_SNAPSHOT_FULL_UNRELIABLE)
         {
             // Coalescing snapshot : seul le dernier snapshot par client nous intéresse.
             lastSnapshotPerConnectionId[msg.connectionId] = msg;
@@ -84,22 +86,19 @@ static void ServerNetworkOutgoingUpdate_ClassifyOutgoingMessages(
     }
 }
 
-
 // ======================================================================================
 // Helpers - envoi reliable
 // ======================================================================================
-
-static void ServerNetworkOutgoingUpdate_SendMatchInitReliable(
+static void ServerNetworkOutgoingUpdate_SendReliablePacket(
     ENetPeer* peer,
-    const SimulationToNetworkOUTMessage& msg)
+    const SimulationToNetworkOUTMessage& msg,
+    size_t expectedPayloadSize,
+    const char* debugLabel)
 {
     if (peer == nullptr)
         return;
 
-    if (msg.type != SimulationToNetworkOUTMessageType::MATCH_INIT_RELIABLE)
-        return;
-
-    if (msg.payload.size() != sizeof(MatchInitPacket))
+    if (msg.payload.size() != expectedPayloadSize)
         return;
 
     ENetPacket* packet = enet_packet_create(
@@ -112,10 +111,56 @@ static void ServerNetworkOutgoingUpdate_SendMatchInitReliable(
     {
         enet_peer_send(peer, ENET_CHANNEL_EVENT_IMPORTANT_RELIABLE, packet);
         RCNET_log(RCNET_LOG_INFO,
-                  "[SERVER] [NETWORK_OUT] [MATCH_INIT_RELIABLE] - Sent MatchInit to connectionId=%u (size=%zu bytes)\n",
+                  "[SERVER] [NETWORK_OUT] [%s] - Sent to connectionId=%u (size=%zu bytes)\n",
+                  debugLabel,
                   msg.connectionId,
-                  msg.payload.size());   
+                  msg.payload.size());
     }
+}
+
+static void ServerNetworkOutgoingUpdate_SendMatchInitReliable(
+    ENetPeer* peer,
+    const SimulationToNetworkOUTMessage& msg)
+{
+    if (msg.type != SimulationToNetworkOUTMessageType::SERVER_MATCH_INIT_RELIABLE)
+        return;
+
+    ServerNetworkOutgoingUpdate_SendReliablePacket(
+        peer,
+        msg,
+        sizeof(MatchInitPacket),
+        "MATCH_INIT_RELIABLE"
+    );
+}
+
+static void ServerNetworkOutgoingUpdate_SendWorldStaticStateInitReliable(
+    ENetPeer* peer,
+    const SimulationToNetworkOUTMessage& msg)
+{
+    if (msg.type != SimulationToNetworkOUTMessageType::SERVER_WORLD_STATIC_STATE_INIT_RELIABLE)
+        return;
+
+    ServerNetworkOutgoingUpdate_SendReliablePacket(
+        peer,
+        msg,
+        sizeof(WorldStaticStateInitPacket),
+        "WORLD_STATIC_STATE_INIT_RELIABLE"
+    );
+}
+
+static void ServerNetworkOutgoingUpdate_SendMatchStartReliable(
+    ENetPeer* peer,
+    const SimulationToNetworkOUTMessage& msg)
+{
+    if (msg.type != SimulationToNetworkOUTMessageType::SERVER_MATCH_START_RELIABLE)
+        return;
+
+    ServerNetworkOutgoingUpdate_SendReliablePacket(
+        peer,
+        msg,
+        sizeof(MatchStartPacket),
+        "MATCH_START_RELIABLE"
+    );
 }
 
 static void ServerNetworkOutgoingUpdate_SendReliableMessages(
@@ -135,13 +180,20 @@ static void ServerNetworkOutgoingUpdate_SendReliableMessages(
         if (peer == nullptr)
             continue;
 
-        if (msg.type == SimulationToNetworkOUTMessageType::MATCH_INIT_RELIABLE)
+        if (msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_INIT_RELIABLE)
         {
             ServerNetworkOutgoingUpdate_SendMatchInitReliable(peer, msg);
         }
+        else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_WORLD_STATIC_STATE_INIT_RELIABLE)
+        {
+            ServerNetworkOutgoingUpdate_SendWorldStaticStateInitReliable(peer, msg);
+        }
+        else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_START_RELIABLE)
+        {
+            ServerNetworkOutgoingUpdate_SendMatchStartReliable(peer, msg);
+        }
     }
 }
-
 
 // ======================================================================================
 // Helpers - envoi snapshots unreliable
@@ -161,7 +213,7 @@ static void ServerNetworkOutgoingUpdate_SendSnapshotFullUnreliable(
     if (peer == nullptr)
         return;
 
-    if (msg.type != SimulationToNetworkOUTMessageType::SNAPSHOT_FULL_UNRELIABLE)
+    if (msg.type != SimulationToNetworkOUTMessageType::SERVER_SNAPSHOT_FULL_UNRELIABLE)
         return;
 
     if (msg.payload.size() != sizeof(SnapshotPacket))

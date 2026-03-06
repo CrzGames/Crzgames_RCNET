@@ -33,7 +33,7 @@ static void ServerNetworkIncomingUpdate_HandleConnectEvent(
 
     // Push un message de connexion vers la simulation pour créer une session, etc.
     NetworkINToSimulationMessage message{};
-    message.type = NetworkINToSimulationMessageType::CONNECT;
+    message.type = NetworkINToSimulationMessageType::CLIENT_CONNECT;
     message.connectionId = connectionId;
     netToSimQueue.push(message);
 
@@ -57,7 +57,7 @@ static void ServerNetworkIncomingUpdate_HandleDisconnectEvent(
 
     // Push un message de déconnexion vers la simulation pour nettoyer la session, etc.
     NetworkINToSimulationMessage message{};
-    message.type = NetworkINToSimulationMessageType::DISCONNECT;
+    message.type = NetworkINToSimulationMessageType::CLIENT_DISCONNECT;
     message.connectionId = connectionId;
     netToSimQueue.push(message);
 
@@ -78,7 +78,7 @@ static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel0Handshake(
     std::memcpy(&header, event->packet->data, sizeof(ClientReliablePacketHeader));
 
     // 3) Vérifier le type attendu
-    if (header.type != ClientReliablePacketType::HANDSHAKE)
+    if (header.type != ClientReliablePacketType::CLIENT_HANDSHAKE_RELIABLE)
     {
         RCNET_log(RCNET_LOG_WARN,
                   "[SERVER] [NETWORK_IN] [HANDSHAKE] - Invalid reliable packet type from connectionId=%u\n",
@@ -122,7 +122,7 @@ static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel0Handshake(
 
     // 7) Push vers la simulation
     NetworkINToSimulationMessage message{};
-    message.type = NetworkINToSimulationMessageType::PACKET_HANDSHAKE_RELIABLE;
+    message.type = NetworkINToSimulationMessageType::CLIENT_HANDSHAKE_RELIABLE;
     message.connectionId = connectionId;
     message.handshakePacket = handshakePacket;
 
@@ -143,7 +143,7 @@ static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel1Inputs(
     std::memcpy(&header, event->packet->data, sizeof(ClientUnreliablePacketHeader));
 
     // 3) Vérifier le type attendu
-    if (header.type != ClientUnreliablePacketType::INPUT)
+    if (header.type != ClientUnreliablePacketType::CLIENT_INPUT_UNREALIABLE)
     {
         RCNET_log(RCNET_LOG_WARN,
                   "[SERVER] [NETWORK_IN] [INPUT] - Invalid unreliable packet type from connectionId=%u\n",
@@ -173,11 +173,38 @@ static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel1Inputs(
 
     // 6) Push vers la simulation
     NetworkINToSimulationMessage message{};
-    message.type = NetworkINToSimulationMessageType::PACKET_INPUT_UNRELIABLE;
+    message.type = NetworkINToSimulationMessageType::CLIENT_INPUT_UNRELIABLE;
     message.connectionId = connectionId;
     message.inputPacket = inputPacket;
 
     netToSimQueue.push(message);
+}
+
+static void ServerNetworkOutgoingUpdate_HandleReceiveEvent_Channel3ImportantReliable(
+    const ENetEvent* event,
+    uint32_t connectionId,
+    NetworkINToSimulationQueue& netToSimQueue)
+{
+    // CLIENT_READY_FOR_MATCH_RELIABLE
+    if (event->packet->dataLength == sizeof(ClientReadyForMatchPacket))
+    {
+        // Copier le packet complet
+        ClientReadyForMatchPacket readyForMatchPacket{};
+        std::memcpy(&readyForMatchPacket, event->packet->data, sizeof(ClientReadyForMatchPacket));
+
+        // Créer un message de type CLIENT_READY_FOR_MATCH_RELIABLE
+        NetworkINToSimulationMessage message{};
+        message.type = NetworkINToSimulationMessageType::CLIENT_READY_FOR_MATCH_RELIABLE;
+        message.connectionId = connectionId;
+
+        // Push vers la simulation pour marquer cette session comme prête pour le match
+        netToSimQueue.push(message);
+
+        RCNET_log(RCNET_LOG_INFO,
+                  "[SERVER] [NETWORK_IN] [READY_FOR_MATCH] - Packet received from connectionId=%u (size=%u bytes)\n",
+                  connectionId,
+                  (unsigned)event->packet->dataLength);
+    }
 }
 
 static void ServerNetworkIncomingUpdate_HandleReceiveEvent_DispatchByChannel(
@@ -201,7 +228,14 @@ static void ServerNetworkIncomingUpdate_HandleReceiveEvent_DispatchByChannel(
     }
     else if (event->channelID == 3)
     {
-        // Traiter les messages importants du client (ex: events de gameplay, chat, etc.)
+        ServerNetworkOutgoingUpdate_HandleReceiveEvent_Channel3ImportantReliable(event, connectionId, netToSimQueue);
+    }
+    else
+    {
+        RCNET_log(RCNET_LOG_WARN,
+                  "[SERVER] [NETWORK_IN] - Received packet on unknown channel %u from connectionId=%u\n",
+                  event->channelID,
+                  connectionId);
     }
 }
 

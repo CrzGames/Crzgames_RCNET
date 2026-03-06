@@ -12,11 +12,11 @@
 
 enum class NetworkINToSimulationMessageType : uint8_t 
 { 
-    CONNECT = 0,
-    DISCONNECT = 1, 
-    PACKET_INPUT_UNRELIABLE = 2,
-    PACKET_HANDSHAKE_RELIABLE = 3,
-    PACKET_EVENT_IMPORTANT_RELIABLE = 4,
+    CLIENT_CONNECT = 0,
+    CLIENT_DISCONNECT = 1, 
+    CLIENT_INPUT_UNRELIABLE = 2,
+    CLIENT_HANDSHAKE_RELIABLE = 3,
+    CLIENT_READY_FOR_MATCH_RELIABLE = 4,
 };
 
 struct NetworkINToSimulationMessage
@@ -57,8 +57,10 @@ struct NetworkINToSimulationQueue
 
 enum class SimulationToNetworkOUTMessageType : uint8_t
 {
-    SNAPSHOT_FULL_UNRELIABLE = 0,
-    MATCH_INIT_RELIABLE = 1,
+    SERVER_SNAPSHOT_FULL_UNRELIABLE = 0,
+    SERVER_MATCH_INIT_RELIABLE = 1,
+    SERVER_WORLD_STATIC_STATE_INIT_RELIABLE = 2,
+    SERVER_MATCH_START_RELIABLE = 3,
     // plus tard: SNAPSHOT_DELTA, EVENT, etc.
 };
 

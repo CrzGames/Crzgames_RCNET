@@ -10,9 +10,10 @@
 // ======================================================================================
 enum class ServerReliablePacketType : uint8_t
 {
-    MATCH_INIT = 0,
-    WORLD_STATIC_STATE_INIT = 1,
-    MATCH_END = 2,
+    SERVER_MATCH_INIT_RELIABLE = 0,
+    SERVER_WORLD_STATIC_STATE_INIT_RELIABLE = 1,
+    SERVER_MATCH_START_RELIABLE = 2,
+    SERVER_MATCH_END_RELIABLE = 3,
 };
 
 #pragma pack(push, 1)
@@ -24,22 +25,68 @@ struct ServerReliablePacketHeader
 
 struct MatchInitPacket
 {
-    // Header commun à tous les packets reliable serveur -> client
+    // Header commun à tous les packets reliable serveur -> client.
+    // Permet au client d'identifier le type de message reçu.
+    ServerReliablePacketHeader header;
+
+    // Nom de la map à charger côté client.
+    // Le client doit posséder cette map localement (installée avec le jeu ou via un patch).
+    char mapName[32];
+
+    // Version de la map attendue par le serveur.
+    // Permet de vérifier que le client possède exactement la même version
+    // (évite les problèmes de désynchronisation ou certaines triches).
+    uint32_t mapVersion;
+
+    // Checksum de la map pour vérifier l'intégrité des données côté client.
+    // Permet de détecter des maps modifiées ou corrompues.
+    uint32_t mapChecksum;
+
+    // Tick logique de simulation serveur auquel ce packet a été construit.
+    // Sert de référence temporelle pour synchroniser la timeline client avec le serveur.
+    uint64_t serverTick;
+
+    // Fréquence de tick de la simulation serveur (ex: 128 Hz).
+    // Permet au client de convertir les ticks serveur en temps réel.
+    uint32_t serverTickRateHz;
+
+    // Temps monotone du serveur en nanosecondes depuis le démarrage du moteur.
+    // Utile pour estimer la latence et synchroniser l'horloge client avec celle du serveur.
+    uint64_t serverTimeNs;
+};
+
+struct WorldStaticStateInitPacket
+{
+    // Header commun à tous les packets reliable serveur -> client.
+    // Permet au client d'identifier le type de message reçu.
+    ServerReliablePacketHeader header;
+
+    // Plus tard :
+    // seed
+    // spawn points count
+    // zones count
+    // ou autres métadonnées statiques
+};
+
+struct MatchStartPacket
+{
+    // Header commun à tous les packets reliable serveur -> client.
     ServerReliablePacketHeader header;
 
     // Tick logique de simulation serveur auquel ce packet a été construit.
+    // Sert de référence temporelle pour synchroniser la timeline client avec le serveur.
     uint64_t serverTick;
 
-    // Tickrate simulation serveur
-    uint32_t serverTickRateHz;
-
-    // Tick de simulation auquel le match commence officiellement.
+    // Tick de simulation auquel le match commence officiellement côté serveur.
+    // Le client peut utiliser cette valeur pour lancer un compte à rebours synchronisé.
     uint64_t matchStartTick;
 
-    // Durée du compte à rebours avant le début du match en ticks de simulation (ex: 128 ticks = 1s si tick rate = 128Hz).
+    // Durée du compte à rebours avant le début du match exprimée en ticks serveur.
+    // Exemple : 128 ticks = 1 seconde si le serveur tourne à 128 Hz.
     uint32_t countdownTicks;
 
     // Temps monotone du serveur en nanosecondes depuis le démarrage du moteur.
+    // Utile pour estimer la latence et synchroniser l'horloge client avec celle du serveur.
     uint64_t serverTimeNs;
 };
 

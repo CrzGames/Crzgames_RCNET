@@ -109,75 +109,260 @@ static void ServerSimulationUpdate_ProcessIncomingNetworkMessages(
     {
         NetworkINToSimulationMessage& msg = *it;
 
-        if (msg.type == NetworkINToSimulationMessageType::CONNECT)
+        if (msg.type == NetworkINToSimulationMessageType::CLIENT_CONNECT)
         {
             ServerSimulationUpdate_HandleConnectMessage(networkState, msg);
         }
-        else if (msg.type == NetworkINToSimulationMessageType::DISCONNECT)
+        else if (msg.type == NetworkINToSimulationMessageType::CLIENT_DISCONNECT)
         {
             ServerSimulationUpdate_HandleDisconnectMessage(networkState, msg);
         }
-        else if (msg.type == NetworkINToSimulationMessageType::PACKET_INPUT_UNRELIABLE)
+        else if (msg.type == NetworkINToSimulationMessageType::CLIENT_INPUT_UNRELIABLE)
         {
             ServerSimulationUpdate_HandleInputMessage(networkState, msg);
         }
-        else if (msg.type == NetworkINToSimulationMessageType::PACKET_HANDSHAKE_RELIABLE)
+        else if (msg.type == NetworkINToSimulationMessageType::CLIENT_HANDSHAKE_RELIABLE)
         {
             // Plus tard : valider token, set accountIdDatabase, session.isAuthenticated = true, etc.
         }
-        else if (msg.type == NetworkINToSimulationMessageType::PACKET_EVENT_IMPORTANT_RELIABLE)
+        else if (msg.type == NetworkINToSimulationMessageType::CLIENT_READY_FOR_MATCH_RELIABLE)
         {
-            // Traiter les messages importants du client (ex: events de gameplay, chat, etc.)
+            // Marquer la session comme prête pour le match
+            std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
+            if (sit != networkState.sessions.end())
+            {
+                ClientSession& session = sit->second;
+                session.isReadyForMatch = true;
+
+                RCNET_log(RCNET_LOG_INFO,
+                          "[SERVER] [SIMULATION] [READY_FOR_MATCH] - connectionId=%u is ready for match\n",
+                          msg.connectionId);
+            }
         }
     }
 }
 
-static void ServerSimulationUpdate_CheckMatchStart(
+// ======================================================================================
+// Vérifie si toutes les sessions connectées sont prêtes pour démarrer le match.
+//
+// Conditions :
+// - Le nombre de sessions doit être égal ou supérieur au nombre de joueurs requis.
+// - Toutes les sessions doivent avoir envoyé CLIENT_READY_FOR_MATCH.
+//
+// Retourne true seulement si toutes les sessions sont prêtes.
+// ======================================================================================
+static bool ServerSimulationUpdate_AreAllSessionsReadyForMatch(const NetworkState& networkState)
+{
+    // Si le nombre de sessions connectées est inférieur au nombre de joueurs requis,
+    // on ne peut pas démarrer le match.
+    if (networkState.sessions.size() < networkState.maxClientsConnected)
+        return false;
+
+    // Parcourir toutes les sessions actives.
+    for (std::unordered_map<uint32_t, ClientSession>::const_iterator it = networkState.sessions.begin();
+         it != networkState.sessions.end();
+         ++it)
+    {
+        const ClientSession& session = it->second;
+
+        // Si une seule session n'est pas prête,
+        // le match ne peut pas encore démarrer.
+        if (!session.isReadyForMatch)
+            return false;
+    }
+
+    // Si toutes les sessions sont prêtes, on peut lancer la suite du flow.
+    return true;
+}
+
+// ======================================================================================
+// Gère tout le flow de préparation du match côté serveur.
+//
+// Flow général :
+//
+// 1) Attendre que tous les joueurs soient connectés
+// 2) Envoyer MATCH_INIT (infos générales du match)
+// 3) Envoyer WORLD_STATIC_STATE_INIT (état statique du monde)
+// 4) Attendre que tous les clients répondent CLIENT_READY_FOR_MATCH
+// 5) Envoyer MATCH_START avec un countdown synchronisé
+// 6) Démarrer réellement le match lorsque le tick serveur atteint matchStartTick
+// ======================================================================================
+static void ServerSimulationUpdate_CheckMatchFlow(
     GameState& gameState,
     NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,
     uint64_t currentTick)
 {
-    // 1) Vérifier si on peut démarrer le match (ex: assez de joueurs connectés), envoyer MatchInit, etc.
+    // --------------------------------------------------------------------------
+    // 1) Tant qu'on n'a pas assez de joueurs connectés, on ne fait rien.
+    //
+    // Exemple :
+    // maxClientsConnected = 2
+    // sessions.size() = 1
+    // => on attend qu'un deuxième joueur arrive.
+    // --------------------------------------------------------------------------
     if (networkState.sessions.size() < networkState.maxClientsConnected)
         return;
 
-    // 2) Si c'est pas encore envoyé, envoyer le MatchInit à tous les clients connectés (via la queue simulation -> réseau)
+
+    // --------------------------------------------------------------------------
+    // 2) Envoyer une seule fois le packet MATCH_INIT à tous les clients.
+    //
+    // Ce packet contient :
+    // - informations de map
+    // - tickrate serveur
+    // - tick serveur actuel
+    // - temps serveur monotone
+    //
+    // Il permet au client de :
+    // - charger la map correcte
+    // - synchroniser sa timeline avec le serveur
+    // --------------------------------------------------------------------------
     if (!gameState.matchInitSent)
     {
-        // Calculer le tick de début de match (ex: 3 secondes de countdown)
-        const uint32_t countdownTicks = rcnet_engine_durationMsToTicks(3000);
-        gameState.matchStartTick = currentTick + countdownTicks;
-
-        // Envoyer un message MATCH_INIT_RELIABLE à tous les clients connectés via la queue simulation -> réseau
         for (std::unordered_map<uint32_t, ClientSession>::iterator it = networkState.sessions.begin();
              it != networkState.sessions.end();
              ++it)
         {
             ClientSession& session = it->second;
 
+            // Construction du packet MATCH_INIT.
             MatchInitPacket matchInitPacket{};
-            matchInitPacket.header.type = ServerReliablePacketType::MATCH_INIT;
-            matchInitPacket.matchStartTick = gameState.matchStartTick;
-            matchInitPacket.serverTickRateHz = rcnet_engine_getSimulationTickRateHz();
-            matchInitPacket.countdownTicks = countdownTicks;
+            matchInitPacket.header.type = ServerReliablePacketType::SERVER_MATCH_INIT_RELIABLE;
+
+            // TODO : ici tu mettras la vraie map du serveur.
+            std::memset(matchInitPacket.mapName, 0, sizeof(matchInitPacket.mapName));
+            matchInitPacket.mapVersion = 1;
+            matchInitPacket.mapChecksum = 0;
+
+            // Informations temporelles serveur.
             matchInitPacket.serverTick = currentTick;
+            matchInitPacket.serverTickRateHz = rcnet_engine_getSimulationTickRateHz();
             matchInitPacket.serverTimeNs = rcnet_engine_getCurrentServerTimeNsMonotonic();
 
+            // Création du message simulation -> réseau.
             SimulationToNetworkOUTMessage msg{};
-            msg.type = SimulationToNetworkOUTMessageType::MATCH_INIT_RELIABLE;
+            msg.type = SimulationToNetworkOUTMessageType::SERVER_MATCH_INIT_RELIABLE;
             msg.connectionId = session.connectionId;
+
+            // Copie binaire du packet dans le payload.
             msg.payload.resize(sizeof(MatchInitPacket));
             std::memcpy(msg.payload.data(), &matchInitPacket, sizeof(MatchInitPacket));
+
+            // Push dans la queue pour que le thread réseau l'envoie.
+            simToNetQueue.push(msg);
+        }
+
+        // On marque que MATCH_INIT a été envoyé pour ne pas le renvoyer.
+        gameState.matchInitSent = true;
+    }
+
+
+    // --------------------------------------------------------------------------
+    // 3) Envoyer une seule fois WORLD_STATIC_STATE_INIT.
+    //
+    // Ce packet contient normalement :
+    // - seed de génération
+    // - spawn points
+    // - zones
+    // - objets statiques
+    //
+    // Il sert à synchroniser les éléments statiques du monde entre
+    // serveur et clients avant le début du match.
+    // --------------------------------------------------------------------------
+    if (!gameState.worldStaticStateInitSent)
+    {
+        for (std::unordered_map<uint32_t, ClientSession>::iterator it = networkState.sessions.begin();
+             it != networkState.sessions.end();
+             ++it)
+        {
+            ClientSession& session = it->second;
+
+            WorldStaticStateInitPacket worldPacket{};
+            worldPacket.header.type = ServerReliablePacketType::SERVER_WORLD_STATIC_STATE_INIT_RELIABLE;
+
+            SimulationToNetworkOUTMessage msg{};
+            msg.type = SimulationToNetworkOUTMessageType::SERVER_WORLD_STATIC_STATE_INIT_RELIABLE;
+            msg.connectionId = session.connectionId;
+
+            msg.payload.resize(sizeof(WorldStaticStateInitPacket));
+            std::memcpy(msg.payload.data(), &worldPacket, sizeof(WorldStaticStateInitPacket));
 
             simToNetQueue.push(msg);
         }
 
-        gameState.matchInitSent = true;
+        // On marque que ce packet a été envoyé.
+        gameState.worldStaticStateInitSent = true;
     }
 
-    // 3) Vérifier si on doit démarrer le match (currentTick >= matchStartTick)
-    if (!gameState.matchStarted && currentTick >= gameState.matchStartTick)
+
+    // --------------------------------------------------------------------------
+    // 4) Attendre que tous les clients soient prêts.
+    //
+    // Les clients deviennent prêts lorsqu'ils envoient
+    // CLIENT_READY_FOR_MATCH après avoir :
+    // - chargé la map
+    // - initialisé leur monde
+    // - préparé leur simulation locale
+    // --------------------------------------------------------------------------
+    if (!gameState.matchStartSent && ServerSimulationUpdate_AreAllSessionsReadyForMatch(networkState))
+    {
+        // Durée du countdown avant démarrage du match (ex : 3 secondes).
+        const uint32_t countdownTicks = rcnet_engine_durationMsToTicks(3000);
+
+        // Calcul du tick serveur auquel le match commencera réellement.
+        gameState.matchStartTick = currentTick + countdownTicks;
+
+        for (std::unordered_map<uint32_t, ClientSession>::iterator it = networkState.sessions.begin();
+             it != networkState.sessions.end();
+             ++it)
+        {
+            ClientSession& session = it->second;
+
+            MatchStartPacket matchStartPacket{};
+            matchStartPacket.header.type = ServerReliablePacketType::SERVER_MATCH_START_RELIABLE;
+
+            // Tick actuel du serveur.
+            matchStartPacket.serverTick = currentTick;
+
+            // Tick futur auquel le match démarrera réellement.
+            matchStartPacket.matchStartTick = gameState.matchStartTick;
+
+            // Durée du countdown.
+            matchStartPacket.countdownTicks = countdownTicks;
+
+            // Temps serveur monotone.
+            matchStartPacket.serverTimeNs = rcnet_engine_getCurrentServerTimeNsMonotonic();
+
+            SimulationToNetworkOUTMessage msg{};
+            msg.type = SimulationToNetworkOUTMessageType::SERVER_MATCH_START_RELIABLE;
+            msg.connectionId = session.connectionId;
+
+            msg.payload.resize(sizeof(MatchStartPacket));
+            std::memcpy(msg.payload.data(), &matchStartPacket, sizeof(MatchStartPacket));
+
+            simToNetQueue.push(msg);
+        }
+
+        // On marque que le countdown a été envoyé.
+        gameState.matchStartSent = true;
+    }
+
+
+    // --------------------------------------------------------------------------
+    // 5) Démarrage réel du match.
+    //
+    // Une fois que le tick serveur atteint matchStartTick,
+    // le match commence réellement côté serveur.
+    //
+    // À partir de ce moment :
+    // - la simulation gameplay devient active
+    // - les inputs sont appliqués
+    // - les entités sont simulées
+    // --------------------------------------------------------------------------
+    if (!gameState.matchStarted &&
+        gameState.matchStartSent &&
+        currentTick >= gameState.matchStartTick)
     {
         gameState.matchStarted = true;
 
@@ -244,7 +429,7 @@ static void ServerSimulationUpdate_CreateSnapshotFullAndPushToSimulationToNetwor
 
     // Construire un message de snapshot à envoyer au client via la queue simulation -> réseau
     SimulationToNetworkOUTMessage outMsg{};
-    outMsg.type = SimulationToNetworkOUTMessageType::SNAPSHOT_FULL_UNRELIABLE;
+    outMsg.type = SimulationToNetworkOUTMessageType::SERVER_SNAPSHOT_FULL_UNRELIABLE;
     outMsg.connectionId = session.connectionId;
 
     outMsg.payload.resize(sizeof(SnapshotPacket));
@@ -298,13 +483,8 @@ void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(uint64_t cur
     // 4) Traiter les messages réseau (création/suppression session, input queue, etc.)
     ServerSimulationUpdate_ProcessIncomingNetworkMessages(networkState, messages);
 
-    // 5) Vérifier si on peut démarrer le match (ex: assez de joueurs connectés), envoyer MatchInit, etc.
-    ServerSimulationUpdate_CheckMatchStart(
-        gameState,
-        networkState,
-        simToNetQueue,
-        currentTick
-    );
+    // 5) Gérer le flow de préparation du match (envoi des packets init, attendre que les clients soient prêts, envoyer le packet de démarrage, etc.)
+    ServerSimulationUpdate_CheckMatchFlow(gameState, networkState, simToNetQueue, currentTick);
 
     // 6) Simuler le monde, appliquer la logique de jeu, etc.
     ServerSimulationUpdate_RunGameplayLogicAndWorldSimulation(gameState, currentTick, serverTimeNs, dtNs, dt);

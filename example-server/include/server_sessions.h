@@ -50,6 +50,13 @@ struct ClientSession
     // Il change si le joueur se reconnecte.
     uint32_t connectionId = 0;
 
+    // Devient vrai lorsque le serveur reçoit un packet reliable
+    // de type CLIENT_READY_FOR_MATCH pour cette session.
+    // À partir de ce moment, le serveur peut considérer que le client
+    // a terminé son initialisation locale et est prêt à recevoir
+    // les informations de démarrage effectif du match.
+    bool isReadyForMatch = false;
+
 
     // =======================================================================
     // INPUTS (client -> serveur)

@@ -10,8 +10,8 @@
 // ======================================================================================
 enum class ServerUnreliablePacketType : uint8_t
 {
-    SNAPSHOT_FULL = 0,
-    SNAPSHOT_DELTA = 1
+    SERVER_SNAPSHOT_FULL_UNREALIABLE = 0,
+    SERVER_SNAPSHOT_DELTA_UNREALIABLE = 1
 };
 
 #pragma pack(push, 1)
