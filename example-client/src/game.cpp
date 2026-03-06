@@ -154,6 +154,10 @@ static void net_pump_events(void)
 
             case ENET_EVENT_TYPE_DISCONNECT:
                 RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [DISCONNECT] - Disconnected from server.\n");
+                break;
+
+            case ENET_EVENT_TYPE_DISCONNECT_TIMEOUT:
+                RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [DISCONNECT_TIMEOUT] - Server connection timeout.\n");
                 enetServerPeer = NULL;
                 isConnectedToServer = false;
                 break;
