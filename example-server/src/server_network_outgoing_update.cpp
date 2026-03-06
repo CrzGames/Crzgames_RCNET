@@ -93,7 +93,13 @@ static void ServerNetworkOutgoingUpdate_SendMatchInitReliable(
     ENetPeer* peer,
     const SimulationToNetworkOUTMessage& msg)
 {
+    if (peer == nullptr)
+        return;
+
     if (msg.type != SimulationToNetworkOUTMessageType::MATCH_INIT_RELIABLE)
+        return;
+
+    if (msg.payload.size() != sizeof(MatchInitPacket))
         return;
 
     ENetPacket* packet = enet_packet_create(
@@ -152,10 +158,13 @@ static void ServerNetworkOutgoingUpdate_SendSnapshotFullUnreliable(
     ENetPeer* peer,
     const SimulationToNetworkOUTMessage& msg)
 {
+    if (peer == nullptr)
+        return;
+
     if (msg.type != SimulationToNetworkOUTMessageType::SNAPSHOT_FULL_UNRELIABLE)
         return;
 
-    if (msg.payload.size() < sizeof(SnapshotPacket))
+    if (msg.payload.size() != sizeof(SnapshotPacket))
         return;
 
     std::unordered_map<uint32_t, ClientSession>::iterator sit =

@@ -70,7 +70,7 @@ struct SimulationToNetworkOUTMessage
     // à qui envoyer
     uint32_t connectionId = 0;
 
-    // payload brut (full snapshot pour commencer)
+    // payload brut
     std::vector<uint8_t> payload;
 };
 
