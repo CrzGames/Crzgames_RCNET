@@ -10,6 +10,19 @@
 struct GameState
 {
     // ------------------------------------------------------------------------
+    // Configuration du jeu
+    // ------------------------------------------------------------------------
+
+    // Booléen pour indiquer si le match init a été envoyé aux clients (pour éviter de l’envoyer plusieurs fois)
+    bool matchInitSent = false;
+
+    // Booléen pour indiquer si le match a officiellement commencé (après le compte à rebours)
+    bool matchStarted = false;
+
+    // Tick de simulation auquel le match commence officiellement
+    uint64_t matchStartTick = 0;
+
+    // ------------------------------------------------------------------------
     // World state
     // ------------------------------------------------------------------------
 

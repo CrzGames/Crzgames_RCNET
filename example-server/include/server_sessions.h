@@ -3,7 +3,7 @@
 #include <cstdint>       // uint16_t, uint32_t, etc.
 #include <deque>         // std::deque pour la queue d'inputs non encore consommés
 
-#include "server_network_input_packets.h" // ClientInputCommand
+#include "server_network_packets_client_unreliable.h" // InputPacket
 
 // ============================================================================
 // Données autoritaires spécifiques à une entité contrôlée par un client.
@@ -57,7 +57,7 @@ struct ClientSession
 
     // Dernier input reçu depuis le réseau.
     // Sert principalement à appliquer un état si aucun nouvel input n'arrive.
-    ClientInputCommand latestReceivedInputCommand{};
+    InputPacket latestReceivedInputPacket{};
 
     // Dernier inputSequenceNumber que le serveur a déjà appliqué
     // dans la simulation.
@@ -72,7 +72,7 @@ struct ClientSession
     //
     // Les inputs arrivent depuis le thread réseau puis sont
     // consommés dans le thread de simulation.
-    std::deque<ClientInputCommand> pendingInputCommandsQueue;
+    std::deque<InputPacket> pendingInputPacketsQueue;
 
 
     // =======================================================================

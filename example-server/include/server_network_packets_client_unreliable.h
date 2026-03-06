@@ -2,6 +2,19 @@
 
 #include <cstdint> // uint16_t, uint32_t, etc.
 
+// ======================================================================================
+// ClientUnreliablePacketType
+//
+// Type de packet envoyé sur le channel unreliable client -> serveur.
+//
+// Tous les packets unreliable doivent commencer par ClientUnreliablePacketHeader
+// pour permettre au serveur de dispatcher correctement.
+// ======================================================================================
+enum class ClientUnreliablePacketType : uint8_t
+{
+    INPUT = 0
+};
+
 // ============================================================================
 // Données d’input envoyées par le client au serveur
 // ============================================================================
@@ -14,7 +27,6 @@ enum class MovementFlags : uint8_t
     Right = 1u << 3,
     // etc. (ajoute autant de directions que nécessaire, jusqu’à 8)
 };
-
 enum class ActionFlags : uint64_t
 {
     None   = 0,
@@ -25,11 +37,18 @@ enum class ActionFlags : uint64_t
     // etc. (ajoute autant d’actions que nécessaire, jusqu’à 64)
 };
 
-// ============================================================================
-// Commande d'input (ce que le client envoie)
-// ============================================================================
-struct ClientInputCommand
+#pragma pack(push, 1)
+
+struct ClientUnreliablePacketHeader
 {
+    ClientUnreliablePacketType type;
+};
+
+struct InputPacket
+{
+    // Header commun à tous les packets unreliable client -> serveur
+    ClientUnreliablePacketHeader header;
+
     // =========================================================================
     // Ordonnancement / Synchronisation
     // =========================================================================
@@ -95,3 +114,5 @@ struct ClientInputCommand
     // Peut être omis si ton gameplay ne l’utilise pas.
     uint64_t actionReleasedFlags = 0;
 };
+
+#pragma pack(pop)

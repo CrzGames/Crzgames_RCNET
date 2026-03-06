@@ -1,7 +1,8 @@
 #include "server_context.h"
-#include "server_network_snapshot_packets.h"
+#include "server_network_packets_server_unreliable.h"
 #include "server_world.h"
 #include "server_debug_network_stats.h"
+#include "server_network_packets_server_reliable.h"
 
 #include <RCNET/RCNET.h>
 
@@ -29,9 +30,6 @@ static void ServerSimulationUpdate_HandleConnectMessage(
     // Créer une session pour ce client avec cette connectionId
     ClientSession session{};
     session.connectionId = msg.connectionId;
-    session.isAuthenticated = false; // pas encore (handshake)
-    session.accountIdDatabase = 0;    // pas encore (handshake)
-    session.serverLastProcessedInputSequenceNumber = 0;
 
     // Ajouter la session au network state
     networkState.sessions[msg.connectionId] = session;
@@ -75,20 +73,20 @@ static void ServerSimulationUpdate_HandleInputMessage(
     ClientSession& session = sit->second;
 
     // Garde le dernier input reçu (utile si on n’a rien de neuf ce tick)
-    session.latestReceivedInputCommand = msg.input;
+    session.latestReceivedInputPacket = msg.inputPacket;
 
     // Met à jour le dernier snapshot ACKé par le client (pour la reconciliation côté client et pour estimer la latence)
-    session.clientLastAckedSnapshotId = msg.input.lastReceivedSnapshotId;
+    session.clientLastAckedSnapshotId = msg.inputPacket.lastReceivedSnapshotId;
 
     // Anti-doublons / ordre
-    if (msg.input.inputSequenceNumber <= session.serverLastProcessedInputSequenceNumber)
+    if (msg.inputPacket.inputSequenceNumber <= session.serverLastProcessedInputSequenceNumber)
     {
         // input déjà traité ou trop vieux
         return;
     }
 
     // Mettre en queue pour consommation par la simulation (par tick)
-    session.pendingInputCommandsQueue.push_back(msg.input);
+    session.pendingInputPacketsQueue.push_back(msg.inputPacket);
 
     // NOTE : on ne met PAS serverLastProcessedInputSequenceNumber ici
     // parce que "processed" = doit être mis à jour quand l’input est réellement appliqué au monde (pas au moment où il arrive).
@@ -96,8 +94,8 @@ static void ServerSimulationUpdate_HandleInputMessage(
     RCNET_log(RCNET_LOG_INFO,
               "[SERVER] [SIMULATION] [INPUT] - queued connectionId=%u seq=%u (queue size=%zu)\n",
               msg.connectionId,
-              msg.input.inputSequenceNumber,
-              session.pendingInputCommandsQueue.size());
+              msg.inputPacket.inputSequenceNumber,
+              session.pendingInputPacketsQueue.size());
 }
 
 static void ServerSimulationUpdate_ProcessIncomingNetworkMessages(
@@ -119,18 +117,73 @@ static void ServerSimulationUpdate_ProcessIncomingNetworkMessages(
         {
             ServerSimulationUpdate_HandleDisconnectMessage(networkState, msg);
         }
-        else if (msg.type == NetworkINToSimulationMessageType::PACKET_INPUT)
+        else if (msg.type == NetworkINToSimulationMessageType::PACKET_INPUT_UNRELIABLE)
         {
             ServerSimulationUpdate_HandleInputMessage(networkState, msg);
         }
-        else if (msg.type == NetworkINToSimulationMessageType::PACKET_HANDSHAKE)
+        else if (msg.type == NetworkINToSimulationMessageType::PACKET_HANDSHAKE_RELIABLE)
         {
             // Plus tard : valider token, set accountIdDatabase, session.isAuthenticated = true, etc.
         }
-        else if (msg.type == NetworkINToSimulationMessageType::PACKET_EVENT_IMPORTANT)
+        else if (msg.type == NetworkINToSimulationMessageType::PACKET_EVENT_IMPORTANT_RELIABLE)
         {
             // Traiter les messages importants du client (ex: events de gameplay, chat, etc.)
         }
+    }
+}
+
+static void ServerSimulationUpdate_CheckMatchStart(
+    GameState& gameState,
+    NetworkState& networkState,
+    SimulationToNetworkOUTQueue& simToNetQueue,
+    uint64_t currentTick)
+{
+    // 1) Vérifier si on peut démarrer le match (ex: assez de joueurs connectés), envoyer MatchInit, etc.
+    if (networkState.sessions.size() < networkState.maxClientsConnected)
+        return;
+
+    // 2) Si c'est pas encore envoyé, envoyer le MatchInit à tous les clients connectés (via la queue simulation -> réseau)
+    if (!gameState.matchInitSent)
+    {
+        // Calculer le tick de début de match (ex: 3 secondes de countdown)
+        const uint32_t countdownTicks = rcnet_engine_durationMsToTicks(3000);
+        gameState.matchStartTick = currentTick + countdownTicks;
+
+        // Envoyer un message MATCH_INIT_RELIABLE à tous les clients connectés via la queue simulation -> réseau
+        for (std::unordered_map<uint32_t, ClientSession>::iterator it = networkState.sessions.begin();
+             it != networkState.sessions.end();
+             ++it)
+        {
+            ClientSession& session = it->second;
+
+            MatchInitPacket matchInitPacket{};
+            matchInitPacket.header.type = ServerReliablePacketType::MATCH_INIT;
+            matchInitPacket.matchStartTick = gameState.matchStartTick;
+            matchInitPacket.serverTickRateHz = rcnet_engine_getSimulationTickRateHz();
+            matchInitPacket.countdownTicks = countdownTicks;
+            matchInitPacket.serverTick = currentTick;
+            matchInitPacket.serverTimeNs = rcnet_engine_getCurrentServerTimeNsMonotonic();
+
+            SimulationToNetworkOUTMessage msg{};
+            msg.type = SimulationToNetworkOUTMessageType::MATCH_INIT_RELIABLE;
+            msg.connectionId = session.connectionId;
+            msg.payload.resize(sizeof(MatchInitPacket));
+            std::memcpy(msg.payload.data(), &matchInitPacket, sizeof(MatchInitPacket));
+
+            simToNetQueue.push(msg);
+        }
+
+        gameState.matchInitSent = true;
+    }
+
+    // 3) Vérifier si on doit démarrer le match (currentTick >= matchStartTick)
+    if (!gameState.matchStarted && currentTick >= gameState.matchStartTick)
+    {
+        gameState.matchStarted = true;
+
+        RCNET_log(RCNET_LOG_INFO,
+                  "[SERVER] [MATCH] Match started at tick=%llu\n",
+                  (unsigned long long)currentTick);
     }
 }
 
@@ -184,18 +237,18 @@ static void ServerSimulationUpdate_CreateSnapshotFullAndPushToSimulationToNetwor
     uint64_t currentTick)
 {
     // Construire un snapshot (pour l’instant: header uniquement)
-    SnapshotHeader header{};
+    SnapshotPacket header{};
     header.serverTick = currentTick;
     header.serverTimeNs = rcnet_engine_getCurrentServerTimeNsMonotonic();
     header.lastProcessedInputSequenceNumber = session.serverLastProcessedInputSequenceNumber;
 
     // Construire un message de snapshot à envoyer au client via la queue simulation -> réseau
     SimulationToNetworkOUTMessage outMsg{};
-    outMsg.type = SimulationToNetworkOUTMessageType::SNAPSHOT_FULL;
+    outMsg.type = SimulationToNetworkOUTMessageType::SNAPSHOT_FULL_UNRELIABLE;
     outMsg.connectionId = session.connectionId;
 
-    outMsg.payload.resize(sizeof(SnapshotHeader));
-    std::memcpy(outMsg.payload.data(), &header, sizeof(SnapshotHeader));
+    outMsg.payload.resize(sizeof(SnapshotPacket));
+    std::memcpy(outMsg.payload.data(), &header, sizeof(SnapshotPacket));
 
     simToNetQueue.push(outMsg);
 
@@ -245,15 +298,23 @@ void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(uint64_t cur
     // 4) Traiter les messages réseau (création/suppression session, input queue, etc.)
     ServerSimulationUpdate_ProcessIncomingNetworkMessages(networkState, messages);
 
-    // 5) Simuler le monde, appliquer la logique de jeu, etc.
+    // 5) Vérifier si on peut démarrer le match (ex: assez de joueurs connectés), envoyer MatchInit, etc.
+    ServerSimulationUpdate_CheckMatchStart(
+        gameState,
+        networkState,
+        simToNetQueue,
+        currentTick
+    );
+
+    // 6) Simuler le monde, appliquer la logique de jeu, etc.
     ServerSimulationUpdate_RunGameplayLogicAndWorldSimulation(gameState, currentTick, serverTimeNs, dtNs, dt);
 
-    // 6) Bloquer la construction/envoi des snapshots au rythme du NETWORK OUT (ex: 32Hz) et pas de la SIMULATION (ex: 128Hz)
+    // 7) Bloquer la construction/envoi des snapshots au rythme du NETWORK OUT (ex: 32Hz) et pas de la SIMULATION (ex: 128Hz)
     if (!ServerSimulationUpdate_ShouldBuildAndSendSnapshotsBasedOnNetworkOutgoingRate(currentTick))
     {
         return;
     }
 
-    // 7) Construire et enqueuer les snapshots (full pour l’instant)
+    // 8) Construire et enqueuer les snapshots (full pour l’instant)
     ServerSimulationUpdate_BuildSnapshotsForAllSessionsAndEnqueueToNetworkOut(simToNetQueue, networkState, currentTick);
 }

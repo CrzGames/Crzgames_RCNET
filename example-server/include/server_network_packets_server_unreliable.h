@@ -1,19 +1,31 @@
 #pragma once
-#include <cstdint>
 
 // ======================================================================================
-// SnapshotHeader
+// ServerUnreliablePacketType
 //
-// Header envoyé dans chaque snapshot serveur -> client.
-// Contient les informations nécessaires pour :
-// - ordering des snapshots
-// - interpolation / timeline serveur
-// - reconciliation des inputs côté client
+// Type de packet envoyé sur le channel unreliable serveur -> client.
+//
+// Tous les packets unreliable doivent commencer par ServerUnreliablePacketHeader
+// pour permettre au client de dispatcher correctement.
 // ======================================================================================
+enum class ServerUnreliablePacketType : uint8_t
+{
+    SNAPSHOT_FULL = 0,
+    SNAPSHOT_DELTA = 1
+};
 
 #pragma pack(push, 1)
-struct SnapshotHeader
+
+struct ServerUnreliablePacketHeader
 {
+    // Type de packet envoyé sur le channel unreliable serveur -> client.
+    ServerUnreliablePacketType type;
+};
+
+struct SnapshotPacket
+{
+    ServerUnreliablePacketHeader header;
+
     // Identifiant unique du snapshot envoyé au client.
     // Incrémenté côté serveur au moment de l'envoi réel.
     // Utilisé plus tard pour :
@@ -45,4 +57,5 @@ struct SnapshotHeader
     // - rejouer les inputs restants (client-side prediction + reconciliation).
     uint32_t lastProcessedInputSequenceNumber;
 };
+
 #pragma pack(pop)

@@ -1,128 +1,226 @@
 #include "server_context.h"
-#include "server_network_snapshot_packets.h"
+#include "server_network_packets_server_unreliable.h"
+#include "server_network_packets_server_reliable.h"
 #include "server_debug_network_stats.h"
 
 #include <RCNET/RCNET.h>
 
-#include <deque>           // std::deque
-#include <unordered_map>   // std::unordered_map
+#include <deque>
+#include <unordered_map>
+#include <cstring>
 
-static void ServerNetworkOutgoingUpdate_DrainOutgoingQueue_IntoLocalDeque(
+// ======================================================================================
+// OUTGOING NETWORK PIPELINE
+//
+// Rôle de ce fichier :
+// - drainer la queue Simulation -> Network
+// - séparer les messages reliable et snapshot unreliable
+// - coalescer uniquement les snapshots (garder le dernier par client)
+// - envoyer les paquets ENet sur les bons channels
+//
+// IMPORTANT :
+// - MATCH_INIT_RELIABLE ne doit JAMAIS être écrasé par le coalescing snapshot
+// - SNAPSHOT_FULL_UNRELIABLE peut être coalescé sans problème
+// ======================================================================================
+
+
+// ======================================================================================
+// Helpers - accès peer / queue
+// ======================================================================================
+
+static void ServerNetworkOutgoingUpdate_DrainSimulationToNetworkQueue(
     SimulationToNetworkOUTQueue& simToNetQueue,
     std::deque<SimulationToNetworkOUTMessage>& outMessages)
 {
-    // 3) Drainer la queue simulation -> réseau (moins de lock)
     simToNetQueue.drain(outMessages);
 }
 
-static void ServerNetworkOutgoingUpdate_CoalesceOutgoingMessages_KeepLastPerConnectionId(
-    const std::deque<SimulationToNetworkOUTMessage>& outMessages,
-    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastMsgPerConnectionId)
+static ENetPeer* ServerNetworkOutgoingUpdate_FindPeerByConnectionId(
+    NetworkState& networkState,
+    uint32_t connectionId)
 {
-    // 4) COALESCING : garder uniquement le DERNIER message par client (connectionId)
-    //
-    // Pourquoi:
-    // - Si la simulation pousse plus vite que NET OUT (ou backlog), la queue peut contenir plusieurs snapshots par client.
-    // - Envoyer tous les snapshots est inutile : le client veut le dernier état.
-    // - Pour delta compression plus tard, tu feras quelque chose de plus fin (ACK + history), mais ce coalescing reste utile.
+    std::unordered_map<uint32_t, ENetPeer*>::iterator it =
+        networkState.connectionIdToEnetPeer.find(connectionId);
+
+    if (it == networkState.connectionIdToEnetPeer.end())
+        return nullptr;
+
+    ENetPeer* peer = it->second;
+    if (peer == nullptr)
+        return nullptr;
+
+    return peer;
+}
+
+
+// ======================================================================================
+// Helpers - classification des messages sortants
+//
+// On sépare :
+// - reliable messages  -> envoyés tous
+// - snapshots          -> on garde seulement le dernier par connectionId
+// ======================================================================================
+
+static void ServerNetworkOutgoingUpdate_ClassifyOutgoingMessages(
+    const std::deque<SimulationToNetworkOUTMessage>& outMessages,
+    std::deque<SimulationToNetworkOUTMessage>& reliableMessages,
+    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastSnapshotPerConnectionId)
+{
     for (std::deque<SimulationToNetworkOUTMessage>::const_iterator it = outMessages.begin();
          it != outMessages.end();
          ++it)
     {
         const SimulationToNetworkOUTMessage& msg = *it;
 
-        // Remplace l'ancien => on conserve le dernier snapshot de cette connectionId
-        lastMsgPerConnectionId[msg.connectionId] = msg;
+        if (msg.type == SimulationToNetworkOUTMessageType::MATCH_INIT_RELIABLE)
+        {
+            reliableMessages.push_back(msg);
+        }
+        else if (msg.type == SimulationToNetworkOUTMessageType::SNAPSHOT_FULL_UNRELIABLE)
+        {
+            // Coalescing snapshot : seul le dernier snapshot par client nous intéresse.
+            lastSnapshotPerConnectionId[msg.connectionId] = msg;
+        }
     }
 }
 
-static ENetPeer* ServerNetworkOutgoingUpdate_FindPeerForConnectionIdOrNull(
-    NetworkState& networkState,
-    uint32_t connectionId)
+
+// ======================================================================================
+// Helpers - envoi reliable
+// ======================================================================================
+
+static void ServerNetworkOutgoingUpdate_SendMatchInitReliable(
+    ENetPeer* peer,
+    const SimulationToNetworkOUTMessage& msg)
 {
-    // Identifier le client (ENetPeer*) à qui envoyer ce message en utilisant msg.connectionId et le mapping dans networkState
-    std::unordered_map<uint32_t, ENetPeer*>::iterator pit = networkState.connectionIdToEnetPeer.find(connectionId);
-    if (pit == networkState.connectionIdToEnetPeer.end())
-        return nullptr;
+    if (msg.type != SimulationToNetworkOUTMessageType::MATCH_INIT_RELIABLE)
+        return;
 
-    // ENetPeer* trouvé pour ce connectionId, envoyer le message à ce client
-    ENetPeer* peer = pit->second;
-    if (!peer)
-        return nullptr;
+    ENetPacket* packet = enet_packet_create(
+        msg.payload.data(),
+        msg.payload.size(),
+        ENET_PACKET_FLAG_RELIABLE
+    );
 
-    return peer;
+    if (packet != nullptr)
+    {
+        enet_peer_send(peer, ENET_CHANNEL_EVENT_IMPORTANT_RELIABLE, packet);
+        RCNET_log(RCNET_LOG_INFO,
+                  "[SERVER] [NETWORK_OUT] [MATCH_INIT_RELIABLE] - Sent MatchInit to connectionId=%u (size=%zu bytes)\n",
+                  msg.connectionId,
+                  msg.payload.size());   
+    }
 }
 
-static void ServerNetworkOutgoingUpdate_HandleMessageType_SnapshotFull_SendUnreliable(
+static void ServerNetworkOutgoingUpdate_SendReliableMessages(
+    NetworkState& networkState,
+    const std::deque<SimulationToNetworkOUTMessage>& reliableMessages)
+{
+    for (std::deque<SimulationToNetworkOUTMessage>::const_iterator it = reliableMessages.begin();
+         it != reliableMessages.end();
+         ++it)
+    {
+        const SimulationToNetworkOUTMessage& msg = *it;
+
+        ENetPeer* peer = ServerNetworkOutgoingUpdate_FindPeerByConnectionId(
+            networkState,
+            msg.connectionId
+        );
+        if (peer == nullptr)
+            continue;
+
+        if (msg.type == SimulationToNetworkOUTMessageType::MATCH_INIT_RELIABLE)
+        {
+            ServerNetworkOutgoingUpdate_SendMatchInitReliable(peer, msg);
+        }
+    }
+}
+
+
+// ======================================================================================
+// Helpers - envoi snapshots unreliable
+//
+// Pour chaque client :
+// - lire le SnapshotPacket préparé par la simulation
+// - patcher snapshotId au moment de l'envoi réel
+// - mettre à jour la session
+// - envoyer sur le channel snapshot unreliable
+// ======================================================================================
+
+static void ServerNetworkOutgoingUpdate_SendSnapshotFullUnreliable(
     NetworkState& networkState,
     ENetPeer* peer,
     const SimulationToNetworkOUTMessage& msg)
 {
-    if (msg.type != SimulationToNetworkOUTMessageType::SNAPSHOT_FULL)
+    if (msg.type != SimulationToNetworkOUTMessageType::SNAPSHOT_FULL_UNRELIABLE)
         return;
 
-    if (msg.payload.size() < sizeof(SnapshotHeader))
+    if (msg.payload.size() < sizeof(SnapshotPacket))
         return;
 
-    // 1) Trouver la session pour assigner un snapshotId "envoyé réellement"
-    std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
+    std::unordered_map<uint32_t, ClientSession>::iterator sit =
+        networkState.sessions.find(msg.connectionId);
     if (sit == networkState.sessions.end())
         return;
 
     ClientSession& session = sit->second;
 
-    // 2) Lire le header (copie), patcher snapshotId, réécrire dans payload
-    SnapshotHeader header{};
-    std::memcpy(&header, msg.payload.data(), sizeof(SnapshotHeader));
+    // Lire la version construite côté simulation.
+    SnapshotPacket snapshotPacket{};
+    std::memcpy(&snapshotPacket, msg.payload.data(), sizeof(SnapshotPacket));
 
+    // Assigner le snapshotId au moment de l'envoi réel.
     const uint32_t snapshotId = session.serverNextSnapshotId++;
-    header.snapshotId = snapshotId;
+    snapshotPacket.snapshotId = snapshotId;
 
-    // Mettre à jour le "dernier envoyé" maintenant (car c'est VRAIMENT envoyé)
+    // Mémoriser le dernier snapshot réellement envoyé.
     session.serverLastSentSnapshotId = snapshotId;
 
-    // Créer un payload patché (car msg est const)
+    // Recréer un payload patché car le message source est const.
     std::vector<uint8_t> patchedPayload = msg.payload;
-    std::memcpy(patchedPayload.data(), &header, sizeof(SnapshotHeader));
-
-    // 3) ENet send
-    const enet_uint8 channelId = 2;
+    std::memcpy(patchedPayload.data(), &snapshotPacket, sizeof(SnapshotPacket));
 
     ENetPacket* packet = enet_packet_create(
         patchedPayload.data(),
         patchedPayload.size(),
-        0 // UNRELIABLE
+        0 // unreliable
     );
 
-    if (packet)
+    if (packet != nullptr)
     {
-        enet_peer_send(peer, channelId, packet);
-        g_dbg_snapshotsSent++;
-    }
-
-    RCNET_log(RCNET_LOG_INFO,
-              "[SERVER] [NETWORK_OUT] [SNAPSHOT_FULL] - Sent snapshotId=%u to connectionId=%u (size=%zu bytes)\n",
+        enet_peer_send(peer, ENET_CHANNEL_SNAPSHOT_UNRELIABLE, packet);
+        RCNET_log(RCNET_LOG_INFO,
+              "[SERVER] [NETWORK_OUT] [SNAPSHOT_FULL_UNRELIABLE] - Sent snapshotId=%u to connectionId=%u (size=%zu bytes)\n",
               snapshotId,
               msg.connectionId,
               patchedPayload.size());
+        g_dbg_snapshotsSent++;
+    }
 }
 
-static void ServerNetworkOutgoingUpdate_SendCoalescedMessagesToAllPeers(
+static void ServerNetworkOutgoingUpdate_SendLatestSnapshots(
     NetworkState& networkState,
-    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastMsgPerConnectionId)
+    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastSnapshotPerConnectionId)
 {
-    // 5) Envoyer uniquement le dernier snapshot par client
-    for (std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>::iterator it = lastMsgPerConnectionId.begin();
-         it != lastMsgPerConnectionId.end();
+    for (std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>::iterator it =
+             lastSnapshotPerConnectionId.begin();
+         it != lastSnapshotPerConnectionId.end();
          ++it)
     {
         SimulationToNetworkOUTMessage& msg = it->second;
 
-        ENetPeer* peer = ServerNetworkOutgoingUpdate_FindPeerForConnectionIdOrNull(networkState, msg.connectionId);
-        if (!peer)
+        ENetPeer* peer = ServerNetworkOutgoingUpdate_FindPeerByConnectionId(
+            networkState,
+            msg.connectionId
+        );
+        if (peer == nullptr)
             continue;
 
-        ServerNetworkOutgoingUpdate_HandleMessageType_SnapshotFull_SendUnreliable(networkState, peer, msg);
+        ServerNetworkOutgoingUpdate_SendSnapshotFullUnreliable(
+            networkState,
+            peer,
+            msg
+        );
     }
 }
 
@@ -135,20 +233,37 @@ void ServerNetworkOutgoingUpdate_DrainCoalesceAndSendMessages(ENetHost* host)
     if (host == nullptr)
         return;
 
-    // 1) Récupérer la queue simulation -> réseau pour envoyer des messages à la fin de ce tick
     SimulationToNetworkOUTQueue& simToNetQueue = GetSimulationToNetworkOUTQueue();
-
-    // 2) Accès au network state pour récupérer le mapping connectionId -> ENetPeer*
     NetworkState& networkState = GetNetworkState();
 
-    // 3) Drainer la queue simulation -> réseau (moins de lock)
+    // 1) Drainer tous les messages produits par la simulation depuis le dernier tick réseau OUT.
     std::deque<SimulationToNetworkOUTMessage> outMessages;
-    ServerNetworkOutgoingUpdate_DrainOutgoingQueue_IntoLocalDeque(simToNetQueue, outMessages);
+    ServerNetworkOutgoingUpdate_DrainSimulationToNetworkQueue(simToNetQueue, outMessages);
 
-    // 4) COALESCING : garder uniquement le DERNIER message par client (connectionId)
-    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage> lastMsgPerConnectionId;
-    ServerNetworkOutgoingUpdate_CoalesceOutgoingMessages_KeepLastPerConnectionId(outMessages, lastMsgPerConnectionId);
+    // 2) Séparer :
+    //    - les reliable : tous envoyés
+    //    - les snapshots : coalescés par client
+    std::deque<SimulationToNetworkOUTMessage> reliableMessages;
+    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage> lastSnapshotPerConnectionId;
 
-    // 5) Envoyer uniquement le dernier snapshot par client
-    ServerNetworkOutgoingUpdate_SendCoalescedMessagesToAllPeers(networkState, lastMsgPerConnectionId);
+    ServerNetworkOutgoingUpdate_ClassifyOutgoingMessages(
+        outMessages,
+        reliableMessages,
+        lastSnapshotPerConnectionId
+    );
+
+    // 3) Envoyer d'abord les messages reliable.
+    ServerNetworkOutgoingUpdate_SendReliableMessages(
+        networkState,
+        reliableMessages
+    );
+
+    // 4) Envoyer ensuite les snapshots unreliable coalescés.
+    ServerNetworkOutgoingUpdate_SendLatestSnapshots(
+        networkState,
+        lastSnapshotPerConnectionId
+    );
+
+    // 5) Flush explicite pour limiter la latence d'envoi.
+    enet_host_flush(host);
 }

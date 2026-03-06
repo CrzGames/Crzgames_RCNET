@@ -5,15 +5,18 @@
 #include <cstdint> // uint16_t, uint32_t, etc.
 #include <vector>  // std::vector pour le payload des messages de la simulation vers le réseau
 
-#include "server_network_input_packets.h"
+#include "server_network_packets_client_unreliable.h"
+#include "server_network_packets_client_reliable.h"
+#include "server_network_packets_server_unreliable.h"
+#include "server_network_packets_server_reliable.h"
 
 enum class NetworkINToSimulationMessageType : uint8_t 
 { 
     CONNECT = 0,
     DISCONNECT = 1, 
-    PACKET_INPUT = 2,
-    PACKET_HANDSHAKE = 3,
-    PACKET_EVENT_IMPORTANT = 4,
+    PACKET_INPUT_UNRELIABLE = 2,
+    PACKET_HANDSHAKE_RELIABLE = 3,
+    PACKET_EVENT_IMPORTANT_RELIABLE = 4,
 };
 
 struct NetworkINToSimulationMessage
@@ -24,8 +27,11 @@ struct NetworkINToSimulationMessage
     // Identifier la connexion réseau (connectionId) à partir de event->peer->data
     uint32_t connectionId;
 
-    // L'input du client (valide seulement si type == PACKET_INPUT)
-    ClientInputCommand input{};
+    // Packet d'input reçu du client (uniquement pour les messages de type PACKET_INPUT_UNRELIABLE)
+    InputPacket inputPacket;
+
+    // Packet de handshake reçu du client (uniquement pour les messages de type PACKET_HANDSHAKE_RELIABLE)
+    HandshakePacket handshakePacket;
 };
 
 struct NetworkINToSimulationQueue
@@ -51,7 +57,8 @@ struct NetworkINToSimulationQueue
 
 enum class SimulationToNetworkOUTMessageType : uint8_t
 {
-    SNAPSHOT_FULL = 0,
+    SNAPSHOT_FULL_UNRELIABLE = 0,
+    MATCH_INIT_RELIABLE = 1,
     // plus tard: SNAPSHOT_DELTA, EVENT, etc.
 };
 

@@ -1,5 +1,7 @@
 #include "server_context.h"
-#include "server_network_snapshot_packets.h"
+#include "server_network_packets_client_reliable.h"
+#include "server_network_packets_client_unreliable.h"
+#include "server_network_protocol_version.h"
 
 #include <RCNET/RCNET.h>
 
@@ -62,32 +64,120 @@ static void ServerNetworkIncomingUpdate_HandleDisconnectEvent(
     RCNET_log(RCNET_LOG_INFO, "[SERVER] [NETWORK_IN] [DISCONNECT] - connectionId=%u\n", connectionId);
 }
 
+static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel0Handshake(
+    const ENetEvent* event,
+    uint32_t connectionId,
+    NetworkINToSimulationQueue& netToSimQueue)
+{
+    // 1) Vérifier qu'on a au moins la taille du header reliable
+    if (event->packet->dataLength < sizeof(ClientReliablePacketHeader))
+        return;
+
+    // 2) Lire le header seul
+    ClientReliablePacketHeader header{};
+    std::memcpy(&header, event->packet->data, sizeof(ClientReliablePacketHeader));
+
+    // 3) Vérifier le type attendu
+    if (header.type != ClientReliablePacketType::HANDSHAKE)
+    {
+        RCNET_log(RCNET_LOG_WARN,
+                  "[SERVER] [NETWORK_IN] [HANDSHAKE] - Invalid reliable packet type from connectionId=%u\n",
+                  connectionId);
+        return;
+    }
+
+    // 4) Vérifier la taille exacte du packet complet
+    if (event->packet->dataLength != sizeof(HandshakePacket))
+    {
+        RCNET_log(RCNET_LOG_WARN,
+                  "[SERVER] [NETWORK_IN] [HANDSHAKE] - Invalid packet size from connectionId=%u: got=%u expected=%u\n",
+                  connectionId,
+                  (unsigned)event->packet->dataLength,
+                  (unsigned)sizeof(HandshakePacket));
+        return;
+    }
+
+    RCNET_log(RCNET_LOG_INFO,
+              "[SERVER] [NETWORK_IN] [HANDSHAKE] - Packet received from connectionId=%u (size=%u bytes)\n",
+              connectionId,
+              (unsigned)event->packet->dataLength);
+
+    // 5) Copier le packet complet
+    HandshakePacket handshakePacket{};
+    std::memcpy(&handshakePacket, event->packet->data, sizeof(HandshakePacket));
+
+    // 6) Vérification version protocole
+    if (handshakePacket.networkProtocolVersion != NETWORK_PROTOCOL_VERSION)
+    {
+        RCNET_log(RCNET_LOG_ERROR,
+                  "[SERVER] [NETWORK_IN] [HANDSHAKE] - Network protocol version mismatch with connectionId=%u: client=%u vs server=%u. Disconnecting client.\n",
+                  connectionId,
+                  handshakePacket.networkProtocolVersion,
+                  NETWORK_PROTOCOL_VERSION);
+
+        // Déconnecter le client
+        enet_peer_disconnect(event->peer, 0);
+        return;
+    }
+
+    // 7) Push vers la simulation
+    NetworkINToSimulationMessage message{};
+    message.type = NetworkINToSimulationMessageType::PACKET_HANDSHAKE_RELIABLE;
+    message.connectionId = connectionId;
+    message.handshakePacket = handshakePacket;
+
+    netToSimQueue.push(message);
+}
+
 static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel1Inputs(
     const ENetEvent* event,
     uint32_t connectionId,
     NetworkINToSimulationQueue& netToSimQueue)
 {
-    if (event->packet->dataLength == sizeof(ClientInputCommand))
+    // 1) Vérifier qu'on a au moins la taille du header unreliable
+    if (event->packet->dataLength < sizeof(ClientUnreliablePacketHeader))
+        return;
+
+    // 2) Lire le header seul
+    ClientUnreliablePacketHeader header{};
+    std::memcpy(&header, event->packet->data, sizeof(ClientUnreliablePacketHeader));
+
+    // 3) Vérifier le type attendu
+    if (header.type != ClientUnreliablePacketType::INPUT)
     {
-        RCNET_log(RCNET_LOG_INFO,
-                  "[SERVER] [NETWORK_IN] [INPUT] - Packet received from connectionId=%u (size=%u bytes)\n",
-                  connectionId,
-                  (unsigned)event->packet->dataLength);
-
-        // Initialiser une struct d'input à partir des données du packet reçu
-        ClientInputCommand inputCmd{};
-
-        // Copier les données du packet dans notre struct d'input (attention à la taille et à l'ordre des données)
-        std::memcpy(&inputCmd, event->packet->data, sizeof(ClientInputCommand));
-
-        // Push un message vers la simulation pour traiter cet input
-        NetworkINToSimulationMessage message{};
-        message.type = NetworkINToSimulationMessageType::PACKET_INPUT;
-        message.connectionId = connectionId;
-        message.input = inputCmd;
-
-        netToSimQueue.push(message);
+        RCNET_log(RCNET_LOG_WARN,
+                  "[SERVER] [NETWORK_IN] [INPUT] - Invalid unreliable packet type from connectionId=%u\n",
+                  connectionId);
+        return;
     }
+
+    // 4) Vérifier la taille exacte du packet complet
+    if (event->packet->dataLength != sizeof(InputPacket))
+    {
+        RCNET_log(RCNET_LOG_WARN,
+                  "[SERVER] [NETWORK_IN] [INPUT] - Invalid packet size from connectionId=%u: got=%u expected=%u\n",
+                  connectionId,
+                  (unsigned)event->packet->dataLength,
+                  (unsigned)sizeof(InputPacket));
+        return;
+    }
+
+    RCNET_log(RCNET_LOG_INFO,
+              "[SERVER] [NETWORK_IN] [INPUT] - Packet received from connectionId=%u (size=%u bytes)\n",
+              connectionId,
+              (unsigned)event->packet->dataLength);
+
+    // 5) Copier le packet complet
+    InputPacket inputPacket{};
+    std::memcpy(&inputPacket, event->packet->data, sizeof(InputPacket));
+
+    // 6) Push vers la simulation
+    NetworkINToSimulationMessage message{};
+    message.type = NetworkINToSimulationMessageType::PACKET_INPUT_UNRELIABLE;
+    message.connectionId = connectionId;
+    message.inputPacket = inputPacket;
+
+    netToSimQueue.push(message);
 }
 
 static void ServerNetworkIncomingUpdate_HandleReceiveEvent_DispatchByChannel(
@@ -102,7 +192,7 @@ static void ServerNetworkIncomingUpdate_HandleReceiveEvent_DispatchByChannel(
     if (event->channelID == 0)
     {
         // TODO: traiter handshake (token / accountIdDatabase / etc.)
-        // Puis push un message HANDSHAKE vers la simulation.
+        ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel0Handshake(event, connectionId, netToSimQueue);
     }
     else if (event->channelID == 1)
     {
@@ -145,8 +235,8 @@ void ServerNetworkIncomingUpdate_ProcessENetEvent(ENetHost* host, const ENetEven
     }
     else if (event->type == ENET_EVENT_TYPE_RECEIVE)
     {
-        // Sécurité : vérifier que event->peer et event->packet ne sont pas nuls avant de les utiliser
-        if (event->peer == nullptr || event->packet == nullptr)
+        // Sécurité : vérifier que event->peer, event->packet et event->packet->data ne sont pas nuls avant de les utiliser
+        if (event->peer == nullptr || event->packet == nullptr || event->packet->data == nullptr)
             return;
 
         // Sécurité : identifier la connexion réseau (connectionId) à partir de event->peer->data, et vérifier 

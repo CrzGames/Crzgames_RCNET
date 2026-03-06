@@ -7,8 +7,41 @@
 
 #include "server_sessions.h"
 
+enum EnetChannel : uint8_t
+{
+    ENET_CHANNEL_HANDSHAKE_RELIABLE = 0,
+    ENET_CHANNEL_INPUT_UNRELIABLE,
+    ENET_CHANNEL_SNAPSHOT_UNRELIABLE,
+    ENET_CHANNEL_EVENT_IMPORTANT_RELIABLE,
+
+    ENET_CHANNEL_COUNT
+};
+
 struct NetworkState
 {
+    // ------------------------------------------------------------------------
+    // Configuration du serveur
+    // ------------------------------------------------------------------------
+
+    // Port d'écoute du serveur
+    const uint16_t serverPort = 12345;
+
+    // Nombre de channels ENet (ex: 0=handshakes reliable, 1=inputs unrealiable, 2=snapshots unreliable, 3=events importants reliable)
+    const uint8_t channelCount = ENET_CHANNEL_COUNT;
+
+    // Nombre maximum de clients connectés
+    const uint32_t maxClientsConnected = 2;
+
+    // Fréquence de tick de simulation du serveur en Hz (ex: 128)
+    uint32_t simulationTickRateHz = 128;
+
+    // Fréquence de tick réseau OUT du serveur en Hz (ex: 32)
+    uint32_t networkOutgoingTickRateHz = 32;
+
+    // Durée de sommeil entre chaque tick réseau IN en ms (ex: 1)
+    uint32_t networkIncomingSleepMs = 1;
+
+
     // ------------------------------------------------------------------------
     // Connections - ATTENTION: Thread RÉSEAU UNIQUEMENT
     // ------------------------------------------------------------------------

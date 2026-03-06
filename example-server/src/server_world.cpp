@@ -29,6 +29,10 @@ uint32_t SpawnPlayer(GameState& gameState, PlayerType type)
 
 void ServerWorld_Simulate(GameState& gameState, uint64_t currentTick, uint64_t serverTimeNs, uint64_t dtNs, double dt)
 {
+    // Si la partie n'a pas encore commencé, on ne simule rien
+    if (!gameState.matchStarted)
+        return;
+
     // Appliquer les inputs des joueurs au monde
     ServerWorld_ApplyPlayerInputs(gameState, currentTick, serverTimeNs, dtNs, dt);
 
