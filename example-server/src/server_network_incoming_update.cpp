@@ -185,14 +185,11 @@ static void ServerNetworkIncomingUpdate_HandleReceiveEvent_DispatchByChannel(
     uint32_t connectionId,
     NetworkINToSimulationQueue& netToSimQueue)
 {
-    // channel 0 =  handshake / auth / encrypt (reliable)
-    // channel 1 = inputs (unreliable)
-    // channel 2 = snapshots (unreliable)
-    // channel 3 = events importants (reliable)
     if (event->channelID == 0)
     {
         // TODO: traiter handshake (token / accountIdDatabase / etc.)
         ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel0Handshake(event, connectionId, netToSimQueue);
+        return;
     }
     else if (event->channelID == 1)
     {

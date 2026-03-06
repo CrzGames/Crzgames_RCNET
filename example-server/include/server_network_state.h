@@ -7,6 +7,10 @@
 
 #include "server_sessions.h"
 
+// channel 0 =  handshake / auth / encrypt (reliable)
+// channel 1 = inputs (unreliable)
+// channel 2 = snapshots (unreliable)
+// channel 3 = events importants (reliable)
 enum EnetChannel : uint8_t
 {
     ENET_CHANNEL_HANDSHAKE_RELIABLE = 0,
