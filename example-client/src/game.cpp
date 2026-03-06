@@ -152,10 +152,12 @@ static void net_pump_events(void)
                 enet_packet_destroy(event.packet);
                 break;
 
+            // Le serveur déconnecte le client
             case ENET_EVENT_TYPE_DISCONNECT:
                 RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [DISCONNECT] - Disconnected from server.\n");
                 break;
 
+            // Timeout de connexion au serveur (ex: serveur éteint, crash du serveur, etc.)
             case ENET_EVENT_TYPE_DISCONNECT_TIMEOUT:
                 RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [DISCONNECT_TIMEOUT] - Server connection timeout.\n");
                 enetServerPeer = NULL;
