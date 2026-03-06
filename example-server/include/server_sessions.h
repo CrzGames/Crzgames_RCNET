@@ -38,7 +38,7 @@ struct ClientSession
     // Identification du client
     // =======================================================================
 
-    // Indique si le client a réussi le handshake et est authentifié.
+    // Indique si le client a réussi le handshake et donc s'est authentifié auprès du serveur.
     bool isAuthenticated = false;
 
     // Identifiant unique du compte joueur dans la base de données.
