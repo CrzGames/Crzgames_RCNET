@@ -103,8 +103,7 @@ struct ServerMatchStartPacketReliable
 enum class ServerSecureSessionHelloResponseStatus : uint8_t
 {
     SUCCESS = 0,
-    UNSUPPORTED_PROTOCOL_VERSION = 1,
-    INVALID_CLIENT_KEY = 2,
+    INVALID_CLIENT_KEY = 1,
 };
 struct ServerSecureSessionHelloResponsePacketReliable
 {

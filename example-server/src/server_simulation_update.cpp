@@ -101,6 +101,122 @@ static void ServerSimulationUpdate_HandleInputMessage(
               session.pendingInputPacketsQueue.size());
 }
 
+// Fonction helper statique locale au fichier.
+// Elle traite un message de type CLIENT_SECURE_SESSION_HELLO_PACKET_RELIABLE
+// déjà parsé par la couche réseau puis transféré à la simulation.
+//
+// Rôle :
+// - retrouver la session associée au client
+// - récupérer la clé publique client envoyée dans le hello
+// - calculer les clés de session serveur (rx / tx) via libsodium
+// - mettre à jour l’état de session
+// - construire la réponse serveur à renvoyer au client
+// - push cette réponse dans la queue Simulation -> Network OUT
+static void ServerSimulationUpdate_HandleSecureSessionHelloMessage(
+    NetworkState& networkState,
+    SimulationToNetworkOUTQueue& simToNetQueue,
+    const NetworkINToSimulationMessage& msg)
+{
+    // Cherche la session correspondant à la connexion source du message.
+    std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
+
+    // Si aucune session n’existe pour cette connectionId, on ne peut pas poursuivre.
+    if (sit == networkState.sessions.end())
+    {
+        // Log d’avertissement : le message secure session a été reçu pour une connexion inconnue.
+        RCNET_log(RCNET_LOG_WARN,
+                  "[SERVER] [SIMULATION] [SECURE_SESSION] - Unknown connectionId=%u\n",
+                  msg.connectionId);
+
+        // On abandonne le traitement.
+        return;
+    }
+
+    // Référence directe vers la session du client.
+    ClientSession& session = sit->second;
+
+    // Copie la clé publique du client dans la session.
+    // Cela permet au serveur de garder une trace de la clé client associée à cette connexion.
+    session.clientPublicKey = msg.secureSessionHelloPacket.clientPublicKey;
+
+    // Buffer qui recevra la clé serveur utilisée pour déchiffrer les messages venant du client.
+    // D’après crypto_kx_server_session_keys(), c’est la clé rx côté serveur.
+    std::array<uint8_t, crypto_kx_SESSIONKEYBYTES> serverRxKey{};
+
+    // Buffer qui recevra la clé serveur utilisée pour chiffrer les messages envoyés au client.
+    // D’après crypto_kx_server_session_keys(), c’est la clé tx côté serveur.
+    std::array<uint8_t, crypto_kx_SESSIONKEYBYTES> serverTxKey{};
+
+    // Tente de calculer les deux clés de session serveur à partir :
+    // - de l’état crypto global du serveur (server public key / secret key)
+    // - de la clé publique client reçue dans le packet hello
+    //
+    // Si la clé publique client est invalide ou suspecte, la fonction retourne false.
+    const bool ok = ServerCryptoKx_ComputeSessionKeys(
+        networkState.cryptoKxState,
+        msg.secureSessionHelloPacket.clientPublicKey,
+        serverRxKey,
+        serverTxKey);
+
+    // Crée le packet de réponse que le serveur renverra au client.
+    ServerSecureSessionHelloResponsePacketReliable responsePacket{};
+
+    // Renseigne le type du packet de réponse.
+    responsePacket.header.type = ServerReliablePacketType::SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE;
+
+    // Si le calcul des clés de session a échoué...
+    if (!ok)
+    {
+        // ... le serveur indique que la clé publique client est invalide ou inacceptable.
+        responsePacket.status = ServerSecureSessionHelloResponseStatus::INVALID_CLIENT_KEY;
+    }
+    else
+    {
+        // Si le calcul a réussi, on stocke la clé RX serveur dans la session.
+        // Elle servira plus tard à déchiffrer les packets reçus du client.
+        session.serverRxKey = serverRxKey;
+
+        // Stocke la clé TX serveur dans la session.
+        // Elle servira plus tard à chiffrer les packets envoyés au client.
+        session.serverTxKey = serverTxKey;
+
+        // Marque la session comme ayant terminé avec succès l’établissement
+        // de la session sécurisée côté serveur.
+        session.isSecureSessionEstablished = true;
+
+        // Indique dans la réponse que l’opération a réussi.
+        responsePacket.status = ServerSecureSessionHelloResponseStatus::SUCCESS;
+
+        // Copie la clé publique du serveur dans le packet de réponse.
+        // Le client l’utilisera pour calculer ses propres clés de session
+        // avec crypto_kx_client_session_keys().
+        responsePacket.serverPublicKey = networkState.cryptoKxState.serverPublicKey;
+    }
+
+    // Crée un message sortant simulation -> réseau.
+    SimulationToNetworkOUTMessage outMsg{};
+
+    // Renseigne le type de message à envoyer.
+    outMsg.type = SimulationToNetworkOUTMessageType::SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE;
+
+    // Renseigne le destinataire du message (la connexion client concernée).
+    outMsg.connectionId = msg.connectionId;
+
+    // Sérialise le packet de réponse serveur en payload binaire prêt à être envoyé par Network OUT.
+    outMsg.payload = serializeServerSecureSessionHelloResponsePacketReliable(responsePacket);
+
+    // Push le message dans la queue simulation -> réseau.
+    // Le thread réseau se chargera ensuite de l’envoyer via ENet au bon client.
+    simToNetQueue.push(outMsg);
+
+    // Log d’information indiquant le résultat du traitement.
+    // secureSessionEstablished vaut 1 si la session sécurisée est établie, sinon 0.
+    RCNET_log(RCNET_LOG_INFO,
+              "[SERVER] [SIMULATION] [SECURE_SESSION] - connectionId=%u secureSessionEstablished=%u\n",
+              msg.connectionId,
+              session.isSecureSessionEstablished ? 1u : 0u);
+}
+
 static void ServerSimulationUpdate_ProcessIncomingNetworkMessages(
     NetworkState& networkState,
     std::deque<NetworkINToSimulationMessage>& messages)
@@ -126,8 +242,7 @@ static void ServerSimulationUpdate_ProcessIncomingNetworkMessages(
         }
         else if (msg.type == NetworkINToSimulationMessageType::CLIENT_SECURE_SESSION_HELLO_PACKET_RELIABLE)
         {
-            // Générer la clé de session via libsodium, etc. (pas montré ici), 
-            // quand ok set session.isSecureSessionEstablished = true pour autoriser les étapes suivantes du flow d’authentification et de gameplay.
+            ServerSimulationUpdate_HandleSecureSessionHelloMessage(networkState, simToNetQueue, msg);
         }
         else if (msg.type == NetworkINToSimulationMessageType::CLIENT_AUTH_PACKET_RELIABLE)
         {

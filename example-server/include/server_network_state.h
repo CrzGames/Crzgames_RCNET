@@ -50,4 +50,7 @@ struct NetworkState
 
     // Mapping de connectionId vers ClientSession (sessions actives pour les clients connectés)
     std::unordered_map<uint32_t, ClientSession> sessions; // key = connectionId, value = ClientSession
+
+    // Données de chiffrement pour l'établissement de session sécurisée via libsodium (ex: échange de clés, etc.)
+    ServerCryptoKxState cryptoKxState;
 };

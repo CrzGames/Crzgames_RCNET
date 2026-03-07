@@ -38,13 +38,21 @@ struct ClientSession
     // Identification du client
     // =======================================================================
 
+    // Clé publique du client pour établir une session sécurisée via libsodium.
+    // Elle est reçue dans le packet CLIENT_SECURE_SESSION_HELLO_PACKET_RELIABLE.
+    // Elle est utilisée pour générer les clés de session (serverRxKey, serverTxKey) via crypto_kx_server_session_keys de libsodium.
+    std::array<uint8_t, crypto_kx_PUBLICKEYBYTES> clientPublicKey{};
+    std::array<uint8_t, crypto_kx_SESSIONKEYBYTES> serverRxKey{};
+    std::array<uint8_t, crypto_kx_SESSIONKEYBYTES> serverTxKey{};
+
     // Set à true après authentification validé par le serveur au près du backend / api d'authentification.
     bool isAuthenticated = false;
 
     // Set à true à la connexion lors de l'événement ENET_EVENT_TYPE_CONNECT, 
     bool isTransportConnected = false;
 
-    // Set à true lorsque les clés de chiffrement réseau sont établies entre le client et le serveur.
+    // Set à true lorsque serveur à reçu un packet reliable de type CLIENT_SECURE_SESSION_HELLO_PACKET_RELIABLE et 
+    // que le serveur à envoyer un packet reliable de type SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE pour établir la session sécurisée avec le client.
     bool isSecureSessionEstablished = false;
 
     // Devient vrai lorsque le serveur reçoit un packet reliable
@@ -55,7 +63,7 @@ struct ClientSession
     bool isReadyForMatch = false;
 
     // Identifiant unique du compte joueur dans la base de données.
-    // Il est généralement obtenu après le check du token d'authentification envoyé par le client.
+    // Il est généralement obtenu après le check du token d'authentification auprès du backend d'authentification.
     uint64_t accountIdDatabase = 0;
 
     // Identifiant unique de la connexion réseau active.
