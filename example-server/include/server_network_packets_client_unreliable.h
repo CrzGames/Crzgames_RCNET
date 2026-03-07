@@ -12,7 +12,8 @@
 // ======================================================================================
 enum class ClientUnreliablePacketType : uint8_t
 {
-    CLIENT_INPUT_UNREALIABLE = 0
+    CLIENT_INPUT_PACKET_UNRELIABLE = 0,
+    CLIENT_CLOCK_SYNC_PACKET_UNRELIABLE = 1,
 };
 
 // ============================================================================
@@ -41,10 +42,11 @@ enum class ActionFlags : uint64_t
 
 struct ClientUnreliablePacketHeader
 {
+    // Type de packet envoyé sur le channel unreliable client -> serveur.
     ClientUnreliablePacketType type;
 };
 
-struct InputPacket
+struct ClientInputPacketUnreliable
 {
     // Header commun à tous les packets unreliable client -> serveur
     ClientUnreliablePacketHeader header;

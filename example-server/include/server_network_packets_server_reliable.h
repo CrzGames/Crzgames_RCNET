@@ -10,10 +10,10 @@
 // ======================================================================================
 enum class ServerReliablePacketType : uint8_t
 {
-    SERVER_MATCH_INIT_RELIABLE = 0,
-    SERVER_WORLD_STATIC_STATE_INIT_RELIABLE = 1,
-    SERVER_MATCH_START_RELIABLE = 2,
-    SERVER_MATCH_END_RELIABLE = 3,
+    SERVER_MATCH_INIT_PACKET_RELIABLE = 0,
+    SERVER_WORLD_STATIC_STATE_INIT_PACKET_RELIABLE = 1,
+    SERVER_MATCH_START_PACKET_RELIABLE = 2,
+    SERVER_MATCH_END_PACKET_RELIABLE = 3,
 };
 
 #pragma pack(push, 1)
@@ -23,7 +23,7 @@ struct ServerReliablePacketHeader
     ServerReliablePacketType type;
 };
 
-struct MatchInitPacket
+struct ServerMatchInitPacketReliable
 {
     // Header commun à tous les packets reliable serveur -> client.
     // Permet au client d'identifier le type de message reçu.
@@ -55,7 +55,7 @@ struct MatchInitPacket
     uint64_t serverTimeNs;
 };
 
-struct WorldStaticStateInitPacket
+struct ServerWorldStaticStateInitPacketReliable
 {
     // Header commun à tous les packets reliable serveur -> client.
     // Permet au client d'identifier le type de message reçu.
@@ -68,7 +68,7 @@ struct WorldStaticStateInitPacket
     // ou autres métadonnées statiques
 };
 
-struct MatchStartPacket
+struct ServerMatchStartPacketReliable
 {
     // Header commun à tous les packets reliable serveur -> client.
     ServerReliablePacketHeader header;

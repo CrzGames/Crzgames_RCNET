@@ -109,23 +109,23 @@ static void ServerSimulationUpdate_ProcessIncomingNetworkMessages(
     {
         NetworkINToSimulationMessage& msg = *it;
 
-        if (msg.type == NetworkINToSimulationMessageType::CLIENT_CONNECT)
+        if (msg.type == NetworkINToSimulationMessageType::CLIENT_EVENT_CONNECT)
         {
             ServerSimulationUpdate_HandleConnectMessage(networkState, msg);
         }
-        else if (msg.type == NetworkINToSimulationMessageType::CLIENT_DISCONNECT)
+        else if (msg.type == NetworkINToSimulationMessageType::CLIENT_EVENT_DISCONNECT)
         {
             ServerSimulationUpdate_HandleDisconnectMessage(networkState, msg);
         }
-        else if (msg.type == NetworkINToSimulationMessageType::CLIENT_INPUT_UNRELIABLE)
+        else if (msg.type == NetworkINToSimulationMessageType::CLIENT_INPUT_PACKET_UNRELIABLE)
         {
             ServerSimulationUpdate_HandleInputMessage(networkState, msg);
         }
-        else if (msg.type == NetworkINToSimulationMessageType::CLIENT_HANDSHAKE_RELIABLE)
+        else if (msg.type == NetworkINToSimulationMessageType::CLIENT_HANDSHAKE_PACKET_RELIABLE)
         {
             // Plus tard : valider token, set accountIdDatabase, session.isAuthenticated = true, etc.
         }
-        else if (msg.type == NetworkINToSimulationMessageType::CLIENT_READY_FOR_MATCH_RELIABLE)
+        else if (msg.type == NetworkINToSimulationMessageType::CLIENT_READY_FOR_MATCH_PACKET_RELIABLE)
         {
             // Marquer la session comme prête pour le match
             std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
@@ -227,8 +227,8 @@ static void ServerSimulationUpdate_CheckMatchFlow(
             ClientSession& session = it->second;
 
             // Construction du packet MATCH_INIT.
-            MatchInitPacket matchInitPacket{};
-            matchInitPacket.header.type = ServerReliablePacketType::SERVER_MATCH_INIT_RELIABLE;
+            ServerMatchInitPacketReliable matchInitPacket{};
+            matchInitPacket.header.type = ServerReliablePacketType::SERVER_MATCH_INIT_PACKET_RELIABLE;
 
             // TODO : ici tu mettras la vraie map du serveur.
             std::memset(matchInitPacket.mapName, 0, sizeof(matchInitPacket.mapName));
@@ -242,12 +242,12 @@ static void ServerSimulationUpdate_CheckMatchFlow(
 
             // Création du message simulation -> réseau.
             SimulationToNetworkOUTMessage msg{};
-            msg.type = SimulationToNetworkOUTMessageType::SERVER_MATCH_INIT_RELIABLE;
+            msg.type = SimulationToNetworkOUTMessageType::SERVER_MATCH_INIT_PACKET_RELIABLE;
             msg.connectionId = session.connectionId;
 
             // Copie binaire du packet dans le payload.
-            msg.payload.resize(sizeof(MatchInitPacket));
-            std::memcpy(msg.payload.data(), &matchInitPacket, sizeof(MatchInitPacket));
+            msg.payload.resize(sizeof(ServerMatchInitPacketReliable));
+            std::memcpy(msg.payload.data(), &matchInitPacket, sizeof(ServerMatchInitPacketReliable));
 
             // Push dans la queue pour que le thread réseau l'envoie.
             simToNetQueue.push(msg);
@@ -278,15 +278,15 @@ static void ServerSimulationUpdate_CheckMatchFlow(
         {
             ClientSession& session = it->second;
 
-            WorldStaticStateInitPacket worldPacket{};
-            worldPacket.header.type = ServerReliablePacketType::SERVER_WORLD_STATIC_STATE_INIT_RELIABLE;
+            ServerWorldStaticStateInitPacketReliable worldStaticStateInitPacket{};
+            worldStaticStateInitPacket.header.type = ServerReliablePacketType::SERVER_WORLD_STATIC_STATE_INIT_PACKET_RELIABLE;
 
             SimulationToNetworkOUTMessage msg{};
-            msg.type = SimulationToNetworkOUTMessageType::SERVER_WORLD_STATIC_STATE_INIT_RELIABLE;
+            msg.type = SimulationToNetworkOUTMessageType::SERVER_WORLD_STATIC_STATE_INIT_PACKET_RELIABLE;
             msg.connectionId = session.connectionId;
 
-            msg.payload.resize(sizeof(WorldStaticStateInitPacket));
-            std::memcpy(msg.payload.data(), &worldPacket, sizeof(WorldStaticStateInitPacket));
+            msg.payload.resize(sizeof(ServerWorldStaticStateInitPacketReliable));
+            std::memcpy(msg.payload.data(), &worldStaticStateInitPacket, sizeof(ServerWorldStaticStateInitPacketReliable));
 
             simToNetQueue.push(msg);
         }
@@ -319,8 +319,8 @@ static void ServerSimulationUpdate_CheckMatchFlow(
         {
             ClientSession& session = it->second;
 
-            MatchStartPacket matchStartPacket{};
-            matchStartPacket.header.type = ServerReliablePacketType::SERVER_MATCH_START_RELIABLE;
+            ServerMatchStartPacketReliable matchStartPacket{};
+            matchStartPacket.header.type = ServerReliablePacketType::SERVER_MATCH_START_PACKET_RELIABLE;
 
             // Tick actuel du serveur.
             matchStartPacket.serverTick = currentTick;
@@ -335,11 +335,11 @@ static void ServerSimulationUpdate_CheckMatchFlow(
             matchStartPacket.serverTimeNs = rcnet_engine_getCurrentServerTimeNsMonotonic();
 
             SimulationToNetworkOUTMessage msg{};
-            msg.type = SimulationToNetworkOUTMessageType::SERVER_MATCH_START_RELIABLE;
+            msg.type = SimulationToNetworkOUTMessageType::SERVER_MATCH_START_PACKET_RELIABLE;
             msg.connectionId = session.connectionId;
 
-            msg.payload.resize(sizeof(MatchStartPacket));
-            std::memcpy(msg.payload.data(), &matchStartPacket, sizeof(MatchStartPacket));
+            msg.payload.resize(sizeof(ServerMatchStartPacketReliable));
+            std::memcpy(msg.payload.data(), &matchStartPacket, sizeof(ServerMatchStartPacketReliable));
 
             simToNetQueue.push(msg);
         }
@@ -421,19 +421,20 @@ static void ServerSimulationUpdate_CreateSnapshotFullAndPushToSimulationToNetwor
     ClientSession& session,
     uint64_t currentTick)
 {
-    // Construire un snapshot (pour l’instant: header uniquement)
-    SnapshotPacket header{};
-    header.serverTick = currentTick;
-    header.serverTimeNs = rcnet_engine_getCurrentServerTimeNsMonotonic();
-    header.lastProcessedInputSequenceNumber = session.serverLastProcessedInputSequenceNumber;
+    // Construire un snapshot full de l'état du monde pour ce client.
+    ServerSnapshotFullPacketUnreliable packet{};
+    packet.header.type = ServerUnreliablePacketType::SERVER_SNAPSHOT_FULL_PACKET_UNRELIABLE;
+    packet.serverTick = currentTick;
+    packet.serverTimeNs = rcnet_engine_getCurrentServerTimeNsMonotonic();
+    packet.lastProcessedInputSequenceNumber = session.serverLastProcessedInputSequenceNumber;
 
     // Construire un message de snapshot à envoyer au client via la queue simulation -> réseau
     SimulationToNetworkOUTMessage outMsg{};
-    outMsg.type = SimulationToNetworkOUTMessageType::SERVER_SNAPSHOT_FULL_UNRELIABLE;
+    outMsg.type = SimulationToNetworkOUTMessageType::SERVER_SNAPSHOT_FULL_PACKET_UNRELIABLE;
     outMsg.connectionId = session.connectionId;
 
-    outMsg.payload.resize(sizeof(SnapshotPacket));
-    std::memcpy(outMsg.payload.data(), &header, sizeof(SnapshotPacket));
+    outMsg.payload.resize(sizeof(ServerSnapshotFullPacketUnreliable));
+    std::memcpy(outMsg.payload.data(), &packet, sizeof(ServerSnapshotFullPacketUnreliable));
 
     simToNetQueue.push(outMsg);
 

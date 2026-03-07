@@ -12,11 +12,11 @@
 
 enum class NetworkINToSimulationMessageType : uint8_t 
 { 
-    CLIENT_CONNECT = 0,
-    CLIENT_DISCONNECT = 1, 
-    CLIENT_INPUT_UNRELIABLE = 2,
-    CLIENT_HANDSHAKE_RELIABLE = 3,
-    CLIENT_READY_FOR_MATCH_RELIABLE = 4,
+    CLIENT_EVENT_CONNECT = 0,
+    CLIENT_EVENT_DISCONNECT = 1, 
+    CLIENT_INPUT_PACKET_UNRELIABLE = 2,
+    CLIENT_HANDSHAKE_PACKET_RELIABLE = 3,
+    CLIENT_READY_FOR_MATCH_PACKET_RELIABLE = 4,
 };
 
 struct NetworkINToSimulationMessage
@@ -27,11 +27,11 @@ struct NetworkINToSimulationMessage
     // Identifier la connexion réseau (connectionId) à partir de event->peer->data
     uint32_t connectionId;
 
-    // Packet d'input reçu du client (uniquement pour les messages de type PACKET_INPUT_UNRELIABLE)
-    InputPacket inputPacket;
+    // Packet d'input reçu du client (uniquement pour les messages de type CLIENT_INPUT_PACKET_UNRELIABLE)
+    ClientInputPacketUnreliable inputPacket;
 
-    // Packet de handshake reçu du client (uniquement pour les messages de type PACKET_HANDSHAKE_RELIABLE)
-    HandshakePacket handshakePacket;
+    // Packet de handshake reçu du client (uniquement pour les messages de type CLIENT_HANDSHAKE_PACKET_RELIABLE)
+    ClientHandshakePacketReliable handshakePacket;
 };
 
 struct NetworkINToSimulationQueue
@@ -57,10 +57,10 @@ struct NetworkINToSimulationQueue
 
 enum class SimulationToNetworkOUTMessageType : uint8_t
 {
-    SERVER_SNAPSHOT_FULL_UNRELIABLE = 0,
-    SERVER_MATCH_INIT_RELIABLE = 1,
-    SERVER_WORLD_STATIC_STATE_INIT_RELIABLE = 2,
-    SERVER_MATCH_START_RELIABLE = 3,
+    SERVER_SNAPSHOT_FULL_PACKET_UNRELIABLE = 0,
+    SERVER_MATCH_INIT_PACKET_RELIABLE = 1,
+    SERVER_WORLD_STATIC_STATE_INIT_PACKET_RELIABLE = 2,
+    SERVER_MATCH_START_PACKET_RELIABLE = 3,
     // plus tard: SNAPSHOT_DELTA, EVENT, etc.
 };
 

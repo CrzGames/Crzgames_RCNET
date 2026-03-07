@@ -31,7 +31,7 @@ typedef struct RCNET_ServerConfig
 {
     uint16_t port;                   // ex: 12345 (plage des ports UDP : 0-65535, éviter <1024 réservés)
     uint32_t maxClients;             // ex: 64 clients max (ENet supporte jusqu'à 4096 clients max)
-    uint32_t channelCount;           // ex: 3 channels (inputs unrealiable, snapshots unreliable, events importants reliable)
+    uint32_t channelCount;           // ex: 3 channels (inputs unreliable, snapshots unreliable, events importants reliable)
     uint32_t networkIncomingSleepMs; // ex: 1 ms
     uint32_t networkOutgoingTickHz;  // ex: 32 Hz
     uint32_t simulationTickHz;       // ex: 128 Hz

@@ -10,8 +10,8 @@
 // ======================================================================================
 enum class ClientReliablePacketType : uint8_t
 {
-    CLIENT_HANDSHAKE_RELIABLE = 0,
-    CLIENT_READY_FOR_MATCH_RELIABLE = 1,
+    CLIENT_HANDSHAKE_PACKET_RELIABLE = 0,
+    CLIENT_READY_FOR_MATCH_PACKET_RELIABLE = 1,
 };
 
 #pragma pack(push, 1)
@@ -21,7 +21,7 @@ struct ClientReliablePacketHeader
     ClientReliablePacketType type;
 };
 
-struct HandshakePacket
+struct ClientHandshakePacketReliable
 {
     // Header commun à tous les packets reliable client -> serveur
     ClientReliablePacketHeader header;
@@ -34,7 +34,7 @@ struct HandshakePacket
     char authToken[64];
 };
 
-struct ClientReadyForMatchPacket
+struct ClientReadyForMatchPacketReliable
 {
     // Header commun à tous les packets reliable client -> serveur.
     ClientReliablePacketHeader header;

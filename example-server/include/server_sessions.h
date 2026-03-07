@@ -64,7 +64,7 @@ struct ClientSession
 
     // Dernier input reçu depuis le réseau.
     // Sert principalement à appliquer un état si aucun nouvel input n'arrive.
-    InputPacket latestReceivedInputPacket{};
+    ClientInputPacketUnreliable latestReceivedInputPacket{};
 
     // Dernier inputSequenceNumber que le serveur a déjà appliqué
     // dans la simulation.
@@ -79,7 +79,7 @@ struct ClientSession
     //
     // Les inputs arrivent depuis le thread réseau puis sont
     // consommés dans le thread de simulation.
-    std::deque<InputPacket> pendingInputPacketsQueue;
+    std::deque<ClientInputPacketUnreliable> pendingInputPacketsQueue;
 
 
     // =======================================================================

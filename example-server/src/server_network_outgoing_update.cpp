@@ -56,13 +56,13 @@ static void ServerNetworkOutgoingUpdate_ClassifyOutgoingMessages(
     {
         const SimulationToNetworkOUTMessage& msg = *it;
 
-        if (msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_INIT_RELIABLE ||
-            msg.type == SimulationToNetworkOUTMessageType::SERVER_WORLD_STATIC_STATE_INIT_RELIABLE ||
-            msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_START_RELIABLE)
+        if (msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_INIT_PACKET_RELIABLE ||
+            msg.type == SimulationToNetworkOUTMessageType::SERVER_WORLD_STATIC_STATE_INIT_PACKET_RELIABLE ||
+            msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_START_PACKET_RELIABLE)
         {
             reliableMessages.push_back(msg);
         }
-        else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_SNAPSHOT_FULL_UNRELIABLE)
+        else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_SNAPSHOT_FULL_PACKET_UNRELIABLE)
         {
             // Coalescing snapshot : seul le dernier snapshot par client nous intéresse.
             lastSnapshotPerConnectionId[msg.connectionId] = msg;
@@ -90,7 +90,7 @@ static void ServerNetworkOutgoingUpdate_SendReliablePacket(
 
     if (packet != nullptr)
     {
-        enet_peer_send(peer, ENET_CHANNEL_EVENT_IMPORTANT_RELIABLE, packet);
+        enet_peer_send(peer, ENET_CHANNEL_RELIABLE, packet);
         RCNET_log(RCNET_LOG_INFO,
                   "[SERVER] [NETWORK_OUT] [%s] - Sent to connectionId=%u (size=%zu bytes)\n",
                   debugLabel,
@@ -121,17 +121,17 @@ static void ServerNetworkOutgoingUpdate_SendReliableMessages(NetworkState& netwo
         if (peer == nullptr)
             continue;
 
-        if (msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_INIT_RELIABLE)
+        if (msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_INIT_PACKET_RELIABLE)
         {
-            ServerNetworkOutgoingUpdate_SendReliablePacket(peer, msg, sizeof(MatchInitPacket), "MATCH_INIT_RELIABLE");
+            ServerNetworkOutgoingUpdate_SendReliablePacket(peer, msg, sizeof(ServerMatchInitPacketReliable), "MATCH_INIT_RELIABLE");
         }
-        else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_WORLD_STATIC_STATE_INIT_RELIABLE)
+        else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_WORLD_STATIC_STATE_INIT_PACKET_RELIABLE)
         {
-            ServerNetworkOutgoingUpdate_SendReliablePacket(peer, msg, sizeof(WorldStaticStateInitPacket), "WORLD_STATIC_STATE_INIT_RELIABLE");
+            ServerNetworkOutgoingUpdate_SendReliablePacket(peer, msg, sizeof(ServerWorldStaticStateInitPacketReliable), "WORLD_STATIC_STATE_INIT_RELIABLE");
         }
-        else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_START_RELIABLE)
+        else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_START_PACKET_RELIABLE)
         {
-            ServerNetworkOutgoingUpdate_SendReliablePacket(peer, msg, sizeof(MatchStartPacket), "MATCH_START_RELIABLE");
+            ServerNetworkOutgoingUpdate_SendReliablePacket(peer, msg, sizeof(ServerMatchStartPacketReliable), "MATCH_START_RELIABLE");
         }
     }
 }
@@ -140,7 +140,7 @@ static void ServerNetworkOutgoingUpdate_SendReliableMessages(NetworkState& netwo
 // Helpers - envoi snapshots unreliable
 //
 // Pour chaque client :
-// - lire le SnapshotPacket préparé par la simulation
+// - lire le ServerSnapshotFullPacketUnreliable préparé par la simulation
 // - patcher snapshotId au moment de l'envoi réel
 // - mettre à jour la session
 // - envoyer sur le channel snapshot unreliable
@@ -151,10 +151,10 @@ static void ServerNetworkOutgoingUpdate_SendSnapshotFullUnreliable(
     ENetPeer* peer,
     const SimulationToNetworkOUTMessage& msg)
 {
-    if (msg.type != SimulationToNetworkOUTMessageType::SERVER_SNAPSHOT_FULL_UNRELIABLE)
+    if (msg.type != SimulationToNetworkOUTMessageType::SERVER_SNAPSHOT_FULL_PACKET_UNRELIABLE)
         return;
 
-    if (msg.payload.size() != sizeof(SnapshotPacket))
+    if (msg.payload.size() != sizeof(ServerSnapshotFullPacketUnreliable))
         return;
 
     std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
@@ -164,8 +164,8 @@ static void ServerNetworkOutgoingUpdate_SendSnapshotFullUnreliable(
     ClientSession& session = sit->second;
 
     // Lire la version construite côté simulation.
-    SnapshotPacket snapshotPacket{};
-    std::memcpy(&snapshotPacket, msg.payload.data(), sizeof(SnapshotPacket));
+    ServerSnapshotFullPacketUnreliable snapshotPacket{};
+    std::memcpy(&snapshotPacket, msg.payload.data(), sizeof(ServerSnapshotFullPacketUnreliable));
 
     // Assigner le snapshotId au moment de l'envoi réel.
     const uint32_t snapshotId = session.serverNextSnapshotId++;
@@ -176,7 +176,7 @@ static void ServerNetworkOutgoingUpdate_SendSnapshotFullUnreliable(
 
     // Recréer un payload patché car le message source est const.
     std::vector<uint8_t> patchedPayload = msg.payload;
-    std::memcpy(patchedPayload.data(), &snapshotPacket, sizeof(SnapshotPacket));
+    std::memcpy(patchedPayload.data(), &snapshotPacket, sizeof(ServerSnapshotFullPacketUnreliable));
 
     ENetPacket* packet = enet_packet_create(
         patchedPayload.data(),
@@ -186,7 +186,7 @@ static void ServerNetworkOutgoingUpdate_SendSnapshotFullUnreliable(
 
     if (packet != nullptr)
     {
-        enet_peer_send(peer, ENET_CHANNEL_SNAPSHOT_UNRELIABLE, packet);
+        enet_peer_send(peer, ENET_CHANNEL_UNRELIABLE, packet);
         RCNET_log(RCNET_LOG_INFO,
               "[SERVER] [NETWORK_OUT] [SNAPSHOT_FULL_UNRELIABLE] - Sent snapshotId=%u to connectionId=%u (size=%zu bytes)\n",
               snapshotId,

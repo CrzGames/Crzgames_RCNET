@@ -10,8 +10,9 @@
 // ======================================================================================
 enum class ServerUnreliablePacketType : uint8_t
 {
-    SERVER_SNAPSHOT_FULL_UNREALIABLE = 0,
-    SERVER_SNAPSHOT_DELTA_UNREALIABLE = 1
+    SERVER_SNAPSHOT_FULL_PACKET_UNRELIABLE = 0,
+    SERVER_SNAPSHOT_DELTA_PACKET_UNRELIABLE = 1,
+    SERVER_CLOCK_SYNC_PACKET_UNRELIABLE = 2,
 };
 
 #pragma pack(push, 1)
@@ -22,7 +23,7 @@ struct ServerUnreliablePacketHeader
     ServerUnreliablePacketType type;
 };
 
-struct SnapshotPacket
+struct ServerSnapshotFullPacketUnreliable
 {
     ServerUnreliablePacketHeader header;
 

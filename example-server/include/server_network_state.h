@@ -7,16 +7,14 @@
 
 #include "server_sessions.h"
 
-// channel 0 =  handshake / auth / encrypt (reliable)
-// channel 1 = inputs (unreliable)
-// channel 2 = snapshots (unreliable)
-// channel 3 = events importants (reliable)
+// channel 0 =  echange de clés et messages de contrôle fiables (handshakes, auth, etc.)
+// channel 1 =  messages de jeu fiables (match start, events importants, etc.)
+// channel 2 =  messages de jeu non fiables (inputs, snapshots, etc.)
 enum EnetChannel : uint8_t
 {
     ENET_CHANNEL_HANDSHAKE_RELIABLE = 0,
-    ENET_CHANNEL_INPUT_UNRELIABLE,
-    ENET_CHANNEL_SNAPSHOT_UNRELIABLE,
-    ENET_CHANNEL_EVENT_IMPORTANT_RELIABLE,
+    ENET_CHANNEL_RELIABLE         = 1,
+    ENET_CHANNEL_UNRELIABLE       = 2,
 
     ENET_CHANNEL_COUNT
 };
@@ -30,7 +28,7 @@ struct NetworkState
     // Port d'écoute du serveur
     const uint16_t serverPort = 12345;
 
-    // Nombre de channels ENet (ex: 0=handshakes reliable, 1=inputs unrealiable, 2=snapshots unreliable, 3=events importants reliable)
+    // Nombre de channels ENet (ex: handshake, reliable, unreliable)
     const uint8_t channelCount = ENET_CHANNEL_COUNT;
 
     // Nombre maximum de clients connectés
