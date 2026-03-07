@@ -599,11 +599,11 @@ void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(uint64_t cur
     NetworkINToSimulationQueue& netToSimQueue = GetNetworkINToSimulationQueue();
     SimulationToNetworkOUTQueue& simToNetQueue = GetSimulationToNetworkOUTQueue();
 
-    // 2) Drainer la queue (moins de lock)
+    // 2) Drainer la queue (moins de lock), qui contient les messages ENet traités et parsés par le thread réseau, puis transférés à la simulation.
     std::deque<NetworkINToSimulationMessage> messages;
     ServerSimulationUpdate_DrainNetworkToSimulationQueue_IntoLocalDeque(netToSimQueue, messages);
 
-    // 3) Accès au state
+    // 3) Accès au state global du jeu et du réseau
     GameState& gameState = GetGameState();
     NetworkState& networkState = GetNetworkState();
 
