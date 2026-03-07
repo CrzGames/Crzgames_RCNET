@@ -5,11 +5,11 @@
 #include "server_network_deserialize_packets_client.h"
 #include "server_network_byte_reader.h"
 #include "server_queues_network_and_simulation.h"
+#include "server_network_channels.h"
 
 #include <RCNET/RCNET.h>
 
 #include <cstdint> // uintptr_t
-#include <cstring> // memcpy
 
 static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel1Reliable_ClientReadyForMatch(
     const ENetEvent* event,
