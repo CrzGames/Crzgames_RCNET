@@ -218,6 +218,34 @@ static void ServerSimulationUpdate_HandleSecureSessionHelloMessage(
               session.isSecureSessionEstablished ? 1u : 0u);
 }
 
+ServerSimulationUpdate_HandleAuthMessage(
+    NetworkState& networkState,
+    SimulationToNetworkOUTQueue& simToNetQueue,
+    const NetworkINToSimulationMessage& msg)
+{
+    // TODO : implémenter la gestion du message d’authentification client.
+    // Cela implique de vérifier le token d’authentification envoyé par le client
+    // auprès du backend d’authentification, puis de mettre à jour session.isAuthenticated
+    // en conséquence pour autoriser ou refuser les étapes suivantes du flow de gameplay.
+}
+
+ServerSimulationUpdate_HandleReadyForMatchMessage(
+    NetworkState& networkState,
+    const NetworkINToSimulationMessage& msg)
+{
+    // Marquer la session comme prête pour le match
+    std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
+    if (sit != networkState.sessions.end())
+    {
+        ClientSession& session = sit->second;
+        session.isReadyForMatch = true;
+
+        RCNET_log(RCNET_LOG_INFO,
+                    "[SERVER] [SIMULATION] [READY_FOR_MATCH] - connectionId=%u is ready for match\n",
+                    msg.connectionId);
+    }
+}
+
 static void ServerSimulationUpdate_ProcessIncomingNetworkMessages(
     NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,
@@ -248,22 +276,11 @@ static void ServerSimulationUpdate_ProcessIncomingNetworkMessages(
         }
         else if (msg.type == NetworkINToSimulationMessageType::CLIENT_AUTH_PACKET_RELIABLE)
         {
-            // Appeler API vers le backend d'authentification pour valider le token envoyé par le client, etc, 
-            // quand ok set session.isAuthenticated = true pour autoriser les étapes suivantes du flow de gameplay.
+            ServerSimulationUpdate_HandleAuthMessage(networkState, simToNetQueue, msg);
         }
         else if (msg.type == NetworkINToSimulationMessageType::CLIENT_READY_FOR_MATCH_PACKET_RELIABLE)
         {
-            // Marquer la session comme prête pour le match
-            std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
-            if (sit != networkState.sessions.end())
-            {
-                ClientSession& session = sit->second;
-                session.isReadyForMatch = true;
-
-                RCNET_log(RCNET_LOG_INFO,
-                          "[SERVER] [SIMULATION] [READY_FOR_MATCH] - connectionId=%u is ready for match\n",
-                          msg.connectionId);
-            }
+            ServerSimulationUpdate_HandleReadyForMatchMessage(networkState, msg);
         }
     }
 }
