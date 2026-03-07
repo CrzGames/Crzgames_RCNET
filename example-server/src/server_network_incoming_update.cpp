@@ -88,6 +88,13 @@ static void ServerNetworkIncomingUpdate_HandleConnectEvent(
     NetworkState& networkState,
     NetworkINToSimulationQueue& netToSimQueue)
 {
+    if (event->peer == nullptr)
+    {
+        RCNET_log(RCNET_LOG_WARN,
+                  "[SERVER] [NETWORK_IN] [CONNECT] - Invalid connect event: event->peer == nullptr\n");
+        return;
+    }
+
     // Générer un connectionId unique pour cette connexion réseau qui vient d'arriver
     uint32_t connectionId = networkState.nextConnectionId++;
 
@@ -111,6 +118,19 @@ static void ServerNetworkIncomingUpdate_HandleDisconnectEvent(
     NetworkState& networkState,
     NetworkINToSimulationQueue& netToSimQueue)
 {
+    if (event->peer == nullptr)
+    {
+        RCNET_log(RCNET_LOG_WARN,
+                  "[SERVER] [NETWORK_IN] [DISCONNECT] - Invalid disconnect event: event->peer == nullptr\n");
+        return;
+    }
+    if (event->peer->data == nullptr)
+    {
+        RCNET_log(RCNET_LOG_WARN,
+                  "[SERVER] [NETWORK_IN] [DISCONNECT] - Invalid disconnect event: peer->data == nullptr\n");
+        return;
+    }
+
     // Identifier la connexion réseau (connectionId) à partir de event->peer->data
     uint32_t connectionId = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(event->peer->data));
 
