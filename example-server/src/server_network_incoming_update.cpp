@@ -12,15 +12,6 @@ static uint32_t ServerNetworkIncomingUpdate_GetValidatedConnectionIdOrZero(
     const ENetEvent* event,
     const NetworkState& networkState)
 {
-    // Vérifie que le pointeur vers l'événement ENet est valide.
-    // Si event est nul, on ne peut rien lire du tout.
-    if (event == nullptr)
-    {
-        RCNET_log(RCNET_LOG_WARN,
-                  "[SERVER] [NETWORK_IN] [VALIDATE_CONNECTION] - event == nullptr\n");
-        return 0;
-    }
-
     // Vérifie que le peer associé à l'événement existe.
     // Sans peer, on ne peut pas identifier la connexion source.
     if (event->peer == nullptr)
@@ -43,8 +34,7 @@ static uint32_t ServerNetworkIncomingUpdate_GetValidatedConnectionIdOrZero(
     // Lit le connectionId stocké dans peer->data.
     // peer->data est un void*, donc on le convertit d'abord en entier de taille uintptr_t,
     // puis en uint32_t pour retrouver ton identifiant de connexion.
-    const uint32_t connectionId =
-        static_cast<uint32_t>(reinterpret_cast<uintptr_t>(event->peer->data));
+    const uint32_t connectionId = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(event->peer->data));
 
     // Sécurité supplémentaire :
     // dans ton système, 0 signifie "connectionId invalide / non initialisé".
@@ -121,25 +111,6 @@ static void ServerNetworkIncomingUpdate_HandleDisconnectEvent(
     NetworkState& networkState,
     NetworkINToSimulationQueue& netToSimQueue)
 {
-    if (event == nullptr)
-    {
-        RCNET_log(RCNET_LOG_WARN,
-                  "[SERVER] [NETWORK_IN] [DISCONNECT] - Invalid disconnect event: event == nullptr\n");
-        return;
-    }
-    if (event->peer == nullptr)
-    {
-        RCNET_log(RCNET_LOG_WARN,
-                  "[SERVER] [NETWORK_IN] [DISCONNECT] - Invalid disconnect event: event->peer == nullptr\n");
-        return;
-    }
-    if (event->peer->data == nullptr)
-    {
-        RCNET_log(RCNET_LOG_WARN,
-                  "[SERVER] [NETWORK_IN] [DISCONNECT] - Invalid disconnect event: peer->data == nullptr\n");
-        return;
-    }
-
     // Identifier la connexion réseau (connectionId) à partir de event->peer->data
     uint32_t connectionId = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(event->peer->data));
 
@@ -344,6 +315,15 @@ void ServerNetworkIncomingUpdate_ProcessENetEvent(ENetHost* host, const ENetEven
         uint32_t connectionId = ServerNetworkIncomingUpdate_GetValidatedConnectionIdOrZero(event, networkState);
         if (connectionId == 0)
             return;
+
+        // Sécurité (2) : Vérifier dans la session que le client est bien authentifié avant de traiter certains types de messages.
+        /*if (!ServerNetworkIncomingUpdate_IsClientAuthenticated(connectionId, networkState))
+        {
+            RCNET_log(RCNET_LOG_WARN,
+                      "[SERVER] [NETWORK_IN] [RECEIVE] - Received packet from unauthenticated client connectionId=%u. Ignoring packet.\n",
+                      connectionId);
+            return;
+        }*/
 
         // Traiter le message reçu en fonction du channel sur lequel il est arrivé
         ServerNetworkIncomingUpdate_HandleReceiveEvent_DispatchByChannel(event, connectionId, netToSimQueue);
