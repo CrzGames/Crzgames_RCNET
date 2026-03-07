@@ -42,10 +42,10 @@ struct ClientSession
     bool isAuthenticated = false;
 
     // Set à true à la connexion lors de l'événement ENET_EVENT_TYPE_CONNECT, 
-    bool transportConnected = false;
+    bool isTransportConnected = false;
 
     // Set à true lorsque les clés de chiffrement réseau sont établies entre le client et le serveur.
-    bool sessionKeysEstablished = false;
+    bool isSecureSessionEstablished = false;
 
     // Devient vrai lorsque le serveur reçoit un packet reliable
     // de type CLIENT_READY_FOR_MATCH pour cette session.

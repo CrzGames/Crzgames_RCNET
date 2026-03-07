@@ -387,6 +387,8 @@ static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel0SecureSession
     message.type = NetworkINToSimulationMessageType::CLIENT_SECURE_SESSION_HELLO_PACKET_RELIABLE;
     // Attache le connectionId source.
     message.connectionId = connectionId;
+    // Attache le packet de secure session reçu au message.
+    message.secureSessionHelloPacket = secureSessionHelloPacket;
 
     // Push le message vers la simulation.
     netToSimQueue.push(message);
@@ -423,6 +425,8 @@ static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel1AuthReliable(
     message.type = NetworkINToSimulationMessageType::CLIENT_AUTH_PACKET_RELIABLE;
     // Attache le connectionId source.
     message.connectionId = connectionId;
+    // Attache le packet d’authentification reçu au message.
+    message.authPacket = authPacket;
 
     // Push le message vers la simulation.
     netToSimQueue.push(message);
@@ -521,6 +525,15 @@ static void ServerNetworkIncomingUpdate_HandleReceiveEvent_DispatchByChannel(
     // Récupère le channel sur lequel le packet est arrivé.
     const NetworkChannel channel = static_cast<NetworkChannel>(event->channelID);
 
+    // Pour les channels GAME_RELIABLE et GAME_UNRELIABLE, il faut que :
+    // - la session soit authentifiée (isAuthenticated == true)
+    // - la session ait établi une session sécurisée (isSecureSessionEstablished == true)
+
+    // Pour le channel AUTH_RELIABLE, il faut que :
+    // - la session ait établi une session sécurisée (isSecureSessionEstablished == true)
+
+    // Pour le channel SECURE_SESSION_RELIABLE, aucune condition n’est requise (c’est le premier step du flow).
+
     switch (channel)
     {
         case NetworkChannel::SECURE_SESSION_RELIABLE:
@@ -583,15 +596,6 @@ void ServerNetworkIncomingUpdate_ProcessENetEvent(ENetHost* host, const ENetEven
         // Si l’ID est invalide, on ignore le packet.
         if (connectionId == 0)
             return;
-
-        // Bloc optionnel futur pour refuser les packets avant authentification.
-        /*if (!ServerNetworkIncomingUpdate_IsClientAuthenticated(connectionId, networkState))
-        {
-            RCNET_log(RCNET_LOG_WARN,
-                      "[SERVER] [NETWORK_IN] [RECEIVE] - Received packet from unauthenticated client connectionId=%u. Ignoring packet.\n",
-                      connectionId);
-            return;
-        }*/
 
         // Dispatch le traitement du packet selon le channel ENet utilisé.
         ServerNetworkIncomingUpdate_HandleReceiveEvent_DispatchByChannel(event, connectionId, netToSimQueue);

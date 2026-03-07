@@ -10,6 +10,9 @@
 #include "server_network_packets_server_unreliable.h"
 #include "server_network_packets_server_reliable.h"
 
+// ======================================================================================
+// Queues de messages entre le réseau et la simulation (Network IN -> Simulation)
+// ======================================================================================
 enum class NetworkINToSimulationMessageType : uint8_t 
 { 
     CLIENT_SECURE_SESSION_HELLO_PACKET_RELIABLE = 0,
@@ -28,8 +31,17 @@ struct NetworkINToSimulationMessage
     // Identifier la connexion réseau (connectionId) à partir de event->peer->data
     uint32_t connectionId;
 
-    // Packet d'input reçu du client (uniquement pour les messages de type CLIENT_INPUT_PACKET_UNRELIABLE)
+    // type = CLIENT_INPUT_PACKET_UNRELIABLE
     ClientInputPacketUnreliable inputPacket;
+
+    // type = CLIENT_SECURE_SESSION_HELLO_PACKET_RELIABLE
+    ClientSecureSessionHelloPacketReliable secureSessionHelloPacket;
+
+    // type = CLIENT_AUTH_PACKET_RELIABLE
+    ClientAuthPacketReliable authPacket;
+
+    // type = CLIENT_READY_FOR_MATCH_PACKET_RELIABLE
+    ClientReadyForMatchPacketReliable readyForMatchPacket;
 };
 
 struct NetworkINToSimulationQueue
@@ -52,7 +64,9 @@ struct NetworkINToSimulationQueue
 };
 
 
-
+// ======================================================================================
+// Messages de la simulation vers le réseau (Simulation -> Network OUT)
+// ======================================================================================
 enum class SimulationToNetworkOUTMessageType : uint8_t
 {
     SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE = 0,

@@ -35,7 +35,7 @@ static void ServerSimulationUpdate_HandleConnectMessage(
     networkState.sessions[msg.connectionId] = session;
 
     // Mettre à jour des propriété de la session
-    session.transportConnected = true;
+    session.isTransportConnected = true;
 
     RCNET_log(RCNET_LOG_INFO,
               "[SERVER] [SIMULATION] [CONNECT] - connectionId=%u (session created)\n",
@@ -126,11 +126,13 @@ static void ServerSimulationUpdate_ProcessIncomingNetworkMessages(
         }
         else if (msg.type == NetworkINToSimulationMessageType::CLIENT_SECURE_SESSION_HELLO_PACKET_RELIABLE)
         {
-            // Plus tard : valider token, set accountIdDatabase, session.isAuthenticated = true, etc.
+            // Générer la clé de session via libsodium, etc. (pas montré ici), 
+            // quand ok set session.isSecureSessionEstablished = true pour autoriser les étapes suivantes du flow d’authentification et de gameplay.
         }
         else if (msg.type == NetworkINToSimulationMessageType::CLIENT_AUTH_PACKET_RELIABLE)
         {
-            // Plus tard : valider les infos d’authentification, set session.isAuthenticated = true, etc.
+            // Appeler API vers le backend d'authentification pour valider le token envoyé par le client, etc. (pas montré ici), 
+            // quand ok set session.isAuthenticated = true pour autoriser les étapes suivantes du flow de gameplay.
         }
         else if (msg.type == NetworkINToSimulationMessageType::CLIENT_READY_FOR_MATCH_PACKET_RELIABLE)
         {
