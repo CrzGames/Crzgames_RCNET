@@ -3,6 +3,7 @@
 #include "server_world.h"
 #include "server_debug_network_stats.h"
 #include "server_network_packets_server_reliable.h"
+#include "server_network_serialize_packets_server.h"
 
 #include <RCNET/RCNET.h>
 
@@ -219,6 +220,7 @@ static void ServerSimulationUpdate_HandleSecureSessionHelloMessage(
 
 static void ServerSimulationUpdate_ProcessIncomingNetworkMessages(
     NetworkState& networkState,
+    SimulationToNetworkOUTQueue& simToNetQueue,
     std::deque<NetworkINToSimulationMessage>& messages)
 {
     // 4) Traiter les messages réseau (création/suppression session, input queue, etc.)
@@ -246,7 +248,7 @@ static void ServerSimulationUpdate_ProcessIncomingNetworkMessages(
         }
         else if (msg.type == NetworkINToSimulationMessageType::CLIENT_AUTH_PACKET_RELIABLE)
         {
-            // Appeler API vers le backend d'authentification pour valider le token envoyé par le client, etc. (pas montré ici), 
+            // Appeler API vers le backend d'authentification pour valider le token envoyé par le client, etc, 
             // quand ok set session.isAuthenticated = true pour autoriser les étapes suivantes du flow de gameplay.
         }
         else if (msg.type == NetworkINToSimulationMessageType::CLIENT_READY_FOR_MATCH_PACKET_RELIABLE)
@@ -606,7 +608,7 @@ void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(uint64_t cur
     NetworkState& networkState = GetNetworkState();
 
     // 4) Traiter les messages réseau (création/suppression session, input queue, etc.)
-    ServerSimulationUpdate_ProcessIncomingNetworkMessages(networkState, messages);
+    ServerSimulationUpdate_ProcessIncomingNetworkMessages(networkState, simToNetQueue, messages);
 
     // 5) Gérer le flow de préparation du match (envoi des packets init, attendre que les clients soient prêts, envoyer le packet de démarrage, etc.)
     ServerSimulationUpdate_CheckMatchFlow(gameState, networkState, simToNetQueue, currentTick);

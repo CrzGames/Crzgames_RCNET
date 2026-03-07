@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cstdint>       // uint16_t, uint32_t, etc.
+#include <vector>        // std::vector
+
 #include <rcenet/RCENET_enet.h>
 
 #include "server_network_packets_server_reliable.h"

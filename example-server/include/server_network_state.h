@@ -7,6 +7,7 @@
 
 #include "server_sessions.h"
 #include "server_network_channels.h"
+#include "server_crypto_kx.h"
 
 struct NetworkState
 {

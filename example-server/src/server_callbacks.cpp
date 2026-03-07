@@ -4,6 +4,7 @@
 #include "server_simulation_update.h"
 #include "server_debug_network_stats.h"
 #include "server_crypto_kx.h"
+#include "server_context.h"
 
 void rcnet_load(void)
 {
