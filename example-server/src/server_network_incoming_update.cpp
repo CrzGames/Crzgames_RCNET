@@ -533,6 +533,37 @@ static void ServerNetworkIncomingUpdate_HandleReceiveEvent_DispatchByChannel(
     // - la session ait établi une session sécurisée (isSecureSessionEstablished == true)
 
     // Pour le channel SECURE_SESSION_RELIABLE, aucune condition n’est requise (c’est le premier step du flow).
+    if (channel == NetworkChannel::GAME_RELIABLE || channel == NetworkChannel::GAME_UNRELIABLE)
+    {
+        if (!IsConnectionAuthenticated(connectionId))
+        {
+            RCNET_log(RCNET_LOG_WARN,
+                    "[SERVER] [NETWORK_IN] [DISPATCH] - Received packet on channel %u from unauthenticated connectionId=%u. Ignoring packet.\n",
+                    static_cast<unsigned>(channel),
+                    connectionId);
+            return;
+        }
+
+        if (!IsConnectionSecureSessionEstablished(connectionId))
+        {
+            RCNET_log(RCNET_LOG_WARN,
+                    "[SERVER] [NETWORK_IN] [DISPATCH] - Received packet on channel %u from connectionId=%u without secure session established. Ignoring packet.\n",
+                    static_cast<unsigned>(channel),
+                    connectionId);
+            return;
+        }
+    }
+    else if (channel == NetworkChannel::AUTH_RELIABLE)
+    {
+        if (!IsConnectionSecureSessionEstablished(connectionId))
+        {
+            RCNET_log(RCNET_LOG_WARN,
+                    "[SERVER] [NETWORK_IN] [DISPATCH] - Received auth packet on channel %u from connectionId=%u without secure session established. Ignoring packet.\n",
+                    static_cast<unsigned>(channel),
+                    connectionId);
+            return;
+        }
+    }
 
     switch (channel)
     {
