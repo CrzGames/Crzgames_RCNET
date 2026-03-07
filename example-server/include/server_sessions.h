@@ -38,17 +38,14 @@ struct ClientSession
     // Identification du client
     // =======================================================================
 
-    // Indique si le client a réussi le handshake et donc s'est authentifié auprès du serveur.
+    // Set à true après authentification validé par le serveur au près du backend / api d'authentification.
     bool isAuthenticated = false;
 
-    // Identifiant unique du compte joueur dans la base de données.
-    // Il est généralement obtenu après le handshake / authentification.
-    uint64_t accountIdDatabase = 0;
+    // Set à true à la connexion lors de l'événement ENET_EVENT_TYPE_CONNECT, 
+    bool transportConnected = false;
 
-    // Identifiant unique de la connexion réseau active.
-    // Généré par le serveur lors du CONNECT.
-    // Il change si le joueur se reconnecte.
-    uint32_t connectionId = 0;
+    // Set à true lorsque les clés de chiffrement réseau sont établies entre le client et le serveur.
+    bool sessionKeysEstablished = false;
 
     // Devient vrai lorsque le serveur reçoit un packet reliable
     // de type CLIENT_READY_FOR_MATCH pour cette session.
@@ -56,6 +53,15 @@ struct ClientSession
     // a terminé son initialisation locale et est prêt à recevoir
     // les informations de démarrage effectif du match.
     bool isReadyForMatch = false;
+
+    // Identifiant unique du compte joueur dans la base de données.
+    // Il est généralement obtenu après le check du token d'authentification envoyé par le client.
+    uint64_t accountIdDatabase = 0;
+
+    // Identifiant unique de la connexion réseau active.
+    // Généré par le serveur lors du CONNECT.
+    // Il change si le joueur se reconnecte.
+    uint32_t connectionId = 0;
 
 
     // =======================================================================

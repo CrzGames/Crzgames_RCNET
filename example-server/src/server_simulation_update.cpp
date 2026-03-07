@@ -34,6 +34,9 @@ static void ServerSimulationUpdate_HandleConnectMessage(
     // Ajouter la session au network state
     networkState.sessions[msg.connectionId] = session;
 
+    // Mettre à jour des propriété de la session
+    session.transportConnected = true;
+
     RCNET_log(RCNET_LOG_INFO,
               "[SERVER] [SIMULATION] [CONNECT] - connectionId=%u (session created)\n",
               msg.connectionId);
