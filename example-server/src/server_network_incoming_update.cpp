@@ -11,7 +11,7 @@
 
 #include <cstdint> // uintptr_t
 
-static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel1Reliable_ClientReadyForMatch(
+static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel2GameReliable_ClientReadyForMatch(
     const ENetEvent* event,
     uint32_t connectionId,
     NetworkINToSimulationQueue& netToSimQueue)
@@ -47,8 +47,7 @@ static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel1Reliable_Clie
     netToSimQueue.push(message);
 }
 
-// ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel2Unreliable_InputPacket
-static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel2Unreliable_InputPacket(
+static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel3GameUnreliable_InputPacket(
     const ENetEvent* event,
     uint32_t connectionId,
     NetworkINToSimulationQueue& netToSimQueue)
@@ -335,8 +334,9 @@ static void ServerNetworkIncomingUpdate_HandleDisconnectEvent(
 }
 
 // Fonction helper statique locale au fichier.
-// Elle traite les messages reçus sur le channel 0, réservé ici au handshake reliable.
-static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel0Handshake(
+// Elle traite les messages reçus sur le channel 0, réservé ici pour établir une session sécurisée
+// via des échange de clés via libsodium.
+static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel0SecureSessionReliable(
     // Événement ENet de réception.
     const ENetEvent* event,
     // ID de connexion validé en amont.
@@ -344,34 +344,34 @@ static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel0Handshake(
     // Référence vers la queue réseau -> simulation.
     NetworkINToSimulationQueue& netToSimQueue)
 {
-    ClientHandshakePacketReliable handshakePacket{};
-    if (!deserializeClientHandshakePacketReliable(
+    ClientSecureSessionHelloPacketReliable secureSessionHelloPacket{};
+    if (!deserializeClientSecureSessionHelloPacketReliable(
             event->packet->data,
             event->packet->dataLength,
-            handshakePacket))
+            secureSessionHelloPacket))
     {
         // Si la désérialisation échoue, le packet est invalide ou mal formé.
         // Log d’avertissement indiquant que le packet de handshake est invalide.
         RCNET_log(RCNET_LOG_WARN,
-                "[SERVER] [NETWORK_IN] [HANDSHAKE] - Failed to deserialize handshake packet from connectionId=%u\n",
+                "[SERVER] [NETWORK_IN] [SECURE_SESSION] - Failed to deserialize secure session packet from connectionId=%u\n",
                 connectionId);
         return;
     }
 
     // Log d’information indiquant qu’un handshake a été reçu.
     RCNET_log(RCNET_LOG_INFO,
-            "[SERVER] [NETWORK_IN] [HANDSHAKE] - Packet received from connectionId=%u (size=%u bytes)\n",
+            "[SERVER] [NETWORK_IN] [SECURE_SESSION] - Packet received from connectionId=%u (size=%u bytes)\n",
             connectionId,
             (unsigned)event->packet->dataLength);
 
     // Vérifie que la version protocole envoyée par le client est compatible avec celle du serveur.
-    if (handshakePacket.networkProtocolVersion != SERVER_NETWORK_PROTOCOL_VERSION)
+    if (secureSessionHelloPacket.networkProtocolVersion != SERVER_NETWORK_PROTOCOL_VERSION)
     {
         // Log d’erreur indiquant un mismatch de version.
         RCNET_log(RCNET_LOG_ERROR,
-                "[SERVER] [NETWORK_IN] [HANDSHAKE] - Network protocol version mismatch with connectionId=%u: client=%u vs server=%u. Disconnecting client.\n",
+                "[SERVER] [NETWORK_IN] [SECURE_SESSION] - Network protocol version mismatch with connectionId=%u: client=%u vs server=%u. Disconnecting client.\n",
                 connectionId,
-                handshakePacket.networkProtocolVersion,
+                secureSessionHelloPacket.networkProtocolVersion,
                 SERVER_NETWORK_PROTOCOL_VERSION);
 
         // Déconnecte immédiatement le client.
@@ -384,19 +384,53 @@ static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel0Handshake(
     // Crée un message destiné à la simulation.
     NetworkINToSimulationMessage message{};
     // Indique que ce message transporte un handshake reliable.
-    message.type = NetworkINToSimulationMessageType::CLIENT_HANDSHAKE_PACKET_RELIABLE;
+    message.type = NetworkINToSimulationMessageType::CLIENT_SECURE_SESSION_HELLO_PACKET_RELIABLE;
     // Attache le connectionId source.
     message.connectionId = connectionId;
-    // Copie le packet de handshake dans le message.
-    message.handshakePacket = handshakePacket;
+
+    // Push le message vers la simulation.
+    netToSimQueue.push(message);
+}
+
+static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel1AuthReliable(
+    const ENetEvent* event,
+    uint32_t connectionId,
+    NetworkINToSimulationQueue& netToSimQueue)
+{
+    ClientAuthPacketReliable authPacket{};
+    if (!deserializeClientAuthPacketReliable(
+            event->packet->data,
+            event->packet->dataLength,
+            authPacket))
+    {
+        // Si la désérialisation échoue, le packet est invalide ou mal formé.
+        // Log d’avertissement indiquant que le packet d’authentification est invalide.
+        RCNET_log(RCNET_LOG_WARN,
+                "[SERVER] [NETWORK_IN] [AUTH] - Failed to deserialize auth packet from connectionId=%u\n",
+                connectionId);
+        return;
+    }
+
+    // Log d’information indiquant qu’un packet d’authentification a été reçu.
+    RCNET_log(RCNET_LOG_INFO,
+            "[SERVER] [NETWORK_IN] [AUTH] - Packet received from connectionId=%u (size=%u bytes)\n",
+            connectionId,
+            (unsigned)event->packet->dataLength);
+
+    // Crée un message destiné à la simulation.
+    NetworkINToSimulationMessage message{};
+    // Indique que ce message transporte un packet d’authentification reliable.
+    message.type = NetworkINToSimulationMessageType::CLIENT_AUTH_PACKET_RELIABLE;
+    // Attache le connectionId source.
+    message.connectionId = connectionId;
 
     // Push le message vers la simulation.
     netToSimQueue.push(message);
 }
 
 // Fonction helper statique locale au fichier.
-// Elle traite les messages reçus sur le channel 1, réservé ici aux packets reliable gameplay.
-static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel1Reliable(
+// Elle traite les messages reçus sur le channel 2, réservé ici aux packets reliable gameplay.
+static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel2GameReliable(
     // Événement ENet de réception.
     const ENetEvent* event,
     // ID de connexion validé en amont.
@@ -421,7 +455,7 @@ static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel1Reliable(
     {
         case ClientReliablePacketType::CLIENT_READY_FOR_MATCH_PACKET_RELIABLE:
         {
-            ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel1Reliable_ClientReadyForMatch(event, connectionId, netToSimQueue);
+            ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel2GameReliable_ClientReadyForMatch(event, connectionId, netToSimQueue);
             break;
         }
 
@@ -436,8 +470,8 @@ static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel1Reliable(
 }
 
 // Fonction helper statique locale au fichier.
-// Elle traite les messages reçus sur le channel 2, réservé ici aux packets unreliable gameplay.
-static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel2Unreliable(
+// Elle traite les messages reçus sur le channel 3, réservé ici aux packets unreliable gameplay.
+static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel3GameUnreliable(
     // Événement ENet de réception.
     const ENetEvent* event,
     // ID de connexion validé en amont.
@@ -461,7 +495,7 @@ static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel2Unreliable(
     switch (packetType)
     {
         case ClientUnreliablePacketType::CLIENT_INPUT_PACKET_UNRELIABLE:
-            ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel2Unreliable_InputPacket(event, connectionId, netToSimQueue);
+            ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel3GameUnreliable_InputPacket(event, connectionId, netToSimQueue);
             break;
 
         default:
@@ -489,16 +523,20 @@ static void ServerNetworkIncomingUpdate_HandleReceiveEvent_DispatchByChannel(
 
     switch (channel)
     {
-        case NetworkChannel::HANDSHAKE_RELIABLE:
-            ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel0Handshake(event, connectionId, netToSimQueue);
+        case NetworkChannel::SECURE_SESSION_RELIABLE:
+            ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel0SecureSessionReliable(event, connectionId, netToSimQueue);
+            break;
+
+        case NetworkChannel::AUTH_RELIABLE:
+            ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel1AuthReliable(event, connectionId, netToSimQueue);
             break;
 
         case NetworkChannel::GAME_RELIABLE:
-            ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel1Reliable(event, connectionId, netToSimQueue);
+            ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel2GameReliable(event, connectionId, netToSimQueue);
             break;
 
         case NetworkChannel::GAME_UNRELIABLE:
-            ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel2Unreliable(event, connectionId, netToSimQueue);
+            ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel3GameUnreliable(event, connectionId, netToSimQueue);
             break;
 
         default:

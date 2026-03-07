@@ -1,10 +1,7 @@
 #include "server_network_deserialize_packets_client.h"
-
 #include "server_network_byte_reader.h"
 
-constexpr size_t kMaxAuthTokenLength = 512;
-
-bool deserializeClientHandshakePacketReliable(const void* data, size_t size, ClientHandshakePacketReliable& outPacket)
+bool deserializeClientSecureSessionHelloPacketReliable(const void* data, size_t size, ClientSecureSessionHelloPacketReliable& outPacket)
 {
     ByteReader reader(data, size);
 
@@ -16,7 +13,7 @@ bool deserializeClientHandshakePacketReliable(const void* data, size_t size, Cli
 
     outPacket.header.type = static_cast<ClientReliablePacketType>(rawType);
 
-    if (outPacket.header.type != ClientReliablePacketType::CLIENT_HANDSHAKE_PACKET_RELIABLE)
+    if (outPacket.header.type != ClientReliablePacketType::CLIENT_SECURE_SESSION_HELLO_PACKET_RELIABLE)
     {
         return false;
     }
@@ -25,6 +22,38 @@ bool deserializeClientHandshakePacketReliable(const void* data, size_t size, Cli
     {
         return false;
     }
+
+    if (!reader.readBytes(outPacket.clientPublicKey.data(), outPacket.clientPublicKey.size()))
+    {
+        return false;
+    }
+
+    if (!reader.empty())
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool deserializeClientAuthPacketReliable(const void* data, size_t size, ClientAuthPacketReliable& outPacket)
+{
+    ByteReader reader(data, size);
+
+    uint8_t rawType = 0;
+    if (!reader.readU8(rawType))
+    {
+        return false;
+    }
+
+    outPacket.header.type = static_cast<ClientReliablePacketType>(rawType);
+
+    if (outPacket.header.type != ClientReliablePacketType::CLIENT_AUTH_PACKET_RELIABLE)
+    {
+        return false;
+    }
+
+    constexpr size_t kMaxAuthTokenLength = 1024;
 
     if (!reader.readString(outPacket.authToken, kMaxAuthTokenLength))
     {

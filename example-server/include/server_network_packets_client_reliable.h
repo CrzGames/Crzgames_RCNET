@@ -2,6 +2,9 @@
 
 #include <cstdint> // uint16_t, uint32_t, etc.
 #include <string>  // std::string
+#include <array>   // std::array
+
+#include <sodium.h> // crypto_kx_PUBLICKEYBYTES
 
 // ======================================================================================
 // ClientReliablePacketType
@@ -13,8 +16,9 @@
 // ======================================================================================
 enum class ClientReliablePacketType : uint8_t
 {
-    CLIENT_HANDSHAKE_PACKET_RELIABLE = 0,
-    CLIENT_READY_FOR_MATCH_PACKET_RELIABLE = 1,
+    CLIENT_SECURE_SESSION_HELLO_PACKET_RELIABLE = 0,
+    CLIENT_AUTH_PACKET_RELIABLE = 1,
+    CLIENT_READY_FOR_MATCH_PACKET_RELIABLE = 2,
 };
 
 struct ClientReliablePacketHeader
@@ -26,16 +30,26 @@ struct ClientReliablePacketHeader
 // Liste des packets reliable envoyés par le client au serveur.
 // ======================================================================================
 
-struct ClientHandshakePacketReliable
+struct ClientSecureSessionHelloPacketReliable
 {
     // Header commun à tous les packets reliable client -> serveur
     ClientReliablePacketHeader header;
 
-    // Seulement pour le packet de handshake initial envoyé par le client lors de la connexion.
-    // Permet au serveur de vérifier la compatibilité du protocole réseau avant d'accepter la connexion..etc
+    // Version du protocole réseau utilisé par le client.
+    // Permet au serveur de vérifier la compatibilité du protocole avant d'accepter la connexion.
     uint32_t networkProtocolVersion;
 
-    // Token d’authentification (Bearer token oat)
+    // Clé exchange publique du client pour établir une session sécurisée.
+    // Utilisée par le serveur pour effectuer le key exchange et chiffrer les échanges suivants.
+    std::array<uint8_t, crypto_kx_PUBLICKEYBYTES> clientPublicKey;
+};
+
+struct ClientAuthPacketReliable
+{
+    // Header commun à tous les packets reliable client -> serveur
+    ClientReliablePacketHeader header;
+
+    // Token d’authentification (Bearer token oat de AdonisJS venant du backend d'authentification).
     std::string authToken;
 };
 

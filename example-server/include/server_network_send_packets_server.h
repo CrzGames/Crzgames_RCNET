@@ -9,3 +9,5 @@ bool sendServerMatchInitPacketReliable(ENetPeer* peer, const ServerMatchInitPack
 bool sendServerWorldStaticStateInitPacketReliable(ENetPeer* peer, const ServerWorldStaticStateInitPacketReliable& packet);
 bool sendServerMatchStartPacketReliable(ENetPeer* peer, const ServerMatchStartPacketReliable& packet);
 bool sendServerSnapshotFullPacketUnreliable(ENetPeer* peer, const ServerSnapshotFullPacketUnreliable& packet);
+bool sendServerSecureSessionHelloResponsePacketReliable(ENetPeer* peer, const ServerSecureSessionHelloResponsePacketReliable& packet);
+bool sendServerAuthResponsePacketReliable(ENetPeer* peer, const ServerAuthResponsePacketReliable& packet);

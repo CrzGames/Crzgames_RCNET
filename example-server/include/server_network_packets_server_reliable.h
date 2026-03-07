@@ -2,6 +2,9 @@
 
 #include <cstdint> // uint16_t, uint32_t, etc.
 #include <string>  // std::string
+#include <array>   // std::array
+
+#include <sodium.h> // crypto_kx_PUBLICKEYBYTES
 
 // ======================================================================================
 // ServerReliablePacketType
@@ -13,10 +16,12 @@
 // ======================================================================================
 enum class ServerReliablePacketType : uint8_t
 {
-    SERVER_MATCH_INIT_PACKET_RELIABLE = 0,
-    SERVER_WORLD_STATIC_STATE_INIT_PACKET_RELIABLE = 1,
-    SERVER_MATCH_START_PACKET_RELIABLE = 2,
-    SERVER_MATCH_END_PACKET_RELIABLE = 3,
+    SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE = 0,
+    SERVER_AUTH_RESPONSE_PACKET_RELIABLE = 1,
+    SERVER_MATCH_INIT_PACKET_RELIABLE = 2,
+    SERVER_WORLD_STATIC_STATE_INIT_PACKET_RELIABLE = 3,
+    SERVER_MATCH_START_PACKET_RELIABLE = 4,
+    SERVER_MATCH_END_PACKET_RELIABLE = 5,
 };
 
 struct ServerReliablePacketHeader
@@ -93,4 +98,39 @@ struct ServerMatchStartPacketReliable
     // Temps monotone du serveur en nanosecondes depuis le démarrage du moteur.
     // Utile pour estimer la latence et synchroniser l'horloge client avec celle du serveur.
     uint64_t serverTimeNs;
+};
+
+enum class ServerSecureSessionHelloResponseStatus : uint8_t
+{
+    SUCCESS = 0,
+    UNSUPPORTED_PROTOCOL_VERSION = 1,
+    INVALID_CLIENT_KEY = 2,
+};
+struct ServerSecureSessionHelloResponsePacketReliable
+{
+    // Header commun à tous les packets reliable serveur -> client.
+    ServerReliablePacketHeader header;
+
+    // Statut de la réponse du serveur
+    ServerSecureSessionHelloResponseStatus status;
+
+    // Clé exchange publique du serveur pour établir une session sécurisée.
+    // Utilisée par le client pour effectuer le key exchange et chiffrer les échanges suivants.
+    std::array<uint8_t, crypto_kx_PUBLICKEYBYTES> serverPublicKey;
+};
+
+enum class ServerAuthResponseStatus : uint8_t
+{
+    SUCCESS = 0,
+    INVALID_AUTH_TOKEN = 1,
+    EXPIRED_AUTH_TOKEN = 2,
+    BANNED_ACCOUNT = 3,
+};
+struct ServerAuthResponsePacketReliable
+{
+    // Header commun à tous les packets reliable serveur -> client.
+    ServerReliablePacketHeader header;
+
+    // Statut de la réponse du serveur
+    ServerAuthResponseStatus status;
 };

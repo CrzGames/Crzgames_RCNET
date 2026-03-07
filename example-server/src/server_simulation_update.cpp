@@ -124,9 +124,13 @@ static void ServerSimulationUpdate_ProcessIncomingNetworkMessages(
         {
             ServerSimulationUpdate_HandleInputMessage(networkState, msg);
         }
-        else if (msg.type == NetworkINToSimulationMessageType::CLIENT_HANDSHAKE_PACKET_RELIABLE)
+        else if (msg.type == NetworkINToSimulationMessageType::CLIENT_SECURE_SESSION_HELLO_PACKET_RELIABLE)
         {
             // Plus tard : valider token, set accountIdDatabase, session.isAuthenticated = true, etc.
+        }
+        else if (msg.type == NetworkINToSimulationMessageType::CLIENT_AUTH_PACKET_RELIABLE)
+        {
+            // Plus tard : valider les infos d’authentification, set session.isAuthenticated = true, etc.
         }
         else if (msg.type == NetworkINToSimulationMessageType::CLIENT_READY_FOR_MATCH_PACKET_RELIABLE)
         {

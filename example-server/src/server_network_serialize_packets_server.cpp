@@ -1,5 +1,4 @@
 #include "server_network_serialize_packets_server.h"
-
 #include "server_network_byte_writer.h"
 
 std::vector<uint8_t> serializeServerMatchInitPacketReliable(const ServerMatchInitPacketReliable& packet)
@@ -48,6 +47,27 @@ std::vector<uint8_t> serializeServerSnapshotFullPacketUnreliable(const ServerSna
     writer.writeU64(packet.serverTick);
     writer.writeU64(packet.serverTimeNs);
     writer.writeU32(packet.lastProcessedInputSequenceNumber);
+
+    return writer.buffer();
+}
+
+std::vector<uint8_t> serializeServerSecureSessionHelloResponsePacketReliable(const ServerSecureSessionHelloResponsePacketReliable& packet)
+{
+    ByteWriter writer;
+
+    writer.writeU8(static_cast<uint8_t>(packet.header.type));
+    writer.writeU8(static_cast<uint8_t>(packet.status));
+    writer.writeBytes(packet.serverPublicKey.data(), packet.serverPublicKey.size());
+
+    return writer.buffer();
+}
+
+std::vector<uint8_t> serializeServerAuthResponsePacketReliable(const ServerAuthResponsePacketReliable& packet)
+{
+    ByteWriter writer;
+
+    writer.writeU8(static_cast<uint8_t>(packet.header.type));
+    writer.writeU8(static_cast<uint8_t>(packet.status));
 
     return writer.buffer();
 }

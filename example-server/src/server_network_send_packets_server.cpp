@@ -8,7 +8,7 @@
 #include "server_network_channels.h"
 #include "server_network_serialize_packets_server.h"
 
-bool sendSerializedPacket(ENetPeer* peer, NetworkChannel channel, const std::vector<uint8_t>& bytes, enet_uint32 flags)
+static bool sendSerializedPacket(ENetPeer* peer, NetworkChannel channel, const std::vector<uint8_t>& bytes, enet_uint32 flags)
 {
     // Vérification de la validité du peer avant d'essayer d'envoyer un packet.
     if (peer == nullptr)
@@ -95,5 +95,29 @@ bool sendServerSnapshotFullPacketUnreliable(ENetPeer* peer, const ServerSnapshot
         NetworkChannel::GAME_UNRELIABLE,
         bytes,
         0 // 0 signifie que le packet est envoyé de manière non fiable (unreliable)
+    );
+}
+
+bool sendServerSecureSessionHelloResponsePacketReliable(ENetPeer* peer, const ServerSecureSessionHelloResponsePacketReliable& packet)
+{
+    const std::vector<uint8_t> bytes = serializeServerSecureSessionHelloResponsePacketReliable(packet);
+
+    return sendSerializedPacket(
+        peer,
+        NetworkChannel::SECURE_SESSION_RELIABLE,
+        bytes,
+        ENET_PACKET_FLAG_RELIABLE
+    );
+}
+
+bool sendServerAuthResponsePacketReliable(ENetPeer* peer, const ServerAuthResponsePacketReliable& packet)
+{
+    const std::vector<uint8_t> bytes = serializeServerAuthResponsePacketReliable(packet);
+
+    return sendSerializedPacket(
+        peer,
+        NetworkChannel::GAME_RELIABLE,
+        bytes,
+        ENET_PACKET_FLAG_RELIABLE
     );
 }
