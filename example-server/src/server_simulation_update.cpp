@@ -607,7 +607,7 @@ void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(uint64_t cur
     GameState& gameState = GetGameState();
     NetworkState& networkState = GetNetworkState();
 
-    // 4) Traiter les messages réseau (création/suppression session, input queue, etc.)
+    // 4) Traiter les messages réseau qui viennent d’être drainés venant de NETWORK IN
     ServerSimulationUpdate_ProcessIncomingNetworkMessages(networkState, simToNetQueue, messages);
 
     // 5) Gérer le flow de préparation du match (envoi des packets init, attendre que les clients soient prêts, envoyer le packet de démarrage, etc.)

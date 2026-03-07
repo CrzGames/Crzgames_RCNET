@@ -6,12 +6,15 @@
 #include "server_crypto_kx.h"
 #include "server_context.h"
 
+#include <RCNET/RCNET.h>
+
 void rcnet_load(void)
 {
     NetworkState& networkState = GetNetworkState();
     if (!ServerCryptoKx_Initialize(networkState.cryptoKxState))
     {
         // fatal error
+        RCNET_log(RCNET_LOG_ERROR, "Failed to initialize server crypto KX state\n");
     }
 }
 
