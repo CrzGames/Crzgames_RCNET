@@ -2,22 +2,174 @@
 #include "server_network_packets_client_reliable.h"
 #include "server_network_packets_client_unreliable.h"
 #include "server_network_protocol_version.h"
+#include "server_network_deserialize_packets_client.h"
+#include "server_network_byte_reader.h"
+#include "server_queues_network_and_simulation.h"
 
 #include <RCNET/RCNET.h>
 
-#include <cstdint>         // uintptr_t
-#include <cstring>         // memcpy
+#include <cstdint> // uintptr_t
+#include <cstring> // memcpy
 
-static uint32_t ServerNetworkIncomingUpdate_GetValidatedConnectionIdOrZero(
+static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel1Reliable_ClientReadyForMatch(
     const ENetEvent* event,
+    uint32_t connectionId,
+    NetworkINToSimulationQueue& netToSimQueue)
+{
+    ClientReadyForMatchPacketReliable clientReadyPacket{};
+    if (!deserializeClientReadyForMatchPacketReliable(
+            event->packet->data,
+            event->packet->dataLength,
+            clientReadyPacket))
+    {
+        // Si la désérialisation échoue, le packet est invalide ou mal formé.
+        // Log d’avertissement indiquant que le packet est invalide.
+        RCNET_log(RCNET_LOG_WARN,
+                "[SERVER] [NETWORK_IN] [READY_FOR_MATCH] - Failed to deserialize ready-for-match packet from connectionId=%u\n",
+                connectionId);
+        return;
+    }
+
+    // Log d’information indiquant qu’un packet ready-for-match a été reçu.
+    RCNET_log(RCNET_LOG_INFO,
+            "[SERVER] [NETWORK_IN] [READY_FOR_MATCH] - Packet received from connectionId=%u (size=%u bytes)\n",
+            connectionId,
+            (unsigned)event->packet->dataLength);
+
+    // Crée un message destiné au thread simulation.
+    NetworkINToSimulationMessage message{};
+    // Renseigne le type du message de simulation.
+    message.type = NetworkINToSimulationMessageType::CLIENT_READY_FOR_MATCH_PACKET_RELIABLE;
+    // Renseigne la connexion source.
+    message.connectionId = connectionId;
+
+    // Push le message vers la simulation.
+    netToSimQueue.push(message);
+}
+
+// ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel2Unreliable_InputPacket
+static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel2Unreliable_InputPacket(
+    const ENetEvent* event,
+    uint32_t connectionId,
+    NetworkINToSimulationQueue& netToSimQueue)
+{
+    ClientInputPacketUnreliable inputPacket{};
+    if (!deserializeClientInputPacketUnreliable(
+            event->packet->data,
+            event->packet->dataLength,
+            inputPacket))
+    {
+        // Si la désérialisation échoue, le packet est invalide ou mal formé.
+        // Log d’avertissement indiquant que le packet est invalide.
+        RCNET_log(RCNET_LOG_WARN,
+                "[SERVER] [NETWORK_IN] [INPUT] - Failed to deserialize input packet from connectionId=%u\n",
+                connectionId);
+        return;
+    }
+
+    // Log d’information indiquant qu’un packet input a été reçu.
+    RCNET_log(RCNET_LOG_INFO,
+            "[SERVER] [NETWORK_IN] [INPUT] - Packet received from connectionId=%u (size=%u bytes)\n",
+            connectionId,
+            (unsigned)event->packet->dataLength);
+
+    // Crée un message destiné à la simulation.
+    NetworkINToSimulationMessage message{};
+    // Renseigne le type du message de simulation.
+    message.type = NetworkINToSimulationMessageType::CLIENT_INPUT_PACKET_UNRELIABLE;
+    // Renseigne la connexion source.
+    message.connectionId = connectionId;
+    // Attache le packet input au message.
+    message.inputPacket = inputPacket;
+
+    // Push le message vers la simulation.
+    netToSimQueue.push(message);
+}
+
+// Fonction helper statique locale au fichier.
+// Elle lit le premier octet d’un packet reçu sur un channel reliable client -> serveur
+// et l’interprète comme un ClientReliablePacketType.
+// Retourne true si la lecture réussit, false sinon.
+static bool ServerNetworkIncomingUpdate_ReadClientReliablePacketType(
+    // Événement ENet reçu à analyser.
+    const ENetEvent* event,
+    // Paramètre de sortie dans lequel on écrit le type lu si tout se passe bien.
+    ClientReliablePacketType& outType)
+{
+    // Crée un lecteur binaire positionné au début du payload reçu.
+    // Il lira les données depuis event->packet->data sur event->packet->dataLength octets.
+    ByteReader reader(event->packet->data, event->packet->dataLength);
+
+    // Variable temporaire brute qui recevra le premier octet du packet.
+    // Ce premier octet correspond au type de packet dans ton protocole.
+    uint8_t rawType = 0;
+
+    // Essaie de lire un octet depuis le buffer réseau.
+    // Si le packet est vide ou trop court, la lecture échoue.
+    if (!reader.readU8(rawType))
+    {
+        // Retourne false pour signaler l’échec.
+        return false;
+    }
+
+    // Convertit l’octet brut lu en valeur de l’enum ClientReliablePacketType.
+    // On suppose ici que le protocole encode bien le type sur 1 octet.
+    outType = static_cast<ClientReliablePacketType>(rawType);
+
+    // Retourne true pour signaler que la lecture du type a réussi.
+    return true;
+}
+
+// Fonction helper statique locale au fichier.
+// Elle lit le premier octet d’un packet reçu sur un channel unreliable client -> serveur
+// et l’interprète comme un ClientUnreliablePacketType.
+// Retourne true si la lecture réussit, false sinon.
+static bool ServerNetworkIncomingUpdate_ReadClientUnreliablePacketType(
+    // Événement ENet reçu à analyser.
+    const ENetEvent* event,
+    // Paramètre de sortie dans lequel on écrit le type lu si tout se passe bien.
+    ClientUnreliablePacketType& outType)
+{
+    // Crée un lecteur binaire sur le payload du packet reçu.
+    ByteReader reader(event->packet->data, event->packet->dataLength);
+
+    // Variable temporaire brute qui recevra le premier octet du packet.
+    uint8_t rawType = 0;
+
+    // Essaie de lire le premier octet du payload.
+    // Si la lecture échoue, le packet est invalide ou vide.
+    if (!reader.readU8(rawType))
+    {
+        // Retourne false pour signaler l’échec.
+        return false;
+    }
+
+    // Convertit l’octet brut lu en valeur de l’enum ClientUnreliablePacketType.
+    outType = static_cast<ClientUnreliablePacketType>(rawType);
+
+    // Retourne true pour signaler que le type a été lu correctement.
+    return true;
+}
+
+// Fonction helper statique locale au fichier.
+// Elle valide qu’un ENetEvent reçu correspond bien à une connexion connue,
+// et retourne le connectionId associé.
+// Si quelque chose est invalide, elle retourne 0.
+static uint32_t ServerNetworkIncomingUpdate_GetValidatedConnectionIdOrZero(
+    // Événement ENet à valider.
+    const ENetEvent* event,
+    // Référence en lecture seule vers l’état réseau global du serveur.
     const NetworkState& networkState)
 {
     // Vérifie que le peer associé à l'événement existe.
     // Sans peer, on ne peut pas identifier la connexion source.
     if (event->peer == nullptr)
     {
+        // Log d’avertissement indiquant que l’événement est invalide.
         RCNET_log(RCNET_LOG_WARN,
                   "[SERVER] [NETWORK_IN] [VALIDATE_CONNECTION] - event->peer == nullptr\n");
+
+        // Retourne 0 pour signaler une connexion invalide.
         return 0;
     }
 
@@ -26,317 +178,375 @@ static uint32_t ServerNetworkIncomingUpdate_GetValidatedConnectionIdOrZero(
     // Si c'est nul, alors aucune connexion valide n'est associée à ce peer.
     if (event->peer->data == nullptr)
     {
+        // Log d’avertissement indiquant qu’aucun connectionId n’est attaché à ce peer.
         RCNET_log(RCNET_LOG_WARN,
                   "[SERVER] [NETWORK_IN] [VALIDATE_CONNECTION] - peer->data == nullptr\n");
+
+        // Retourne 0 pour signaler une connexion invalide.
         return 0;
     }
 
-    // Lit le connectionId stocké dans peer->data.
-    // peer->data est un void*, donc on le convertit d'abord en entier de taille uintptr_t,
-    // puis en uint32_t pour retrouver ton identifiant de connexion.
+    // Convertit le void* stocké dans peer->data en uintptr_t,
+    // puis en uint32_t pour récupérer le connectionId.
     const uint32_t connectionId = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(event->peer->data));
 
-    // Sécurité supplémentaire :
-    // dans ton système, 0 signifie "connectionId invalide / non initialisé".
-    // Si on lit 0, on refuse de traiter l'événement.
+    // Vérifie que le connectionId n’est pas 0.
+    // 0 signifie "ID invalide / non initialisé".
     if (connectionId == 0)
     {
+        // Log d’avertissement indiquant qu’un ID invalide a été lu.
         RCNET_log(RCNET_LOG_WARN,
                   "[SERVER] [NETWORK_IN] [VALIDATE_CONNECTION] - connectionId == 0\n");
+
+        // Retourne 0 pour signaler une connexion invalide.
         return 0;
     }
 
-    // Recherche dans la map réseau si ce connectionId est bien connu du serveur.
-    // La map connectionIdToEnetPeer contient les connexions actives côté thread réseau.
+    // Cherche le connectionId dans la table des connexions actives.
     std::unordered_map<uint32_t, ENetPeer*>::const_iterator it = networkState.connectionIdToEnetPeer.find(connectionId);
 
-    // Si le connectionId n'existe pas dans la map,
-    // alors ce peer n'est pas reconnu comme une connexion active valide.
+    // Vérifie que le connectionId existe bien dans la map.
     if (it == networkState.connectionIdToEnetPeer.end())
     {
+        // Log d’avertissement indiquant que l’ID n’est pas connu du serveur.
         RCNET_log(RCNET_LOG_WARN,
                   "[SERVER] [NETWORK_IN] [VALIDATE_CONNECTION] - Unknown connectionId=%u (not found in connectionIdToEnetPeer)\n",
                   connectionId);
+
+        // Retourne 0 pour signaler une connexion invalide.
         return 0;
     }
 
-    // Vérifie que le ENetPeer* stocké dans la map pour ce connectionId
-    // est exactement le même que celui reçu dans l'événement.
-    // Ça permet de détecter une incohérence entre peer->data et la table des connexions.
+    // Vérifie que le ENetPeer* trouvé dans la map est exactement celui de l’événement reçu.
     if (it->second != event->peer)
     {
+        // Log d’avertissement indiquant une incohérence entre peer->data et la map serveur.
         RCNET_log(RCNET_LOG_WARN,
                   "[SERVER] [NETWORK_IN] [VALIDATE_CONNECTION] - Peer mismatch for connectionId=%u (map peer=%p, event peer=%p)\n",
                   connectionId,
                   static_cast<void*>(it->second),
                   static_cast<void*>(event->peer));
+
+        // Retourne 0 pour signaler une connexion invalide.
         return 0;
     }
 
-    // Si tous les checks sont passés :
-    // - event est valide
-    // - peer est valide
-    // - peer->data contient un connectionId non nul
-    // - ce connectionId existe bien dans la map
-    // - le peer associé dans la map correspond bien au peer de l'événement
-    // alors on peut considérer ce connectionId comme valide et le retourner.
+    // Tous les checks sont bons : on retourne le connectionId validé.
     return connectionId;
 }
 
+// Fonction helper statique locale au fichier.
+// Elle traite un événement ENet de type CONNECT.
 static void ServerNetworkIncomingUpdate_HandleConnectEvent(
+    // Événement ENet reçu.
     const ENetEvent* event,
+    // Référence modifiable vers l’état réseau global.
     NetworkState& networkState,
+    // Référence vers la queue réseau -> simulation.
     NetworkINToSimulationQueue& netToSimQueue)
 {
+    // Vérifie que le peer existe bien.
     if (event->peer == nullptr)
     {
+        // Log d’avertissement si l’événement de connexion ne contient pas de peer valide.
         RCNET_log(RCNET_LOG_WARN,
                   "[SERVER] [NETWORK_IN] [CONNECT] - Invalid connect event: event->peer == nullptr\n");
+
+        // Abandonne le traitement.
         return;
     }
 
-    // Générer un connectionId unique pour cette connexion réseau qui vient d'arriver
+    // Récupère le prochain ID de connexion disponible puis l’incrémente.
     uint32_t connectionId = networkState.nextConnectionId++;
 
-    // Associer ce connectionId à event->peer->data pour pouvoir l'identifier lors de futurs événements (inputs, déconnexion, etc.)
+    // Stocke ce connectionId dans event->peer->data pour pouvoir retrouver cette connexion plus tard.
     event->peer->data = reinterpret_cast<void*>(static_cast<uintptr_t>(connectionId));
 
-    // Stocker le mapping connectionId -> ENetPeer* pour pouvoir envoyer des messages à ce client plus tard
+    // Enregistre le mapping connectionId -> ENetPeer* dans l’état réseau.
     networkState.connectionIdToEnetPeer[connectionId] = event->peer;
 
-    // Push un message de connexion vers la simulation pour créer une session, etc.
+    // Crée un message destiné au thread simulation.
     NetworkINToSimulationMessage message{};
+    // Indique que ce message correspond à un événement de connexion client.
     message.type = NetworkINToSimulationMessageType::CLIENT_EVENT_CONNECT;
+    // Renseigne l’ID de connexion qui vient d’être créée.
     message.connectionId = connectionId;
+
+    // Push le message dans la queue pour que la simulation crée la session, etc.
     netToSimQueue.push(message);
 
+    // Log d’information indiquant qu’une nouvelle connexion a été acceptée.
     RCNET_log(RCNET_LOG_INFO, "[SERVER] [NETWORK_IN] [CONNECT] - connectionId=%u\n", connectionId);
 }
 
+// Fonction helper statique locale au fichier.
+// Elle traite un événement ENet de type DISCONNECT.
 static void ServerNetworkIncomingUpdate_HandleDisconnectEvent(
+    // Événement ENet reçu.
     const ENetEvent* event,
+    // Référence modifiable vers l’état réseau global.
     NetworkState& networkState,
+    // Référence vers la queue réseau -> simulation.
     NetworkINToSimulationQueue& netToSimQueue)
 {
+    // Vérifie que le peer existe.
     if (event->peer == nullptr)
     {
+        // Log d’avertissement si le peer est absent.
         RCNET_log(RCNET_LOG_WARN,
                   "[SERVER] [NETWORK_IN] [DISCONNECT] - Invalid disconnect event: event->peer == nullptr\n");
+
+        // Abandonne le traitement.
         return;
     }
+
+    // Vérifie que peer->data contient quelque chose.
     if (event->peer->data == nullptr)
     {
+        // Log d’avertissement si aucun connectionId n’est stocké dans le peer.
         RCNET_log(RCNET_LOG_WARN,
                   "[SERVER] [NETWORK_IN] [DISCONNECT] - Invalid disconnect event: peer->data == nullptr\n");
+
+        // Abandonne le traitement.
         return;
     }
 
-    // Identifier la connexion réseau (connectionId) à partir de event->peer->data
+    // Récupère le connectionId depuis peer->data.
     uint32_t connectionId = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(event->peer->data));
 
-    // Supprimer le mapping connectionId -> ENetPeer*
+    // Supprime le mapping connectionId -> ENetPeer*.
     networkState.connectionIdToEnetPeer.erase(connectionId);
 
-    // Supprimer event->peer->data pour éviter les problèmes si jamais on reçoit d'autres événements pour ce peer après la déconnexion
+    // Remet peer->data à nullptr par sécurité.
     event->peer->data = nullptr;
 
-    // Push un message de déconnexion vers la simulation pour nettoyer la session, etc.
+    // Crée un message destiné au thread simulation.
     NetworkINToSimulationMessage message{};
+    // Indique que ce message correspond à une déconnexion client.
     message.type = NetworkINToSimulationMessageType::CLIENT_EVENT_DISCONNECT;
+    // Associe l’ID de connexion qui vient d’être fermée.
     message.connectionId = connectionId;
+
+    // Push le message dans la queue pour que la simulation nettoie la session.
     netToSimQueue.push(message);
 
+    // Log d’information indiquant la déconnexion.
     RCNET_log(RCNET_LOG_INFO, "[SERVER] [NETWORK_IN] [DISCONNECT] - connectionId=%u\n", connectionId);
 }
 
+// Fonction helper statique locale au fichier.
+// Elle traite les messages reçus sur le channel 0, réservé ici au handshake reliable.
 static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel0Handshake(
+    // Événement ENet de réception.
     const ENetEvent* event,
+    // ID de connexion validé en amont.
     uint32_t connectionId,
+    // Référence vers la queue réseau -> simulation.
     NetworkINToSimulationQueue& netToSimQueue)
 {
-    // CLIENT_HANDSHAKE_RELIABLE
-    if (event->packet->dataLength == sizeof(ClientHandshakePacketReliable))
+    ClientHandshakePacketReliable handshakePacket{};
+    if (!deserializeClientHandshakePacketReliable(
+            event->packet->data,
+            event->packet->dataLength,
+            handshakePacket))
     {
-        // 1) Lire le header seul
-        ClientReliablePacketHeader header{};
-        std::memcpy(&header, event->packet->data, sizeof(ClientReliablePacketHeader));
-
-        // 2) Vérifier le type attendu
-        if (header.type != ClientReliablePacketType::CLIENT_HANDSHAKE_PACKET_RELIABLE)
-        {
-            RCNET_log(RCNET_LOG_WARN,
-                    "[SERVER] [NETWORK_IN] [HANDSHAKE] - Invalid reliable packet type from connectionId=%u\n",
-                    connectionId);
-            return;
-        }
-
-        RCNET_log(RCNET_LOG_INFO,
-                "[SERVER] [NETWORK_IN] [HANDSHAKE] - Packet received from connectionId=%u (size=%u bytes)\n",
-                connectionId,
-                (unsigned)event->packet->dataLength);
-
-        // 3) Copier le packet complet
-        ClientHandshakePacketReliable handshakePacket{};
-        std::memcpy(&handshakePacket, event->packet->data, sizeof(ClientHandshakePacketReliable));
-
-        // 5) Vérification version protocole
-        if (handshakePacket.networkProtocolVersion != SERVER_NETWORK_PROTOCOL_VERSION)
-        {
-            RCNET_log(RCNET_LOG_ERROR,
-                    "[SERVER] [NETWORK_IN] [HANDSHAKE] - Network protocol version mismatch with connectionId=%u: client=%u vs server=%u. Disconnecting client.\n",
-                    connectionId,
-                    handshakePacket.networkProtocolVersion,
-                    SERVER_NETWORK_PROTOCOL_VERSION);
-
-            // Déconnecter le client
-            enet_peer_disconnect(event->peer, 0);
-            return;
-        }
-
-        // 6) Push vers la simulation
-        NetworkINToSimulationMessage message{};
-        message.type = NetworkINToSimulationMessageType::CLIENT_HANDSHAKE_PACKET_RELIABLE;
-        message.connectionId = connectionId;
-        message.handshakePacket = handshakePacket;
-
-        netToSimQueue.push(message);
+        // Si la désérialisation échoue, le packet est invalide ou mal formé.
+        // Log d’avertissement indiquant que le packet de handshake est invalide.
+        RCNET_log(RCNET_LOG_WARN,
+                "[SERVER] [NETWORK_IN] [HANDSHAKE] - Failed to deserialize handshake packet from connectionId=%u\n",
+                connectionId);
+        return;
     }
+
+    // Log d’information indiquant qu’un handshake a été reçu.
+    RCNET_log(RCNET_LOG_INFO,
+            "[SERVER] [NETWORK_IN] [HANDSHAKE] - Packet received from connectionId=%u (size=%u bytes)\n",
+            connectionId,
+            (unsigned)event->packet->dataLength);
+
+    // Vérifie que la version protocole envoyée par le client est compatible avec celle du serveur.
+    if (handshakePacket.networkProtocolVersion != SERVER_NETWORK_PROTOCOL_VERSION)
+    {
+        // Log d’erreur indiquant un mismatch de version.
+        RCNET_log(RCNET_LOG_ERROR,
+                "[SERVER] [NETWORK_IN] [HANDSHAKE] - Network protocol version mismatch with connectionId=%u: client=%u vs server=%u. Disconnecting client.\n",
+                connectionId,
+                handshakePacket.networkProtocolVersion,
+                SERVER_NETWORK_PROTOCOL_VERSION);
+
+        // Déconnecte immédiatement le client.
+        enet_peer_disconnect(event->peer, 0);
+
+        // Abandonne le traitement.
+        return;
+    }
+
+    // Crée un message destiné à la simulation.
+    NetworkINToSimulationMessage message{};
+    // Indique que ce message transporte un handshake reliable.
+    message.type = NetworkINToSimulationMessageType::CLIENT_HANDSHAKE_PACKET_RELIABLE;
+    // Attache le connectionId source.
+    message.connectionId = connectionId;
+    // Copie le packet de handshake dans le message.
+    message.handshakePacket = handshakePacket;
+
+    // Push le message vers la simulation.
+    netToSimQueue.push(message);
 }
 
+// Fonction helper statique locale au fichier.
+// Elle traite les messages reçus sur le channel 1, réservé ici aux packets reliable gameplay.
 static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel1Reliable(
+    // Événement ENet de réception.
     const ENetEvent* event,
+    // ID de connexion validé en amont.
     uint32_t connectionId,
+    // Référence vers la queue réseau -> simulation.
     NetworkINToSimulationQueue& netToSimQueue)
 {
-    // CLIENT_READY_FOR_MATCH_RELIABLE
-    if (event->packet->dataLength == sizeof(ClientReadyForMatchPacketReliable))
+    // Lit le type de packet fiable envoyé par le client.
+    ClientReliablePacketType packetType{};
+    if (!ServerNetworkIncomingUpdate_ReadClientReliablePacketType(event, packetType))
     {
-        // 1) Lire le header seul
-        ClientReliablePacketHeader header{};
-        std::memcpy(&header, event->packet->data, sizeof(ClientReliablePacketHeader));
+        // Si la lecture du type échoue, le packet est invalide ou mal formé.
+        // Log d’avertissement indiquant que le packet est invalide.
+        RCNET_log(RCNET_LOG_WARN,
+                "[SERVER] [NETWORK_IN] [RELIABLE] - Failed to read reliable packet type from connectionId=%u\n",
+                connectionId);
+        return;
+    }
 
-        // 2) Vérifier le type attendu
-        if (header.type != ClientReliablePacketType::CLIENT_READY_FOR_MATCH_PACKET_RELIABLE)
+    // Dispatch le traitement selon le type de packet fiable reçu.
+    switch (packetType)
+    {
+        case ClientReliablePacketType::CLIENT_READY_FOR_MATCH_PACKET_RELIABLE:
         {
-            RCNET_log(RCNET_LOG_WARN,
-                    "[SERVER] [NETWORK_IN] [READY_FOR_MATCH] - Invalid reliable packet type from connectionId=%u\n",
-                    connectionId);
-            return;
+            ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel1Reliable_ClientReadyForMatch(event, connectionId, netToSimQueue);
+            break;
         }
 
-        RCNET_log(RCNET_LOG_INFO,
-                "[SERVER] [NETWORK_IN] [READY_FOR_MATCH] - Packet received from connectionId=%u (size=%u bytes)\n",
-                connectionId,
-                (unsigned)event->packet->dataLength);
-
-        // Copier le packet complet
-        ClientReadyForMatchPacketReliable readyForMatchPacket{};
-        std::memcpy(&readyForMatchPacket, event->packet->data, sizeof(ClientReadyForMatchPacketReliable));
-
-        // Créer un message de type CLIENT_READY_FOR_MATCH_PACKET_RELIABLE pour la simulation
-        NetworkINToSimulationMessage message{};
-        message.type = NetworkINToSimulationMessageType::CLIENT_READY_FOR_MATCH_PACKET_RELIABLE;
-        message.connectionId = connectionId;
-
-        // Push vers la simulation pour marquer cette session comme prête pour le match
-        netToSimQueue.push(message);
+        default:
+            // type inconnu ou interdit sur ce channel
+            RCNET_log(RCNET_LOG_WARN,
+                    "[SERVER] [NETWORK_IN] [RELIABLE] - Unknown or unexpected reliable packet type=%u from connectionId=%u\n",
+                    static_cast<unsigned>(packetType),
+                    connectionId);
+            break;
     }
 }
 
+// Fonction helper statique locale au fichier.
+// Elle traite les messages reçus sur le channel 2, réservé ici aux packets unreliable gameplay.
 static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel2Unreliable(
+    // Événement ENet de réception.
     const ENetEvent* event,
+    // ID de connexion validé en amont.
     uint32_t connectionId,
+    // Référence vers la queue réseau -> simulation.
     NetworkINToSimulationQueue& netToSimQueue)
 {
-    // CLIENT_INPUT_UNRELIABLE
-    if (event->packet->dataLength == sizeof(ClientInputPacketUnreliable))
+    // Lit le type de packet non fiable envoyé par le client.
+    ClientUnreliablePacketType packetType{};
+    if (!ServerNetworkIncomingUpdate_ReadClientUnreliablePacketType(event, packetType))
     {
-        // 1) Lire le header seul
-        ClientUnreliablePacketHeader header{};
-        std::memcpy(&header, event->packet->data, sizeof(ClientUnreliablePacketHeader));
+        // Si la lecture du type échoue, le packet est invalide ou mal formé.
+        // Log d'avertissement indiquant que le packet est invalide.
+        RCNET_log(RCNET_LOG_WARN,
+                "[SERVER] [NETWORK_IN] [UNRELIABLE] - Failed to read unreliable packet type from connectionId=%u\n",
+                connectionId);
+        return;
+    }
 
-        // 2) Vérifier le type attendu
-        if (header.type != ClientUnreliablePacketType::CLIENT_INPUT_PACKET_UNRELIABLE)
-        {
+    // Dispatch le traitement selon le type de packet non fiable reçu.
+    switch (packetType)
+    {
+        case ClientUnreliablePacketType::CLIENT_INPUT_PACKET_UNRELIABLE:
+            ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel2Unreliable_InputPacket(event, connectionId, netToSimQueue);
+            break;
+
+        default:
+            // type inconnu ou interdit sur ce channel
             RCNET_log(RCNET_LOG_WARN,
-                    "[SERVER] [NETWORK_IN] [INPUT] - Invalid unreliable packet type from connectionId=%u\n",
+                    "[SERVER] [NETWORK_IN] [UNRELIABLE] - Unknown or unexpected unreliable packet type=%u from connectionId=%u\n",
+                    static_cast<unsigned>(packetType),
                     connectionId);
-            return;
-        }
-
-        RCNET_log(RCNET_LOG_INFO,
-                "[SERVER] [NETWORK_IN] [INPUT] - Packet received from connectionId=%u (size=%u bytes)\n",
-                connectionId,
-                (unsigned)event->packet->dataLength);
-
-        // 3) Copier le packet complet
-        ClientInputPacketUnreliable inputPacket{};
-        std::memcpy(&inputPacket, event->packet->data, sizeof(ClientInputPacketUnreliable));
-
-        // 4) Push vers la simulation
-        NetworkINToSimulationMessage message{};
-        message.type = NetworkINToSimulationMessageType::CLIENT_INPUT_PACKET_UNRELIABLE;
-        message.connectionId = connectionId;
-        message.inputPacket = inputPacket;
-
-        netToSimQueue.push(message);
+            break;
     }
 }
 
+// Fonction helper statique locale au fichier.
+// Elle choisit quel handler appeler selon le channel ENet sur lequel le packet a été reçu.
 static void ServerNetworkIncomingUpdate_HandleReceiveEvent_DispatchByChannel(
+    // Événement ENet de réception.
     const ENetEvent* event,
+    // ID de connexion validé.
     uint32_t connectionId,
+    // Référence vers la queue réseau -> simulation.
     NetworkINToSimulationQueue& netToSimQueue)
 {
-    if (event->channelID == 0)
+    // Récupère le channel sur lequel le packet est arrivé.
+    const NetworkChannel channel = static_cast<NetworkChannel>(event->channelID);
+
+    switch (channel)
     {
-        // TODO: traiter handshake (token / accountIdDatabase / etc.)
-        ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel0Handshake(event, connectionId, netToSimQueue);
-    }
-    else if (event->channelID == 1)
-    {
-        ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel1Reliable(event, connectionId, netToSimQueue);
-    }
-    else if (event->channelID == 2)
-    {
-        ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel2Unreliable(event, connectionId, netToSimQueue);
+        case NetworkChannel::HANDSHAKE_RELIABLE:
+            ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel0Handshake(event, connectionId, netToSimQueue);
+            break;
+
+        case NetworkChannel::GAME_RELIABLE:
+            ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel1Reliable(event, connectionId, netToSimQueue);
+            break;
+
+        case NetworkChannel::GAME_UNRELIABLE:
+            ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel2Unreliable(event, connectionId, netToSimQueue);
+            break;
+
+        default:
+            RCNET_log(RCNET_LOG_WARN,
+                    "[SERVER] [NETWORK_IN] [RECEIVE] - Unknown channel=%u for connectionId=%u\n",
+                    static_cast<unsigned>(event->channelID),
+                    connectionId);
+            break;
     }
 }
 
-// ======================================================================================
-// Public entry point called by server_callbacks.cpp
-// ======================================================================================
-
+// Point d’entrée public appelé depuis server_callbacks.cpp.
+// Cette fonction traite un événement ENet reçu par le serveur.
 void ServerNetworkIncomingUpdate_ProcessENetEvent(ENetHost* host, const ENetEvent* event)
 {
-    // Sécurité : vérifier que les pointeurs ne sont pas nuls avant de les utiliser
+    // Vérifie que les pointeurs d’entrée sont valides.
     if (host == nullptr || event == nullptr)
         return;
 
-    // Accès au state pour identifier la connexion réseau (connectionId) à partir de event->peer et pour stocker le mapping connectionId <-> ENetPeer*
+    // Récupère une référence vers l’état réseau global.
     NetworkState& networkState = GetNetworkState();
 
-    // Accès à la queue réseau -> simulation pour push des messages à traiter par la simulation (ex: connexion, déconnexion, inputs reçus, etc.)
+    // Récupère la queue réseau -> simulation.
     NetworkINToSimulationQueue& netToSimQueue = GetNetworkINToSimulationQueue();
 
-    // Traiter les événements réseau (connexion, déconnexion, message reçu)
+    // Vérifie si l’événement est une connexion.
     if (event->type == ENET_EVENT_TYPE_CONNECT)
     {
+        // Traite l’événement de connexion.
         ServerNetworkIncomingUpdate_HandleConnectEvent(event, networkState, netToSimQueue);
     }
+    // Vérifie si l’événement est une déconnexion normale ou timeout.
     else if (event->type == ENET_EVENT_TYPE_DISCONNECT || event->type == ENET_EVENT_TYPE_DISCONNECT_TIMEOUT)
     {
+        // Traite l’événement de déconnexion.
         ServerNetworkIncomingUpdate_HandleDisconnectEvent(event, networkState, netToSimQueue);
     }
+    // Vérifie si l’événement est une réception de packet.
     else if (event->type == ENET_EVENT_TYPE_RECEIVE)
     {
-        // Sécurité : valider que event->peer et event->peer->data sont valides, 
-        // que le connectionId est connu et cohérent avec la map des connexions avant de traiter le message reçu.
+        // Valide la connexion source et récupère son connectionId.
         uint32_t connectionId = ServerNetworkIncomingUpdate_GetValidatedConnectionIdOrZero(event, networkState);
+
+        // Si l’ID est invalide, on ignore le packet.
         if (connectionId == 0)
             return;
 
-        // Sécurité (2) : Vérifier dans la session que le client est bien authentifié avant de traiter certains types de messages.
+        // Bloc optionnel futur pour refuser les packets avant authentification.
         /*if (!ServerNetworkIncomingUpdate_IsClientAuthenticated(connectionId, networkState))
         {
             RCNET_log(RCNET_LOG_WARN,
@@ -345,7 +555,7 @@ void ServerNetworkIncomingUpdate_ProcessENetEvent(ENetHost* host, const ENetEven
             return;
         }*/
 
-        // Traiter le message reçu en fonction du channel sur lequel il est arrivé
+        // Dispatch le traitement du packet selon le channel ENet utilisé.
         ServerNetworkIncomingUpdate_HandleReceiveEvent_DispatchByChannel(event, connectionId, netToSimQueue);
     }
 }
