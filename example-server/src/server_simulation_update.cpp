@@ -28,8 +28,10 @@ static void ServerSimulationUpdate_HandleConnectMessage(
     NetworkState& networkState,
     const NetworkINToSimulationMessage& msg)
 {
-    // Créer une session pour ce client avec cette connectionId
+    // Créer une session pour ce client
     ClientSession session{};
+
+    // Assigner un ID de connexion unique à cette session
     session.connectionId = msg.connectionId;
 
     // Ajouter la session au network state
@@ -38,6 +40,7 @@ static void ServerSimulationUpdate_HandleConnectMessage(
     // Mettre à jour des propriété de la session
     session.isTransportConnected = true;
 
+    // Log d’information indiquant la nouvelle connexion et l’ID de session associé.
     RCNET_log(RCNET_LOG_INFO,
               "[SERVER] [SIMULATION] [CONNECT] - connectionId=%u (session created)\n",
               msg.connectionId);
@@ -68,6 +71,11 @@ static void ServerSimulationUpdate_HandleDisconnectMessage(
             "[SERVER] [SIMULATION] [DISCONNECT] - connectionId=%u (ENet peer mapping removed)\n",
             msg.connectionId);
     }
+
+    // Log d’information indiquant la déconnexion et l’ID de session concerné.
+    RCNET_log(RCNET_LOG_INFO,
+              "[SERVER] [SIMULATION] [DISCONNECT] - connectionId=%u\n",
+              msg.connectionId);
 
     // TODO :
     // - libérer des ressources associées à cette session comme l'entité joueur dans le monde, etc.
@@ -259,6 +267,11 @@ static void ServerSimulationUpdate_HandleReadyForMatchMessage(
                     "[SERVER] [SIMULATION] [READY_FOR_MATCH] - connectionId=%u is ready for match\n",
                     msg.connectionId);
     }
+
+    // Log d’information indiquant que ce client est prêt pour le match.
+    RCNET_log(RCNET_LOG_INFO,
+              "[SERVER] [SIMULATION] [READY_FOR_MATCH] - connectionId=%u\n",
+              msg.connectionId);
 }
 
 static void ServerSimulationUpdate_ProcessIncomingNetworkMessages(
