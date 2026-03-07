@@ -231,7 +231,7 @@ static void ServerSimulationUpdate_CheckMatchFlow(
             matchInitPacket.header.type = ServerReliablePacketType::SERVER_MATCH_INIT_PACKET_RELIABLE;
 
             // TODO : ici tu mettras la vraie map du serveur.
-            std::memset(matchInitPacket.mapName, 0, sizeof(matchInitPacket.mapName));
+            matchInitPacket.mapName = "ExampleNameMap";
             matchInitPacket.mapVersion = 1;
             matchInitPacket.mapChecksum = 0;
 

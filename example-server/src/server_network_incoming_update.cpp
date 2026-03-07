@@ -189,13 +189,13 @@ static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel0Handshake(
         std::memcpy(&handshakePacket, event->packet->data, sizeof(ClientHandshakePacketReliable));
 
         // 5) Vérification version protocole
-        if (handshakePacket.networkProtocolVersion != NETWORK_PROTOCOL_VERSION)
+        if (handshakePacket.networkProtocolVersion != SERVER_NETWORK_PROTOCOL_VERSION)
         {
             RCNET_log(RCNET_LOG_ERROR,
                     "[SERVER] [NETWORK_IN] [HANDSHAKE] - Network protocol version mismatch with connectionId=%u: client=%u vs server=%u. Disconnecting client.\n",
                     connectionId,
                     handshakePacket.networkProtocolVersion,
-                    NETWORK_PROTOCOL_VERSION);
+                    SERVER_NETWORK_PROTOCOL_VERSION);
 
             // Déconnecter le client
             enet_peer_disconnect(event->peer, 0);
@@ -339,7 +339,8 @@ void ServerNetworkIncomingUpdate_ProcessENetEvent(ENetHost* host, const ENetEven
     }
     else if (event->type == ENET_EVENT_TYPE_RECEIVE)
     {
-        // Sécurité : valider que le connectionId associé à ce message reçu est bien valide avant de tenter de le traiter
+        // Sécurité : valider que event->peer et event->peer->data sont valides, 
+        // que le connectionId est connu et cohérent avec la map des connexions avant de traiter le message reçu.
         uint32_t connectionId = ServerNetworkIncomingUpdate_GetValidatedConnectionIdOrZero(event, networkState);
         if (connectionId == 0)
             return;

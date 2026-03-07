@@ -16,9 +16,16 @@ enum class ClientUnreliablePacketType : uint8_t
     CLIENT_CLOCK_SYNC_PACKET_UNRELIABLE = 1,
 };
 
-// ============================================================================
-// Données d’input envoyées par le client au serveur
-// ============================================================================
+struct ClientUnreliablePacketHeader
+{
+    // Type de packet envoyé sur le channel unreliable client -> serveur.
+    ClientUnreliablePacketType type;
+};
+
+// ======================================================================================
+// Liste des packets unreliable envoyés par le client au serveur.
+// ======================================================================================
+
 enum class MovementFlags : uint8_t
 {
     None  = 0,
@@ -26,24 +33,14 @@ enum class MovementFlags : uint8_t
     Down  = 1u << 1,
     Left  = 1u << 2,
     Right = 1u << 3,
-    // etc. (ajoute autant de directions que nécessaire, jusqu’à 8)
 };
-enum class ActionFlags : uint64_t
+enum class ActionFlags : uint8_t
 {
     None   = 0,
-    Jump   = 1ull << 0,
-    Dash   = 1ull << 1,
-    Sprint = 1ull << 2,
-    Attack = 1ull << 3,
-    // etc. (ajoute autant d’actions que nécessaire, jusqu’à 64)
-};
-
-#pragma pack(push, 1)
-
-struct ClientUnreliablePacketHeader
-{
-    // Type de packet envoyé sur le channel unreliable client -> serveur.
-    ClientUnreliablePacketType type;
+    Jump   = 1u << 0,
+    Dash   = 1u << 1,
+    Sprint = 1u << 2,
+    Attack = 1u << 3,
 };
 
 struct ClientInputPacketUnreliable
@@ -101,20 +98,18 @@ struct ClientInputPacketUnreliable
 
     // Actions actuellement maintenues.
     // Utilisé pour les actions continues : sprint, tir automatique, etc.
-    uint64_t actionHeldFlags = 0;
+    uint8_t actionHeldFlags = 0;
 
     // Actions déclenchées exactement sur ce tick (transition 0 -> 1).
     // Indispensable pour les actions instantanées : jump, dash,
     // tir semi-automatique, interaction.
     // Garantit qu’une action ne soit déclenchée qu’une seule fois
     // même en cas de maintien du bouton ou de reconciliation réseau.
-    uint64_t actionPressedFlags = 0;
+    uint8_t actionPressedFlags = 0;
 
     // Actions relâchées sur ce tick (transition 1 -> 0).
     // Utile pour les mécaniques dépendant du relâchement :
     // attaque chargée, arrêt d’un sprint, fin d’une visée, etc.
     // Peut être omis si ton gameplay ne l’utilise pas.
-    uint64_t actionReleasedFlags = 0;
+    uint8_t actionReleasedFlags = 0;
 };
-
-#pragma pack(pop)

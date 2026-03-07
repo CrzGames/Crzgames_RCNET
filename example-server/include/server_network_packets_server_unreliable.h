@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint> // uint16_t, uint32_t, etc.
+
 // ======================================================================================
 // ServerUnreliablePacketType
 //
@@ -15,13 +17,15 @@ enum class ServerUnreliablePacketType : uint8_t
     SERVER_CLOCK_SYNC_PACKET_UNRELIABLE = 2,
 };
 
-#pragma pack(push, 1)
-
 struct ServerUnreliablePacketHeader
 {
     // Type de packet envoyé sur le channel unreliable serveur -> client.
     ServerUnreliablePacketType type;
 };
+
+// ======================================================================================
+// Liste des packets unreliable envoyés par le serveur au client.
+// ======================================================================================
 
 struct ServerSnapshotFullPacketUnreliable
 {
@@ -58,5 +62,3 @@ struct ServerSnapshotFullPacketUnreliable
     // - rejouer les inputs restants (client-side prediction + reconciliation).
     uint32_t lastProcessedInputSequenceNumber;
 };
-
-#pragma pack(pop)

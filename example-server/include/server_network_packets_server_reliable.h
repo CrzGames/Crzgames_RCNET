@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cstdint> // uint16_t, uint32_t, etc.
+#include <string>  // std::string
+
 // ======================================================================================
 // ServerReliablePacketType
 //
@@ -16,12 +19,14 @@ enum class ServerReliablePacketType : uint8_t
     SERVER_MATCH_END_PACKET_RELIABLE = 3,
 };
 
-#pragma pack(push, 1)
-
 struct ServerReliablePacketHeader
 {
     ServerReliablePacketType type;
 };
+
+// ======================================================================================
+// Liste des packets reliable envoyés par le serveur au client.
+// ======================================================================================
 
 struct ServerMatchInitPacketReliable
 {
@@ -31,7 +36,7 @@ struct ServerMatchInitPacketReliable
 
     // Nom de la map à charger côté client.
     // Le client doit posséder cette map localement (installée avec le jeu ou via un patch).
-    char mapName[32];
+    std::string mapName;
 
     // Version de la map attendue par le serveur.
     // Permet de vérifier que le client possède exactement la même version
@@ -89,5 +94,3 @@ struct ServerMatchStartPacketReliable
     // Utile pour estimer la latence et synchroniser l'horloge client avec celle du serveur.
     uint64_t serverTimeNs;
 };
-
-#pragma pack(pop)

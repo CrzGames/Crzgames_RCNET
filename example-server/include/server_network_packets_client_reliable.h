@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cstdint> // uint16_t, uint32_t, etc.
+#include <string>  // std::string
+
 // ======================================================================================
 // ClientReliablePacketType
 //
@@ -14,12 +17,14 @@ enum class ClientReliablePacketType : uint8_t
     CLIENT_READY_FOR_MATCH_PACKET_RELIABLE = 1,
 };
 
-#pragma pack(push, 1)
-
 struct ClientReliablePacketHeader
 {
     ClientReliablePacketType type;
 };
+
+// ======================================================================================
+// Liste des packets reliable envoyés par le client au serveur.
+// ======================================================================================
 
 struct ClientHandshakePacketReliable
 {
@@ -31,7 +36,7 @@ struct ClientHandshakePacketReliable
     uint32_t networkProtocolVersion;
 
     // Token d’authentification (Bearer token oat)
-    char authToken[64];
+    std::string authToken;
 };
 
 struct ClientReadyForMatchPacketReliable
@@ -39,5 +44,3 @@ struct ClientReadyForMatchPacketReliable
     // Header commun à tous les packets reliable client -> serveur.
     ClientReliablePacketHeader header;
 };
-
-#pragma pack(pop)

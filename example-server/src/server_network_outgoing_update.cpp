@@ -90,7 +90,7 @@ static void ServerNetworkOutgoingUpdate_SendReliablePacket(
 
     if (packet != nullptr)
     {
-        enet_peer_send(peer, ENET_CHANNEL_RELIABLE, packet);
+        enet_peer_send(peer, static_cast<enet_uint8>(NetworkChannel::GAME_RELIABLE), packet);
         RCNET_log(RCNET_LOG_INFO,
                   "[SERVER] [NETWORK_OUT] [%s] - Sent to connectionId=%u (size=%zu bytes)\n",
                   debugLabel,
@@ -186,7 +186,7 @@ static void ServerNetworkOutgoingUpdate_SendSnapshotFullUnreliable(
 
     if (packet != nullptr)
     {
-        enet_peer_send(peer, ENET_CHANNEL_UNRELIABLE, packet);
+        enet_peer_send(peer, static_cast<enet_uint8>(NetworkChannel::GAME_UNRELIABLE), packet);
         RCNET_log(RCNET_LOG_INFO,
               "[SERVER] [NETWORK_OUT] [SNAPSHOT_FULL_UNRELIABLE] - Sent snapshotId=%u to connectionId=%u (size=%zu bytes)\n",
               snapshotId,

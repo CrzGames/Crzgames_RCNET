@@ -6,18 +6,7 @@
 #include <rcenet/RCENET_enet.h>
 
 #include "server_sessions.h"
-
-// channel 0 =  echange de clés et messages de contrôle fiables (handshakes, auth, etc.)
-// channel 1 =  messages de jeu fiables (match start, events importants, etc.)
-// channel 2 =  messages de jeu non fiables (inputs, snapshots, etc.)
-enum EnetChannel : uint8_t
-{
-    ENET_CHANNEL_HANDSHAKE_RELIABLE = 0,
-    ENET_CHANNEL_RELIABLE         = 1,
-    ENET_CHANNEL_UNRELIABLE       = 2,
-
-    ENET_CHANNEL_COUNT
-};
+#include "server_network_channels.h"
 
 struct NetworkState
 {
@@ -29,7 +18,7 @@ struct NetworkState
     const uint16_t serverPort = 12345;
 
     // Nombre de channels ENet (ex: handshake, reliable, unreliable)
-    const uint8_t channelCount = ENET_CHANNEL_COUNT;
+    const uint8_t channelCount = static_cast<uint8_t>(NetworkChannel::COUNT);
 
     // Nombre maximum de clients connectés
     const uint32_t maxClientsConnected = 2;
