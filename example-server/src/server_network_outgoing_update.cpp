@@ -10,22 +10,7 @@
 #include <cstring>
 
 // ======================================================================================
-// OUTGOING NETWORK PIPELINE
-//
-// Rôle de ce fichier :
-// - drainer la queue Simulation -> Network
-// - séparer les messages reliable et snapshot unreliable
-// - coalescer uniquement les snapshots (garder le dernier par client)
-// - envoyer les paquets ENet sur les bons channels
-//
-// IMPORTANT :
-// - MATCH_INIT_RELIABLE ne doit JAMAIS être écrasé par le coalescing snapshot
-// - SNAPSHOT_FULL_UNRELIABLE peut être coalescé sans problème
-// ======================================================================================
-
-
-// ======================================================================================
-// Helpers - accès peer / queue
+// Helpers - 
 // ======================================================================================
 
 static void ServerNetworkOutgoingUpdate_DrainSimulationToNetworkQueue(
@@ -35,6 +20,9 @@ static void ServerNetworkOutgoingUpdate_DrainSimulationToNetworkQueue(
     simToNetQueue.drain(outMessages);
 }
 
+// ======================================================================================
+// Helpers - recherche du peer ENet par connectionId
+// =====================================================================================
 static ENetPeer* ServerNetworkOutgoingUpdate_FindPeerByConnectionId(
     NetworkState& networkState,
     uint32_t connectionId)
@@ -54,11 +42,7 @@ static ENetPeer* ServerNetworkOutgoingUpdate_FindPeerByConnectionId(
 
 
 // ======================================================================================
-// Helpers - classification des messages sortants
-//
-// On sépare :
-// - reliable messages  -> envoyés tous
-// - snapshots          -> on garde seulement le dernier par connectionId
+// Helpers - 
 // ======================================================================================
 
 static void ServerNetworkOutgoingUpdate_ClassifyOutgoingMessages(
@@ -95,9 +79,6 @@ static void ServerNetworkOutgoingUpdate_SendReliablePacket(
     size_t expectedPayloadSize,
     const char* debugLabel)
 {
-    if (peer == nullptr)
-        return;
-
     if (msg.payload.size() != expectedPayloadSize)
         return;
 
@@ -116,56 +97,16 @@ static void ServerNetworkOutgoingUpdate_SendReliablePacket(
                   msg.connectionId,
                   msg.payload.size());
     }
+    else
+    {
+        RCNET_log(RCNET_LOG_ERROR,
+                  "[SERVER] [NETWORK_OUT] [%s] - Failed to create ENet packet for connectionId=%u\n",
+                  debugLabel,
+                  msg.connectionId);
+    }
 }
 
-static void ServerNetworkOutgoingUpdate_SendMatchInitReliable(
-    ENetPeer* peer,
-    const SimulationToNetworkOUTMessage& msg)
-{
-    if (msg.type != SimulationToNetworkOUTMessageType::SERVER_MATCH_INIT_RELIABLE)
-        return;
-
-    ServerNetworkOutgoingUpdate_SendReliablePacket(
-        peer,
-        msg,
-        sizeof(MatchInitPacket),
-        "MATCH_INIT_RELIABLE"
-    );
-}
-
-static void ServerNetworkOutgoingUpdate_SendWorldStaticStateInitReliable(
-    ENetPeer* peer,
-    const SimulationToNetworkOUTMessage& msg)
-{
-    if (msg.type != SimulationToNetworkOUTMessageType::SERVER_WORLD_STATIC_STATE_INIT_RELIABLE)
-        return;
-
-    ServerNetworkOutgoingUpdate_SendReliablePacket(
-        peer,
-        msg,
-        sizeof(WorldStaticStateInitPacket),
-        "WORLD_STATIC_STATE_INIT_RELIABLE"
-    );
-}
-
-static void ServerNetworkOutgoingUpdate_SendMatchStartReliable(
-    ENetPeer* peer,
-    const SimulationToNetworkOUTMessage& msg)
-{
-    if (msg.type != SimulationToNetworkOUTMessageType::SERVER_MATCH_START_RELIABLE)
-        return;
-
-    ServerNetworkOutgoingUpdate_SendReliablePacket(
-        peer,
-        msg,
-        sizeof(MatchStartPacket),
-        "MATCH_START_RELIABLE"
-    );
-}
-
-static void ServerNetworkOutgoingUpdate_SendReliableMessages(
-    NetworkState& networkState,
-    const std::deque<SimulationToNetworkOUTMessage>& reliableMessages)
+static void ServerNetworkOutgoingUpdate_SendReliableMessages(NetworkState& networkState, const std::deque<SimulationToNetworkOUTMessage>& reliableMessages)
 {
     for (std::deque<SimulationToNetworkOUTMessage>::const_iterator it = reliableMessages.begin();
          it != reliableMessages.end();
@@ -182,15 +123,15 @@ static void ServerNetworkOutgoingUpdate_SendReliableMessages(
 
         if (msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_INIT_RELIABLE)
         {
-            ServerNetworkOutgoingUpdate_SendMatchInitReliable(peer, msg);
+            ServerNetworkOutgoingUpdate_SendReliablePacket(peer, msg, sizeof(MatchInitPacket), "MATCH_INIT_RELIABLE");
         }
         else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_WORLD_STATIC_STATE_INIT_RELIABLE)
         {
-            ServerNetworkOutgoingUpdate_SendWorldStaticStateInitReliable(peer, msg);
+            ServerNetworkOutgoingUpdate_SendReliablePacket(peer, msg, sizeof(WorldStaticStateInitPacket), "WORLD_STATIC_STATE_INIT_RELIABLE");
         }
         else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_START_RELIABLE)
         {
-            ServerNetworkOutgoingUpdate_SendMatchStartReliable(peer, msg);
+            ServerNetworkOutgoingUpdate_SendReliablePacket(peer, msg, sizeof(MatchStartPacket), "MATCH_START_RELIABLE");
         }
     }
 }
@@ -210,17 +151,13 @@ static void ServerNetworkOutgoingUpdate_SendSnapshotFullUnreliable(
     ENetPeer* peer,
     const SimulationToNetworkOUTMessage& msg)
 {
-    if (peer == nullptr)
-        return;
-
     if (msg.type != SimulationToNetworkOUTMessageType::SERVER_SNAPSHOT_FULL_UNRELIABLE)
         return;
 
     if (msg.payload.size() != sizeof(SnapshotPacket))
         return;
 
-    std::unordered_map<uint32_t, ClientSession>::iterator sit =
-        networkState.sessions.find(msg.connectionId);
+    std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
     if (sit == networkState.sessions.end())
         return;
 
@@ -307,6 +244,7 @@ void ServerNetworkOutgoingUpdate_DrainCoalesceAndSendMessages(ENetHost* host)
     std::deque<SimulationToNetworkOUTMessage> reliableMessages;
     std::unordered_map<uint32_t, SimulationToNetworkOUTMessage> lastSnapshotPerConnectionId;
 
+    // Note : les messages reliable sont traités dans l'ordre de production, mais les snapshots unreliable sont coalescés pour n'envoyer que le dernier par client.
     ServerNetworkOutgoingUpdate_ClassifyOutgoingMessages(
         outMessages,
         reliableMessages,

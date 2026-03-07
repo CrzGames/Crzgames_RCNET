@@ -70,9 +70,6 @@ static std::atomic<bool> serverIsRunning{true};
 // Fréquence simulation (Hz). Exemple: 128 => 128 ticks/s
 static int simulationTickRateHz = 128;
 
-// Durée d'un tick simulation en nanosecondes: 1e9 / simulationTickRateHz
-static uint64_t simulationTickDurationNs = 0;
-
 // ======================================================
 // 3) Paramètres Network Tick (IN / OUT)
 // ======================================================
@@ -167,6 +164,20 @@ static bool rcnet_engine_initLibSodium(void)
 // 9) Timing helpers
 // ======================================================
 
+static inline uint64_t rcnet_engine_consumeSimulationStepNs(void)
+{
+    uint64_t stepNs = g_simTickBaseNs;
+    g_simTickRemAcc += g_simTickRem;
+
+    if (g_simTickRemAcc >= g_simTickHz)
+    {
+        g_simTickRemAcc -= g_simTickHz;
+        stepNs += 1;
+    }
+
+    return stepNs;
+}
+
 // Retourne un temps monotone en ns (steady_clock ne recule jamais)
 static uint64_t rcnet_engine_getCurrentTimeNs(void)
 {
@@ -211,11 +222,6 @@ static inline void rcnet_sleep_until_ns(uint64_t targetTimeNs)
 // Si tu mets 0 => pas de rattrapage (pas recommandé).
 static constexpr uint32_t kMaxCatchUpTicks = 5;
 
-// Clamp du frame time.
-// Exemple: pause debugger de 10 secondes => sinon backlog énorme.
-// Ici on clamp à 250ms.
-static constexpr uint64_t kMaxFrameClampNs = 250'000'000ull;
-
 // ======================================================
 // 11) Set callbacks
 // ======================================================
@@ -255,7 +261,6 @@ static bool rcnet_engine_init(void)
     g_simTickBaseNs = 1'000'000'000ull / Hz;
     g_simTickRem    = 1'000'000'000ull % Hz;
     g_simTickRemAcc = 0;
-    simulationTickDurationNs = g_simTickBaseNs;
 
     // 3) Calcul tick réseau OUT
     uint64_t outHz = (networkOutgoingTickRateHz > 0) ? (uint64_t)networkOutgoingTickRateHz : 32ull;
@@ -280,25 +285,16 @@ static void rcnet_engine_quit(void)
 // ======================================================
 
 // 13.A) Tick simulation (logique serveur)
-static inline void rcnet_engine_simulationUpdate(void)
+static inline void rcnet_engine_simulationUpdate(uint64_t dtNs)
 {
     simulationTickId++;
     g_serverSimulationTick.store(simulationTickId, std::memory_order_relaxed);
 
-    uint64_t incNs = g_simTickBaseNs;
-    g_simTickRemAcc += g_simTickRem;
-    if (g_simTickRemAcc >= g_simTickHz)
-    {
-        g_simTickRemAcc -= g_simTickHz;
-        incNs += 1;
-    }
-
-    uint64_t dtNs = incNs;
     constexpr double kNsToSec = 1.0 / 1'000'000'000.0;
     double dt = (double)dtNs * kNsToSec;
 
-    uint64_t prev = g_serverTimeNsMonotonic.fetch_add(incNs, std::memory_order_relaxed);
-    uint64_t serverTimeNs = prev + incNs;
+    uint64_t prev = g_serverTimeNsMonotonic.fetch_add(dtNs, std::memory_order_relaxed);
+    uint64_t serverTimeNs = prev + dtNs;
 
     if (callbacksServerEngine.rcnet_simulation_update)
         callbacksServerEngine.rcnet_simulation_update(simulationTickId, serverTimeNs, dtNs, dt);
@@ -367,60 +363,40 @@ void rcnet_engine_eventQuit(void)
 // Thread simulation : tick fixe
 static void rcnet_engine_simulationThreadMain(void)
 {
-    // lastTimeNs = dernier timestamp (réel)
-    uint64_t lastTimeNs = rcnet_engine_getCurrentTimeNs();
+    uint64_t nowNs = rcnet_engine_getCurrentTimeNs();
 
-    // accumulateur simulation: quantité de "temps" à simuler
-    uint64_t accSimNs = 0;
+    // Première échéance absolue
+    uint64_t nextStepNs = rcnet_engine_consumeSimulationStepNs();
+    uint64_t nextSimNs = nowNs + nextStepNs;
 
     while (serverIsRunning.load(std::memory_order_relaxed))
     {
-        // 1) Mesure temps réel
-        uint64_t nowNs = rcnet_engine_getCurrentTimeNs();
+        nowNs = rcnet_engine_getCurrentTimeNs();
 
-        // frameNs = temps réel écoulé depuis dernière itération
-        uint64_t frameNs = nowNs - lastTimeNs;
-        lastTimeNs = nowNs;
-
-        // 2) Clamp (évite backlog énorme)
-        if (frameNs > kMaxFrameClampNs)
-            frameNs = kMaxFrameClampNs;
-
-        // 4) On accumule ce temps pour simulation
-        accSimNs += frameNs;
-
-        // -----------------------------------------
-        // 5) Ticks simulation : rattrapage limité
-        // -----------------------------------------
         uint32_t catchUpSim = 0;
-        while (accSimNs >= simulationTickDurationNs && catchUpSim < kMaxCatchUpTicks)
+
+        while (nowNs >= nextSimNs && catchUpSim < kMaxCatchUpTicks)
         {
-            rcnet_engine_simulationUpdate();
-            accSimNs -= simulationTickDurationNs;
+            rcnet_engine_simulationUpdate(nextStepNs);
+
+            nextStepNs = rcnet_engine_consumeSimulationStepNs();
+            nextSimNs += nextStepNs;
+
             catchUpSim++;
+            nowNs = rcnet_engine_getCurrentTimeNs();
         }
 
-        // Si backlog simulation encore trop grand => drop contrôlé
-        if (accSimNs >= simulationTickDurationNs)
+        if (nowNs >= nextSimNs)
         {
             RCNET_log(RCNET_LOG_WARN,
                       "Backlog SIM trop grand: catch-up atteint (%u). Drop backlog.",
                       kMaxCatchUpTicks);
 
-            // On garde au max 1 tick de backlog (ou 0 si tu préfères)
-            accSimNs = simulationTickDurationNs;
+            nextStepNs = rcnet_engine_consumeSimulationStepNs();
+            nextSimNs = nowNs + nextStepNs;
         }
 
-        // -----------------------------------------
-        // 7) Sleep jusqu'au prochain tick SIM
-        // -----------------------------------------
-        uint64_t simRemainingNs = (accSimNs < simulationTickDurationNs) ? (simulationTickDurationNs - accSimNs) : 0;
-
-        if (simRemainingNs > 0)
-        {
-            uint64_t targetWakeNs = rcnet_engine_getCurrentTimeNs() + simRemainingNs;
-            rcnet_sleep_until_ns(targetWakeNs);
-        }
+        rcnet_sleep_until_ns(nextSimNs);
     }
 }
 
