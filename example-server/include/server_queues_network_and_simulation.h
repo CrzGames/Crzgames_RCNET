@@ -86,8 +86,8 @@ struct SimulationToNetworkOUTMessage
     // à qui envoyer
     uint32_t connectionId = 0;
 
-    // payload brut
-    std::vector<uint8_t> payload;
+    // payload brut à envoyer (contenant le packet sérialisé correspondant au type de message)
+    std::vector<uint8_t> serializedPacket;
 };
 
 struct SimulationToNetworkOUTQueue

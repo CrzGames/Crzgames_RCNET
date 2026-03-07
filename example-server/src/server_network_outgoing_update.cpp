@@ -79,12 +79,12 @@ static void ServerNetworkOutgoingUpdate_SendReliablePacket(
     size_t expectedPayloadSize,
     const char* debugLabel)
 {
-    if (msg.payload.size() != expectedPayloadSize)
+    if (msg.serializedPacket.size() != expectedPayloadSize)
         return;
 
     ENetPacket* packet = enet_packet_create(
-        msg.payload.data(),
-        msg.payload.size(),
+        msg.serializedPacket.data(),
+        msg.serializedPacket.size(),
         ENET_PACKET_FLAG_RELIABLE
     );
 
@@ -95,7 +95,7 @@ static void ServerNetworkOutgoingUpdate_SendReliablePacket(
                   "[SERVER] [NETWORK_OUT] [%s] - Sent to connectionId=%u (size=%zu bytes)\n",
                   debugLabel,
                   msg.connectionId,
-                  msg.payload.size());
+                  msg.serializedPacket.size());
     }
     else
     {
@@ -154,7 +154,7 @@ static void ServerNetworkOutgoingUpdate_SendSnapshotFullUnreliable(
     if (msg.type != SimulationToNetworkOUTMessageType::SERVER_SNAPSHOT_FULL_PACKET_UNRELIABLE)
         return;
 
-    if (msg.payload.size() != sizeof(ServerSnapshotFullPacketUnreliable))
+    if (msg.serializedPacket.size() != sizeof(ServerSnapshotFullPacketUnreliable))
         return;
 
     std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
@@ -165,7 +165,7 @@ static void ServerNetworkOutgoingUpdate_SendSnapshotFullUnreliable(
 
     // Lire la version construite côté simulation.
     ServerSnapshotFullPacketUnreliable snapshotPacket{};
-    std::memcpy(&snapshotPacket, msg.payload.data(), sizeof(ServerSnapshotFullPacketUnreliable));
+    std::memcpy(&snapshotPacket, msg.serializedPacket.data(), sizeof(ServerSnapshotFullPacketUnreliable));
 
     // Assigner le snapshotId au moment de l'envoi réel.
     const uint32_t snapshotId = session.serverNextSnapshotId++;
@@ -175,7 +175,7 @@ static void ServerNetworkOutgoingUpdate_SendSnapshotFullUnreliable(
     session.serverLastSentSnapshotId = snapshotId;
 
     // Recréer un payload patché car le message source est const.
-    std::vector<uint8_t> patchedPayload = msg.payload;
+    std::vector<uint8_t> patchedPayload = msg.serializedPacket;
     std::memcpy(patchedPayload.data(), &snapshotPacket, sizeof(ServerSnapshotFullPacketUnreliable));
 
     ENetPacket* packet = enet_packet_create(
