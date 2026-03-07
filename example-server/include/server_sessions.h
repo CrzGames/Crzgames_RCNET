@@ -1,9 +1,12 @@
 #pragma once
 
 #include <cstdint>       // uint16_t, uint32_t, etc.
-#include <deque>         // std::deque pour la queue d'inputs non encore consommés
+#include <deque>         // std::deque
+#include <array>         // std::array
 
-#include "server_network_packets_client_unreliable.h" // InputPacket
+#include <sodium.h> // crypto_kx_PUBLICKEYBYTES, crypto_kx_SESSIONKEYBYTES
+
+#include "server_network_packets_client_unreliable.h" // ClientInputPacketUnreliable
 
 // ============================================================================
 // Données autoritaires spécifiques à une entité contrôlée par un client.
