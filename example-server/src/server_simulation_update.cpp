@@ -204,7 +204,7 @@ static void ServerSimulationUpdate_HandleSecureSessionHelloMessage(
     outMsg.connectionId = msg.connectionId;
 
     // Sérialise le packet de réponse serveur en payload binaire prêt à être envoyé par Network OUT.
-    outMsg.payload = serializeServerSecureSessionHelloResponsePacketReliable(responsePacket);
+    outMsg.serializedPacket = serializeServerSecureSessionHelloResponsePacketReliable(responsePacket);
 
     // Push le message dans la queue simulation -> réseau.
     // Le thread réseau se chargera ensuite de l’envoyer via ENet au bon client.
@@ -218,7 +218,7 @@ static void ServerSimulationUpdate_HandleSecureSessionHelloMessage(
               session.isSecureSessionEstablished ? 1u : 0u);
 }
 
-ServerSimulationUpdate_HandleAuthMessage(
+static void ServerSimulationUpdate_HandleAuthMessage(
     NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,
     const NetworkINToSimulationMessage& msg)
@@ -229,7 +229,7 @@ ServerSimulationUpdate_HandleAuthMessage(
     // en conséquence pour autoriser ou refuser les étapes suivantes du flow de gameplay.
 }
 
-ServerSimulationUpdate_HandleReadyForMatchMessage(
+static void ServerSimulationUpdate_HandleReadyForMatchMessage(
     NetworkState& networkState,
     const NetworkINToSimulationMessage& msg)
 {
@@ -388,9 +388,9 @@ static void ServerSimulationUpdate_CheckMatchFlow(
             msg.type = SimulationToNetworkOUTMessageType::SERVER_MATCH_INIT_PACKET_RELIABLE;
             msg.connectionId = session.connectionId;
 
-            // Copie binaire du packet dans le payload.
-            msg.payload.resize(sizeof(ServerMatchInitPacketReliable));
-            std::memcpy(msg.payload.data(), &matchInitPacket, sizeof(ServerMatchInitPacketReliable));
+            // Copie binaire du packet dans le serializedPacket.
+            msg.serializedPacket.resize(sizeof(ServerMatchInitPacketReliable));
+            std::memcpy(msg.serializedPacket.data(), &matchInitPacket, sizeof(ServerMatchInitPacketReliable));
 
             // Push dans la queue pour que le thread réseau l'envoie.
             simToNetQueue.push(msg);
@@ -428,8 +428,8 @@ static void ServerSimulationUpdate_CheckMatchFlow(
             msg.type = SimulationToNetworkOUTMessageType::SERVER_WORLD_STATIC_STATE_INIT_PACKET_RELIABLE;
             msg.connectionId = session.connectionId;
 
-            msg.payload.resize(sizeof(ServerWorldStaticStateInitPacketReliable));
-            std::memcpy(msg.payload.data(), &worldStaticStateInitPacket, sizeof(ServerWorldStaticStateInitPacketReliable));
+            msg.serializedPacket.resize(sizeof(ServerWorldStaticStateInitPacketReliable));
+            std::memcpy(msg.serializedPacket.data(), &worldStaticStateInitPacket, sizeof(ServerWorldStaticStateInitPacketReliable));
 
             simToNetQueue.push(msg);
         }
@@ -481,8 +481,8 @@ static void ServerSimulationUpdate_CheckMatchFlow(
             msg.type = SimulationToNetworkOUTMessageType::SERVER_MATCH_START_PACKET_RELIABLE;
             msg.connectionId = session.connectionId;
 
-            msg.payload.resize(sizeof(ServerMatchStartPacketReliable));
-            std::memcpy(msg.payload.data(), &matchStartPacket, sizeof(ServerMatchStartPacketReliable));
+            msg.serializedPacket.resize(sizeof(ServerMatchStartPacketReliable));
+            std::memcpy(msg.serializedPacket.data(), &matchStartPacket, sizeof(ServerMatchStartPacketReliable));
 
             simToNetQueue.push(msg);
         }
@@ -576,8 +576,8 @@ static void ServerSimulationUpdate_CreateSnapshotFullAndPushToSimulationToNetwor
     outMsg.type = SimulationToNetworkOUTMessageType::SERVER_SNAPSHOT_FULL_PACKET_UNRELIABLE;
     outMsg.connectionId = session.connectionId;
 
-    outMsg.payload.resize(sizeof(ServerSnapshotFullPacketUnreliable));
-    std::memcpy(outMsg.payload.data(), &packet, sizeof(ServerSnapshotFullPacketUnreliable));
+    outMsg.serializedPacket.resize(sizeof(ServerSnapshotFullPacketUnreliable));
+    std::memcpy(outMsg.serializedPacket.data(), &packet, sizeof(ServerSnapshotFullPacketUnreliable));
 
     simToNetQueue.push(outMsg);
 

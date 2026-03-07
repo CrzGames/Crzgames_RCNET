@@ -2,15 +2,19 @@
 #include "server_network_packets_server_unreliable.h"
 #include "server_network_packets_server_reliable.h"
 #include "server_debug_network_stats.h"
+#include "server_queues_network_and_simulation.h"
+#include "server_network_send_packets_server.h"
 
 #include <RCNET/RCNET.h>
 
-#include <deque>
-#include <unordered_map>
-#include <cstring>
+#include <deque>         // std::deque
+#include <unordered_map> // std::unordered_map
+#include <vector>        // std::vector
+#include <cstdint>       // uint32_t, uint64_t
+#include <cstring>       // std::memcpy
 
 // ======================================================================================
-// Helpers - 
+// Helpers - draine la queue de messages de la simulation vers le réseau OUT
 // ======================================================================================
 
 static void ServerNetworkOutgoingUpdate_DrainSimulationToNetworkQueue(
@@ -23,26 +27,43 @@ static void ServerNetworkOutgoingUpdate_DrainSimulationToNetworkQueue(
 // ======================================================================================
 // Helpers - recherche du peer ENet par connectionId
 // =====================================================================================
+
 static ENetPeer* ServerNetworkOutgoingUpdate_FindPeerByConnectionId(
     NetworkState& networkState,
     uint32_t connectionId)
 {
-    std::unordered_map<uint32_t, ENetPeer*>::iterator it =
-        networkState.connectionIdToEnetPeer.find(connectionId);
+    // Rechercher le peer ENet correspondant à cette connectionId
+    std::unordered_map<uint32_t, ENetPeer*>::iterator it = networkState.connectionIdToEnetPeer.find(connectionId);
 
+    // Si aucune entrée n’existe pour cette connectionId, on ne peut pas poursuivre.
     if (it == networkState.connectionIdToEnetPeer.end())
+    {
+        // Log d’erreur : aucune correspondance trouvée pour cette connectionId.
+        RCNET_log(RCNET_LOG_ERROR,
+                    "[SERVER] [NETWORK_OUT] [FIND_PEER] - No ENet peer found for connectionId=%u\n",
+                    connectionId);
         return nullptr;
+    }
 
+    // Récupérer le peer ENet à partir de l’itérateur.
     ENetPeer* peer = it->second;
-    if (peer == nullptr)
-        return nullptr;
 
+    // Vérifier que le peer n’est pas null avant de le retourner.
+    if (peer == nullptr)
+    {
+        RCNET_log(RCNET_LOG_ERROR,
+                    "[SERVER] [NETWORK_OUT] [FIND_PEER] - ENet peer is null for connectionId=%u\n",
+                    connectionId);
+        return nullptr;
+    }
+
+    // Retourner le peer ENet correspondant à cette connectionId.
     return peer;
 }
 
 
 // ======================================================================================
-// Helpers - 
+// Helpers - gestion des messages sortants de la simulation vers le réseau OUT
 // ======================================================================================
 
 static void ServerNetworkOutgoingUpdate_ClassifyOutgoingMessages(
@@ -56,7 +77,10 @@ static void ServerNetworkOutgoingUpdate_ClassifyOutgoingMessages(
     {
         const SimulationToNetworkOUTMessage& msg = *it;
 
-        if (msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_INIT_PACKET_RELIABLE ||
+        if (msg.type == SimulationToNetworkOUTMessageType::SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE ||
+            msg.type == SimulationToNetworkOUTMessageType::SERVER_AUTH_RESPONSE_PACKET_RELIABLE ||
+            msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_INIT_PACKET_RELIABLE ||
+            msg.type == SimulationToNetworkOUTMessageType::SERVER_SNAPSHOT_FULL_PACKET_UNRELIABLE ||
             msg.type == SimulationToNetworkOUTMessageType::SERVER_WORLD_STATIC_STATE_INIT_PACKET_RELIABLE ||
             msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_START_PACKET_RELIABLE)
         {
@@ -73,65 +97,46 @@ static void ServerNetworkOutgoingUpdate_ClassifyOutgoingMessages(
 // ======================================================================================
 // Helpers - envoi reliable
 // ======================================================================================
-static void ServerNetworkOutgoingUpdate_SendReliablePacket(
-    ENetPeer* peer,
-    const SimulationToNetworkOUTMessage& msg,
-    size_t expectedPayloadSize,
-    const char* debugLabel)
-{
-    if (msg.serializedPacket.size() != expectedPayloadSize)
-        return;
-
-    ENetPacket* packet = enet_packet_create(
-        msg.serializedPacket.data(),
-        msg.serializedPacket.size(),
-        ENET_PACKET_FLAG_RELIABLE
-    );
-
-    if (packet != nullptr)
-    {
-        enet_peer_send(peer, static_cast<enet_uint8>(NetworkChannel::GAME_RELIABLE), packet);
-        RCNET_log(RCNET_LOG_INFO,
-                  "[SERVER] [NETWORK_OUT] [%s] - Sent to connectionId=%u (size=%zu bytes)\n",
-                  debugLabel,
-                  msg.connectionId,
-                  msg.serializedPacket.size());
-    }
-    else
-    {
-        RCNET_log(RCNET_LOG_ERROR,
-                  "[SERVER] [NETWORK_OUT] [%s] - Failed to create ENet packet for connectionId=%u\n",
-                  debugLabel,
-                  msg.connectionId);
-    }
-}
-
 static void ServerNetworkOutgoingUpdate_SendReliableMessages(NetworkState& networkState, const std::deque<SimulationToNetworkOUTMessage>& reliableMessages)
 {
+    // Boucler sur les messages fiables à envoyer et les envoyer via ENet.
     for (std::deque<SimulationToNetworkOUTMessage>::const_iterator it = reliableMessages.begin();
          it != reliableMessages.end();
          ++it)
     {
+        // Récupérer le message courant dans la boucle.
         const SimulationToNetworkOUTMessage& msg = *it;
 
+        // Trouver le peer ENet correspondant à la connectionId du message. 
         ENetPeer* peer = ServerNetworkOutgoingUpdate_FindPeerByConnectionId(
             networkState,
             msg.connectionId
         );
+
+        // Si aucun peer n’est trouvé pour cette connectionId, on ne peut pas envoyer ce message.
         if (peer == nullptr)
             continue;
 
+        // En fonction du type de message fiable, appeler la fonction d’envoi correspondante.
         if (msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_INIT_PACKET_RELIABLE)
         {
-            ServerNetworkOutgoingUpdate_SendReliablePacket(peer, msg, sizeof(ServerMatchInitPacketReliable), "MATCH_INIT_RELIABLE");
+            sendServerMatchInitPacketReliable(peer, msg.serializedPacket);
         }
         else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_WORLD_STATIC_STATE_INIT_PACKET_RELIABLE)
         {
-            ServerNetworkOutgoingUpdate_SendReliablePacket(peer, msg, sizeof(ServerWorldStaticStateInitPacketReliable), "WORLD_STATIC_STATE_INIT_RELIABLE");
+            sendServerWorldStaticStateInitPacketReliable(peer, msg.serializedPacket);
+        }
+        else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE)
+        {
+            sendServerSecureSessionHelloResponsePacketReliable(peer, msg.serializedPacket);
+        }
+        else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_AUTH_RESPONSE_PACKET_RELIABLE)
+        {
+            sendServerAuthResponsePacketReliable(peer, msg.serializedPacket);
         }
         else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_START_PACKET_RELIABLE)
         {
-            ServerNetworkOutgoingUpdate_SendReliablePacket(peer, msg, sizeof(ServerMatchStartPacketReliable), "MATCH_START_RELIABLE");
+            sendServerMatchStartPacketReliable(peer, msg.serializedPacket);
         }
     }
 }
@@ -231,38 +236,41 @@ void ServerNetworkOutgoingUpdate_DrainCoalesceAndSendMessages(ENetHost* host)
     if (host == nullptr)
         return;
 
+    // Récupérer une référence vers la queue simulation -> réseau pour drainer les messages produits par la simulation.
     SimulationToNetworkOUTQueue& simToNetQueue = GetSimulationToNetworkOUTQueue();
+
+    // Récupérer une référence vers le network state pour accéder aux sessions et peers.
     NetworkState& networkState = GetNetworkState();
 
-    // 1) Drainer tous les messages produits par la simulation depuis le dernier tick réseau OUT.
+    // Drainer tous les messages produits par la simulation depuis le dernier tick réseau OUT.
     std::deque<SimulationToNetworkOUTMessage> outMessages;
     ServerNetworkOutgoingUpdate_DrainSimulationToNetworkQueue(simToNetQueue, outMessages);
 
-    // 2) Séparer :
+    // Séparer :
     //    - les reliable : tous envoyés
     //    - les snapshots : coalescés par client
     std::deque<SimulationToNetworkOUTMessage> reliableMessages;
     std::unordered_map<uint32_t, SimulationToNetworkOUTMessage> lastSnapshotPerConnectionId;
 
-    // Note : les messages reliable sont traités dans l'ordre de production, mais les snapshots unreliable sont coalescés pour n'envoyer que le dernier par client.
+    // Classifyier les messages sortants de la simulation vers le réseau en messages fiables à envoyer tels quels et snapshots à coalescer.
     ServerNetworkOutgoingUpdate_ClassifyOutgoingMessages(
         outMessages,
         reliableMessages,
         lastSnapshotPerConnectionId
     );
 
-    // 3) Envoyer d'abord les messages reliable.
+    // Envoyer d'abord les messages reliable.
     ServerNetworkOutgoingUpdate_SendReliableMessages(
         networkState,
         reliableMessages
     );
 
-    // 4) Envoyer ensuite les snapshots unreliable coalescés.
+    // Envoyer ensuite les snapshots unreliable coalescés.
     ServerNetworkOutgoingUpdate_SendLatestSnapshots(
         networkState,
         lastSnapshotPerConnectionId
     );
 
-    // 5) Flush explicite pour limiter la latence d'envoi.
+    // Flush explicite pour limiter la latence d'envoi.
     enet_host_flush(host);
 }
