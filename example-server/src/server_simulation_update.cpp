@@ -47,16 +47,31 @@ static void ServerSimulationUpdate_HandleDisconnectMessage(
     NetworkState& networkState,
     const NetworkINToSimulationMessage& msg)
 {
-    // Supprimer la session du client avec cette connectionId
+    // Supprimer la mapping connectionId -> session (si existante)
     std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
     if (sit != networkState.sessions.end())
     {
         networkState.sessions.erase(sit);
+
+        RCNET_log(RCNET_LOG_INFO,
+            "[SERVER] [SIMULATION] [DISCONNECT] - connectionId=%u (session removed)\n",
+            msg.connectionId);
     }
 
-    RCNET_log(RCNET_LOG_INFO,
-              "[SERVER] [SIMULATION] [DISCONNECT] - connectionId=%u (session removed)\n",
-              msg.connectionId);
+    // Supprimer la mapping connectionId -> ENetPeer* (si existante)
+    std::unordered_map<uint32_t, ENetPeer*>::iterator pit = networkState.connectionIdToEnetPeer.find(msg.connectionId);
+    if (pit != networkState.connectionIdToEnetPeer.end())
+    {
+        networkState.connectionIdToEnetPeer.erase(pit);
+
+        RCNET_log(RCNET_LOG_INFO,
+            "[SERVER] [SIMULATION] [DISCONNECT] - connectionId=%u (ENet peer mapping removed)\n",
+            msg.connectionId);
+    }
+
+    // TODO :
+    // - libérer des ressources associées à cette session comme l'entité joueur dans le monde, etc.
+    // - informer d'autres clients que ce client s'est déconnecté (via un message simulation -> réseau)
 }
 
 static void ServerSimulationUpdate_HandleInputMessage(
