@@ -9,7 +9,106 @@
 
 #include <RCNET/RCNET.h>
 
-#include <cstdint> // uintptr_t
+#include <cstdint>       // uintptr_t
+#include <unordered_map> // std::unordered_map
+
+static ClientSession* FindSessionByConnectionId(uint32_t connectionId)
+{
+    NetworkState& networkState = GetNetworkState();
+
+    std::unordered_map<uint32_t, ClientSession>::iterator it =
+        networkState.sessions.find(connectionId);
+
+    if (it == networkState.sessions.end())
+    {
+        return nullptr;
+    }
+
+    return &it->second;
+}
+
+// Fonction helper statique locale au fichier.
+// Vérifie si une connexion possède bien une session active
+// et si cette session est marquée comme transport connecté.
+//
+// Retourne true si :
+// - la session existe
+// - isTransportConnected == true
+//
+// Retourne false sinon.
+static bool IsConnectionTransportConnected(
+    // Identifiant de connexion à vérifier.
+    uint32_t connectionId)
+{
+    // Récupérer la session correspondant à cette connexion.
+    ClientSession* session = FindSessionByConnectionId(connectionId);
+    if (session == nullptr)
+    {
+        return false;
+    }
+
+    // Retourne l’état de transport connecté de la session.
+    return session->isTransportConnected;
+}
+
+// Fonction helper statique locale au fichier.
+// Vérifie si une connexion possède une session sécurisée établie.
+//
+// Retourne true si :
+// - la session existe
+// - isSecureSessionEstablished == true
+//
+// Retourne false sinon.
+static bool IsConnectionSecureSessionEstablished(
+    // Identifiant de connexion à vérifier.
+    uint32_t connectionId)
+{
+    // Récupérer la session correspondant à cette connexion.
+    ClientSession* session = FindSessionByConnectionId(connectionId);
+    if (session == nullptr)
+    {
+        return false;
+    }
+
+    // Retourne l’état de sécurisation de la session.
+    return session->isSecureSessionEstablished;
+}
+
+// Fonction helper statique locale au fichier.
+// Vérifie si une connexion est authentifiée côté serveur.
+//
+// Retourne true si :
+// - la session existe
+// - isAuthenticated == true
+//
+// Retourne false sinon.
+static bool IsConnectionAuthenticated(
+    // Identifiant de connexion à vérifier.
+    uint32_t connectionId)
+{
+    // Récupérer la session correspondant à cette connexion.
+    ClientSession* session = FindSessionByConnectionId(connectionId);
+    if (session == nullptr)
+    {
+        return false;
+    }
+
+    // Retourne l’état d’authentification de la session.
+    return session->isAuthenticated;
+}
+
+static bool IsConnectionAllowedForAuthChannel(uint32_t connectionId)
+{
+    return IsConnectionTransportConnected(connectionId) &&
+           IsConnectionSecureSessionEstablished(connectionId);
+}
+
+static bool IsConnectionAllowedForGameplayChannels(uint32_t connectionId)
+{
+    return IsConnectionTransportConnected(connectionId) &&
+           IsConnectionSecureSessionEstablished(connectionId) &&
+           IsConnectionAuthenticated(connectionId);
+}
 
 static void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel2GameReliable_ClientReadyForMatch(
     const ENetEvent* event,
@@ -525,46 +624,31 @@ static void ServerNetworkIncomingUpdate_HandleReceiveEvent_DispatchByChannel(
     // Récupère le channel sur lequel le packet est arrivé.
     const NetworkChannel channel = static_cast<NetworkChannel>(event->channelID);
 
-    // Pour les channels GAME_RELIABLE et GAME_UNRELIABLE, il faut que :
-    // - la session soit authentifiée (isAuthenticated == true)
-    // - la session ait établi une session sécurisée (isSecureSessionEstablished == true)
-
-    // Pour le channel AUTH_RELIABLE, il faut que :
-    // - la session ait établi une session sécurisée (isSecureSessionEstablished == true)
-
-    // Pour le channel SECURE_SESSION_RELIABLE, aucune condition n’est requise (c’est le premier step du flow).
+    // Vérifie que la connexion a le droit d’envoyer sur ce channel selon son état de session.
     if (channel == NetworkChannel::GAME_RELIABLE || channel == NetworkChannel::GAME_UNRELIABLE)
     {
-        if (!IsConnectionAuthenticated(connectionId))
+        if (!IsConnectionAllowedForGameplayChannels(connectionId))
         {
             RCNET_log(RCNET_LOG_WARN,
-                    "[SERVER] [NETWORK_IN] [DISPATCH] - Received packet on channel %u from unauthenticated connectionId=%u. Ignoring packet.\n",
-                    static_cast<unsigned>(channel),
-                    connectionId);
-            return;
-        }
-
-        if (!IsConnectionSecureSessionEstablished(connectionId))
-        {
-            RCNET_log(RCNET_LOG_WARN,
-                    "[SERVER] [NETWORK_IN] [DISPATCH] - Received packet on channel %u from connectionId=%u without secure session established. Ignoring packet.\n",
-                    static_cast<unsigned>(channel),
-                    connectionId);
+                    "[SERVER] [NETWORK_IN] [RECEIVE] - ConnectionId=%u is not allowed to send on gameplay channel %u (not authenticated or secure session not established)\n",
+                    connectionId,
+                    static_cast<unsigned>(channel));
             return;
         }
     }
     else if (channel == NetworkChannel::AUTH_RELIABLE)
     {
-        if (!IsConnectionSecureSessionEstablished(connectionId))
+        if (!IsConnectionAllowedForAuthChannel(connectionId))
         {
             RCNET_log(RCNET_LOG_WARN,
-                    "[SERVER] [NETWORK_IN] [DISPATCH] - Received auth packet on channel %u from connectionId=%u without secure session established. Ignoring packet.\n",
-                    static_cast<unsigned>(channel),
-                    connectionId);
+                    "[SERVER] [NETWORK_IN] [RECEIVE] - ConnectionId=%u is not allowed to send on auth channel %u (secure session not established)\n",
+                    connectionId,
+                    static_cast<unsigned>(channel));
             return;
         }
     }
 
+    // Dispatch le traitement du packet selon le channel ENet utilisé.
     switch (channel)
     {
         case NetworkChannel::SECURE_SESSION_RELIABLE:
