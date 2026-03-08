@@ -6,11 +6,11 @@
 #include "game/config.h"
 
 /**
- * @brief Applique les inputs joueurs au monde pour le tick courant.
+ * @brief Met à jour le cycle de vie runtime des entités du monde.
  *
- * Cette fonction lit les inputs en attente des joueurs, met à jour
- * leurs intentions de déplacement et prépare l'état qui sera ensuite
- * consommé par la physique et le gameplay.
+ * Cette étape gère la maintenance générale des entités :
+ * timers, cooldowns, états temporaires, transitions runtime, nettoyage
+ * des entités détruites ou marquées pour suppression.
  *
  * @param gameState État global du jeu.
  * @param currentTick Tick courant de simulation.
@@ -18,7 +18,7 @@
  * @param dtNs Delta time courant en nanosecondes.
  * @param dt Delta time courant en secondes.
  */
-void ServerWorld_ApplyPlayerInputs(
+void ServerWorld_UpdateEntityLifecycle(
     GameState& gameState,
     uint64_t currentTick,
     uint64_t serverTimeNs,

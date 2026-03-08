@@ -2,6 +2,8 @@
 
 #include "core/context.h"
 
+#include <RCNET/RCNET.h> // rcnet_engine_getSimulationTickRateHz, rcnet_engine_getNetworkOutgoingTickRateHz
+
 bool ServerSimulationUpdate_IsNetworkOutgoingProductionTick(
     uint64_t currentTick,
     uint32_t targetRateHz)

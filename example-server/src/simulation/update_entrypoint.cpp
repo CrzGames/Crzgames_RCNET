@@ -7,8 +7,11 @@
 #include "simulation/process/http_messages.h"
 #include "simulation/match_flow.h"
 #include "simulation/snapshots.h"
+#include "simulation/tick_scheduling.h"
 
-#include <deque>
+#include <deque> // std::deque
+
+#include <RCNET/RCNET.h> // rcnet_engine_getNetworkOutgoingTickRateHz
 
 void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(
     uint64_t currentTick,

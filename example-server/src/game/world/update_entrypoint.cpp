@@ -1,25 +1,62 @@
 #include "game/world/update_entrypoint.h"
 
-#include "game/world/inputs.h"
-#include "game/world/physics.h"
-#include "game/world/entities.h"
-#include "game/world/gameplay.h"
+#include "game/world/input_intents.h"
+#include "game/world/movement.h"
+#include "game/world/collision_resolution.h"
+#include "game/world/entity_lifecycle.h"
+#include "game/world/rules.h"
 
-void ServerWorld_Simulate(GameState& gameState, uint64_t currentTick, uint64_t serverTimeNs, uint64_t dtNs, double dt)
+void ServerWorld_Simulate(
+    GameState& gameState,
+    uint64_t currentTick,
+    uint64_t serverTimeNs,
+    uint64_t dtNs,
+    double dt)
 {
-    // Si la partie n'a pas encore commencé, on ne simule rien
+    // Si le match n'a pas encore commencé,
+    // le monde ne doit pas être simulé.
     if (!gameState.matchStarted)
+    {
         return;
+    }
 
-    // Appliquer les inputs des joueurs au monde
-    ServerWorld_ApplyPlayerInputs(gameState, currentTick, serverTimeNs, dtNs, dt);
+    // Construire les intentions de jeu à partir des inputs du tick.
+    ServerWorld_BuildInputIntents(
+        gameState,
+        currentTick,
+        serverTimeNs,
+        dtNs,
+        dt);
 
-    // Simuler la physique globale du monde (mouvements, collisions, etc.)
-    ServerWorld_RunPhysics(gameState, currentTick, serverTimeNs, dtNs, dt);
+    // Appliquer le mouvement des entités.
+    ServerWorld_RunMovement(
+        gameState,
+        currentTick,
+        serverTimeNs,
+        dtNs,
+        dt);
 
-    // Mettre à jour l'état des entités (positions finales, états internes, timers...)
-    ServerWorld_UpdateEntities(gameState, currentTick, serverTimeNs, dtNs, dt);
+    // Résoudre les collisions et corriger l'état spatial.
+    ServerWorld_RunCollisionResolution(
+        gameState,
+        currentTick,
+        serverTimeNs,
+        dtNs,
+        dt);
 
-    // Exécuter la logique gameplay (dégâts, règles de jeu, score, etc.)
-    ServerWorld_RunGameplay(gameState, currentTick, serverTimeNs, dtNs, dt);
+    // Mettre à jour le cycle de vie runtime des entités.
+    ServerWorld_UpdateEntityLifecycle(
+        gameState,
+        currentTick,
+        serverTimeNs,
+        dtNs,
+        dt);
+
+    // Appliquer les règles métier du jeu.
+    ServerWorld_RunRules(
+        gameState,
+        currentTick,
+        serverTimeNs,
+        dtNs,
+        dt);
 }

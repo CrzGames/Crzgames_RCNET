@@ -3,16 +3,14 @@
 #include <cstdint> // uint64_t
 
 #include "game/state.h"
+#include "game/config.h"
 
 /**
- * @brief Simule le monde de jeu pour un tick serveur complet.
+ * @brief Applique les règles métier du jeu pour le tick courant.
  *
- * Cette fonction orchestre les différentes phases de simulation du monde :
- * - construction des intentions depuis les inputs
- * - mouvement
- * - résolution des collisions
- * - maintenance du cycle de vie des entités
- * - application des règles du jeu
+ * Cette étape gère les conséquences gameplay :
+ * dégâts, morts, validation des actions, score, objectifs, victoire,
+ * défaite et autres règles propres au mode de jeu.
  *
  * @param gameState État global du jeu.
  * @param currentTick Tick courant de simulation.
@@ -20,7 +18,7 @@
  * @param dtNs Delta time courant en nanosecondes.
  * @param dt Delta time courant en secondes.
  */
-void ServerWorld_Simulate(
+void ServerWorld_RunRules(
     GameState& gameState,
     uint64_t currentTick,
     uint64_t serverTimeNs,
