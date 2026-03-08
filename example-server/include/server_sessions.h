@@ -7,7 +7,7 @@
 #include <sodium.h> // crypto_kx_PUBLICKEYBYTES, crypto_kx_SESSIONKEYBYTES
 
 #include "server_network_packets_client_unreliable.h"
-#include "server_network_auth.h"
+#include "server_auth.h"
 
 // ============================================================================
 // Données autoritaires spécifiques à une entité contrôlée par un client.
