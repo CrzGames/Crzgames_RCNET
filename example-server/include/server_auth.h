@@ -4,7 +4,7 @@
 #include <string>  // std::string
 
 // ============================================================================
-// Statut d'authentification du client
+// Statut d'authentification pour la session d'un client connecté.
 // ============================================================================
 enum class AuthStatus : uint8_t
 {
