@@ -72,8 +72,8 @@ void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(
         dtNs,
         dt);
 
-    // Vérifier si ce tick autorise l'envoi de snapshots.
-    if (ServerSimulationUpdate_IsSnapshotSendTick(currentTick))
+    // Produire les snapshots au rythme maximal du thread réseau sortant.
+    if (ServerSimulationUpdate_IsNetworkOutgoingProductionTick(currentTick, rcnet_engine_getNetworkOutgoingTickRateHz()))
     {
         ServerSimulationUpdate_BuildSnapshotsForAllSessionsAndEnqueue(
             simulationToNetworkOUTQueue,
