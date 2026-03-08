@@ -6,7 +6,8 @@
 
 #include <sodium.h> // crypto_kx_PUBLICKEYBYTES, crypto_kx_SESSIONKEYBYTES
 
-#include "server_network_packets_client_unreliable.h" // ClientInputPacketUnreliable
+#include "server_network_packets_client_unreliable.h"
+#include "server_network_auth.h"
 
 // ============================================================================
 // Données autoritaires spécifiques à une entité contrôlée par un client.
@@ -21,17 +22,6 @@ struct PlayerControl
     // Id de l’entité contrôlée par le client dans le monde du jeu
     // 0 = aucune entité (ex: mort, spectateur, pas encore spawn)
     uint32_t controlledEntityId = 0;
-};
-
-// ============================================================================
-// Statut d'authentification du client
-// ============================================================================
-enum class AuthStatus : uint8_t
-{
-    None = 0,
-    WaitingAuth,
-    Valid,
-    Invalid,
 };
 
 // ============================================================================
