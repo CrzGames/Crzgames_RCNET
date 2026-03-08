@@ -1,4 +1,4 @@
-#include "network/transport/incoming/channels/dispatch_by_channel.h"
+#include "network/transport/incoming/dispatch_by_channel.h"
 
 #include "network/channels/channel.h"
 #include "network/transport/incoming/guards_channels.h"
@@ -9,7 +9,7 @@
 
 #include <RCNET/RCNET.h>
 
-void ServerNetworkIncomingUpdate_HandleReceiveEvent_DispatchByChannel(
+void ServerNetworkIncomingUpdate_DispatchByChannel(
     const ENetEvent* event,
     uint32_t connectionId,
     NetworkINToSimulationQueue& netToSimQueue)
@@ -50,22 +50,22 @@ void ServerNetworkIncomingUpdate_HandleReceiveEvent_DispatchByChannel(
     switch (channel)
     {
         case NetworkChannel::SECURE_SESSION_RELIABLE:
-            ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel0SecureSessionReliable(
+            ServerNetworkIncomingUpdate_Channel_SecureSessionReliable(
                 event, connectionId, netToSimQueue);
             break;
 
         case NetworkChannel::AUTH_RELIABLE:
-            ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel1AuthReliable(
+            ServerNetworkIncomingUpdate_Channel_AuthReliable(
                 event, connectionId, netToSimQueue);
             break;
 
         case NetworkChannel::GAME_RELIABLE:
-            ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel2GameReliable(
+            ServerNetworkIncomingUpdate_Channel_GameReliable(
                 event, connectionId, netToSimQueue);
             break;
 
         case NetworkChannel::GAME_UNRELIABLE:
-            ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel3GameUnreliable(
+            ServerNetworkIncomingUpdate_Channel_GameUnreliable(
                 event, connectionId, netToSimQueue);
             break;
 

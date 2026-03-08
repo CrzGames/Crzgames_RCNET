@@ -6,7 +6,7 @@
 
 #include <RCNET/RCNET.h>
 
-void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel0SecureSessionReliable(
+void ServerNetworkIncomingUpdate_Channel_SecureSessionReliable(
     const ENetEvent* event,
     uint32_t connectionId,
     NetworkINToSimulationQueue& netToSimQueue)

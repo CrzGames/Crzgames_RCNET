@@ -4,7 +4,7 @@
 
 #include <RCNET/RCNET.h>
 
-void ServerSimulationUpdate_ProcessNetworkIncomingMessages_HandleInput(
+void ServerSimulationUpdate_ProcessNetworkIncomingDispatcher_HandleInputMessage(
     NetworkState& networkState,
     const NetworkINToSimulationMessage& msg)
 {

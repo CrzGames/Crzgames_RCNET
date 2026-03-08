@@ -1,11 +1,11 @@
-#include "network/transport/incoming/packets/game_unreliable_input.h"
+#include "network/transport/incoming/packets/input.h"
 
 #include "network/packets/client/unreliable.h"
 #include "network/serialization/deserialize_packets_client.h"
 
 #include <RCNET/RCNET.h>
 
-void ServerNetworkIncomingUpdate_HandlePacket_GameUnreliable_Input(
+void ServerNetworkIncomingUpdate_HandlePacket_Input(
     const ENetEvent* event,
     uint32_t connectionId,
     NetworkINToSimulationQueue& netToSimQueue)

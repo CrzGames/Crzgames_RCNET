@@ -4,7 +4,7 @@
 
 #include <RCNET/RCNET.h>
 
-void ServerSimulationUpdate_ProcessNetworkIncomingMessages_HandleDisconnect(
+void ServerSimulationUpdate_ProcessNetworkIncomingDispatcher_HandleDisconnectMessage(
     NetworkState& networkState,
     const NetworkINToSimulationMessage& msg)
 {

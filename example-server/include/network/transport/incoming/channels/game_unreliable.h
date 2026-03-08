@@ -18,7 +18,7 @@
  * @param netToSimQueue Queue thread-safe utilisée pour transférer le message
  *        du thread réseau vers le thread simulation.
  */
-void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel3GameUnreliable(
+void ServerNetworkIncomingUpdate_Channel_GameUnreliable(
     const ENetEvent* event,
     uint32_t connectionId,
     NetworkINToSimulationQueue& netToSimQueue);

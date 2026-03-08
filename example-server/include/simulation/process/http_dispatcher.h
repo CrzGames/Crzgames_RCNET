@@ -18,7 +18,7 @@
  *        les réponses réseau envoyées aux clients.
  * @param httpMessages Messages entrants HTTP déjà drainés pour le tick courant.
  */
-void ServerSimulationUpdate_ProcessHttpMessages(
+void ServerSimulationUpdate_ProcessHttpDispatcher(
     NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,
     std::deque<HttpToSimulationMessage>& httpMessages);

@@ -4,7 +4,7 @@
 
 #include <RCNET/RCNET.h>
 
-void ServerSimulationUpdate_ProcessNetworkIncomingMessages_HandleReadyForMatch(
+void ServerSimulationUpdate_ProcessNetworkIncomingDispatcher_HandleReadyForMatchMessage(
     NetworkState& networkState,
     const NetworkINToSimulationMessage& msg)
 {

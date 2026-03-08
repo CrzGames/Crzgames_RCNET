@@ -10,7 +10,7 @@
 #include <sodium/crypto_kx.h>
 #include <RCNET/RCNET.h>
 
-void ServerSimulationUpdate_ProcessNetworkIncomingMessages_HandleSecureSessionHello(
+void ServerSimulationUpdate_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloMessage(
     NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,
     const NetworkINToSimulationMessage& msg)

@@ -1,11 +1,11 @@
 #include "network/transport/incoming/channels/game_unreliable.h"
 
 #include "network/transport/incoming/packet_type_reader.h"
-#include "network/transport/incoming/packets/game_unreliable_input.h"
+#include "network/transport/incoming/packets/input.h"
 
 #include <RCNET/RCNET.h>
 
-void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel3GameUnreliable(
+void ServerNetworkIncomingUpdate_Channel_GameUnreliable(
     const ENetEvent* event,
     uint32_t connectionId,
     NetworkINToSimulationQueue& netToSimQueue)
@@ -26,7 +26,7 @@ void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel3GameUnreliable(
     switch (packetType)
     {
         case ClientUnreliablePacketType::CLIENT_INPUT_PACKET_UNRELIABLE:
-            ServerNetworkIncomingUpdate_HandlePacket_GameUnreliable_Input(
+            ServerNetworkIncomingUpdate_HandlePacket_Input(
                 event, connectionId, netToSimQueue);
             break;
 

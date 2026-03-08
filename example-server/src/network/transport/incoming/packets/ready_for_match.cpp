@@ -1,11 +1,11 @@
-#include "network/transport/incoming/packets/game_reliable_ready_for_match.h"
+#include "network/transport/incoming/packets/ready_for_match.h"
 
 #include "network/packets/client/reliable.h"
 #include "network/serialization/deserialize_packets_client.h"
 
 #include <RCNET/RCNET.h>
 
-void ServerNetworkIncomingUpdate_HandlePacket_GameReliable_ReadyForMatch(
+void ServerNetworkIncomingUpdate_HandlePacket_ReadyForMatch(
     const ENetEvent* event,
     uint32_t connectionId,
     NetworkINToSimulationQueue& netToSimQueue)

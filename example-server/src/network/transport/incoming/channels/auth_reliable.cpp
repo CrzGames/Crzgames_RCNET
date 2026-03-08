@@ -5,7 +5,7 @@
 
 #include <RCNET/RCNET.h>
 
-void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel1AuthReliable(
+void ServerNetworkIncomingUpdate_Channel_AuthReliable(
     const ENetEvent* event,
     uint32_t connectionId,
     NetworkINToSimulationQueue& netToSimQueue)

@@ -1,9 +1,9 @@
 #include "network/transport/incoming/events/receive.h"
 
 #include "network/transport/incoming/connection_validation.h"
-#include "network/transport/incoming/channels/dispatch_by_channel.h"
+#include "network/transport/incoming/dispatch_by_channel.h"
 
-void ServerNetworkIncomingUpdate_HandleReceiveEvent(
+void ServerNetworkIncomingUpdate_Event_HandleReceive(
     const ENetEvent* event,
     const NetworkState& networkState,
     NetworkINToSimulationQueue& netToSimQueue)
@@ -16,7 +16,7 @@ void ServerNetworkIncomingUpdate_HandleReceiveEvent(
         return;
 
     // Dispatch le traitement du packet selon le channel ENet utilisé.
-    ServerNetworkIncomingUpdate_HandleReceiveEvent_DispatchByChannel(
+    ServerNetworkIncomingUpdate_DispatchByChannel(
         event,
         connectionId,
         netToSimQueue);

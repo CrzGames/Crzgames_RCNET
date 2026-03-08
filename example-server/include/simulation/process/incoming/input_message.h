@@ -13,6 +13,6 @@
  * @param networkState État réseau global du serveur.
  * @param msg Message réseau entrant transportant un input client.
  */
-void ServerSimulationUpdate_ProcessNetworkIncomingMessages_HandleInput(
+void ServerSimulationUpdate_ProcessNetworkIncomingDispatcher_HandleInputMessage(
     NetworkState& networkState,
     const NetworkINToSimulationMessage& msg);

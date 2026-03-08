@@ -1,11 +1,11 @@
 #include "network/transport/incoming/channels/game_reliable.h"
 
 #include "network/transport/incoming/packet_type_reader.h"
-#include "network/transport/incoming/packets/game_reliable_ready_for_match.h"
+#include "network/transport/incoming/packets/ready_for_match.h"
 
 #include <RCNET/RCNET.h>
 
-void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel2GameReliable(
+void ServerNetworkIncomingUpdate_Channel_GameReliable(
     const ENetEvent* event,
     uint32_t connectionId,
     NetworkINToSimulationQueue& netToSimQueue)
@@ -26,7 +26,7 @@ void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel2GameReliable(
     switch (packetType)
     {
         case ClientReliablePacketType::CLIENT_READY_FOR_MATCH_PACKET_RELIABLE:
-            ServerNetworkIncomingUpdate_HandlePacket_GameReliable_ReadyForMatch(
+            ServerNetworkIncomingUpdate_HandlePacket_ReadyForMatch(
                 event, connectionId, netToSimQueue);
             break;
 

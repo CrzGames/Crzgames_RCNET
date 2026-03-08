@@ -21,7 +21,7 @@
  *        certaines opérations backend, comme la validation de token.
  * @param messages Messages entrants réseau déjà drainés pour le tick courant.
  */
-void ServerSimulationUpdate_ProcessNetworkIncomingMessages(
+void ServerSimulationUpdate_ProcessNetworkIncomingDispatcher(
     NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,
     SimulationToHttpQueue& simToHttpQueue,

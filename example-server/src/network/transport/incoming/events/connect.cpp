@@ -4,7 +4,7 @@
 
 #include <RCNET/RCNET.h> // RCNET_log
 
-void ServerNetworkIncomingUpdate_HandleConnectEvent(
+void ServerNetworkIncomingUpdate_Event_HandleConnect(
     const ENetEvent* event,
     NetworkState& networkState,
     NetworkINToSimulationQueue& netToSimQueue)

@@ -3,8 +3,8 @@
 #include "core/context.h"
 #include "game/world/update_entrypoint.h"
 #include "simulation/queue_draining.h"
-#include "simulation/process/network_incoming_messages.h"
-#include "simulation/process/http_messages.h"
+#include "simulation/process/network_incoming_dispatcher.h"
+#include "simulation/process/http_dispatcher.h"
 #include "simulation/match_flow.h"
 #include "simulation/snapshots.h"
 #include "simulation/tick_scheduling.h"
@@ -48,14 +48,14 @@ void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(
     NetworkState& networkState = GetNetworkState();
 
     // Traiter tous les messages entrants provenant du thread réseau.
-    ServerSimulationUpdate_ProcessNetworkIncomingMessages(
+    ServerSimulationUpdate_ProcessNetworkIncomingDispatcher(
         networkState,
         simulationToNetworkOUTQueue,
         simulationToHttpQueue,
         networkInToSimulationMessages);
 
     // Traiter tous les messages entrants provenant du thread HTTP.
-    ServerSimulationUpdate_ProcessHttpMessages(
+    ServerSimulationUpdate_ProcessHttpDispatcher(
         networkState,
         simulationToNetworkOUTQueue,
         httpToSimulationMessages);

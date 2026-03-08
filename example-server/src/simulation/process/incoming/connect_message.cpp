@@ -2,7 +2,7 @@
 
 #include <RCNET/RCNET.h>
 
-void ServerSimulationUpdate_ProcessNetworkIncomingMessages_HandleConnect(
+void ServerSimulationUpdate_ProcessNetworkIncomingDispatcher_HandleConnectMessage(
     NetworkState& networkState,
     const NetworkINToSimulationMessage& msg)
 {

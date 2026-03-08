@@ -18,7 +18,7 @@
  * @param netToSimQueue Queue thread-safe utilisée pour transférer le message
  *        de déconnexion vers le thread simulation.
  */
-void ServerNetworkIncomingUpdate_HandleDisconnectEvent(
+void ServerNetworkIncomingUpdate_Event_HandleDisconnect(
     const ENetEvent* event,
     NetworkState& networkState,
     NetworkINToSimulationQueue& netToSimQueue);
