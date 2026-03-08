@@ -9,12 +9,11 @@
 #include <RCNET/RCNET.h>
 
 #include <cstdint>         // uintptr_t
-#include <cstring>         // memcpy
 #include <deque>           // std::deque
 #include <unordered_map>   // std::unordered_map
 
 // ======================================================================================
-// Internal helpers - Queue draining
+// Internal helpers - Queue draining functions
 // ======================================================================================
 
 static void ServerSimulationUpdate_DrainNetworkToSimulationQueue_IntoLocalDeque(
@@ -34,6 +33,10 @@ static void ServerSimulationUpdate_DrainHttpToSimulationQueue_IntoLocalDeque(
     // parsés par le thread HTTP, puis transférés à la simulation.
     httpToSimQueue.drain(messages);
 }
+
+// ======================================================================================
+// Internal helpers - Message processing functions Network IN
+// ======================================================================================
 
 static void ServerSimulationUpdate_NetworkIN_HandleConnectMessage(
     NetworkState& networkState,
@@ -560,10 +563,7 @@ static void ServerSimulationUpdate_CheckMatchFlow(
             SimulationToNetworkOUTMessage msg{};
             msg.type = SimulationToNetworkOUTMessageType::SERVER_MATCH_INIT_PACKET_RELIABLE;
             msg.connectionId = session.connectionId;
-
-            // Copie binaire du packet dans le serializedPacket.
-            msg.serializedPacket.resize(sizeof(ServerMatchInitPacketReliable));
-            std::memcpy(msg.serializedPacket.data(), &matchInitPacket, sizeof(ServerMatchInitPacketReliable));
+            msg.serializedPacket = serializeServerMatchInitPacketReliable(matchInitPacket);
 
             // Push dans la queue pour que le thread réseau l'envoie.
             simToNetQueue.push(msg);
@@ -600,9 +600,7 @@ static void ServerSimulationUpdate_CheckMatchFlow(
             SimulationToNetworkOUTMessage msg{};
             msg.type = SimulationToNetworkOUTMessageType::SERVER_WORLD_STATIC_STATE_INIT_PACKET_RELIABLE;
             msg.connectionId = session.connectionId;
-
-            msg.serializedPacket.resize(sizeof(ServerWorldStaticStateInitPacketReliable));
-            std::memcpy(msg.serializedPacket.data(), &worldStaticStateInitPacket, sizeof(ServerWorldStaticStateInitPacketReliable));
+            msg.serializedPacket = serializeServerWorldStaticStateInitPacketReliable(worldStaticStateInitPacket);
 
             simToNetQueue.push(msg);
         }
@@ -653,9 +651,7 @@ static void ServerSimulationUpdate_CheckMatchFlow(
             SimulationToNetworkOUTMessage msg{};
             msg.type = SimulationToNetworkOUTMessageType::SERVER_MATCH_START_PACKET_RELIABLE;
             msg.connectionId = session.connectionId;
-
-            msg.serializedPacket.resize(sizeof(ServerMatchStartPacketReliable));
-            std::memcpy(msg.serializedPacket.data(), &matchStartPacket, sizeof(ServerMatchStartPacketReliable));
+            msg.serializedPacket = serializeServerMatchStartPacketReliable(matchStartPacket);
 
             simToNetQueue.push(msg);
         }
@@ -748,10 +744,9 @@ static void ServerSimulationUpdate_CreateSnapshotFullAndPushToSimulationToNetwor
     SimulationToNetworkOUTMessage outMsg{};
     outMsg.type = SimulationToNetworkOUTMessageType::SERVER_SNAPSHOT_FULL_PACKET_UNRELIABLE;
     outMsg.connectionId = session.connectionId;
+    outMsg.serializedPacket = serializeServerSnapshotFullPacketUnreliable(packet);
 
-    outMsg.serializedPacket.resize(sizeof(ServerSnapshotFullPacketUnreliable));
-    std::memcpy(outMsg.serializedPacket.data(), &packet, sizeof(ServerSnapshotFullPacketUnreliable));
-
+    // Push le message dans la queue simulation -> réseau pour qu’il soit envoyé au client.
     simToNetQueue.push(outMsg);
 
     // Debug stats
