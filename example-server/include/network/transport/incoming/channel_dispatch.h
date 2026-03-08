@@ -6,6 +6,24 @@
 
 #include "core/threading/queues/network_incoming_to_simulation.h"
 
+/**
+ * @brief Dispatch un événement ENet reçu vers le handler correspondant au channel réseau.
+ *
+ * Cette fonction analyse le champ `channelID` du paquet ENet reçu afin de
+ * sélectionner le bon sous-handler :
+ * - secure session reliable
+ * - auth reliable
+ * - gameplay reliable
+ * - gameplay unreliable
+ *
+ * Elle applique également les vérifications d'autorisation de haut niveau
+ * avant de déléguer le traitement au handler du channel ciblé.
+ *
+ * @param event Événement ENet de réception contenant le paquet brut.
+ * @param connectionId Identifiant unique de la connexion, déjà validé.
+ * @param netToSimQueue Queue thread-safe utilisée pour transférer les messages
+ *        du thread réseau vers le thread simulation.
+ */
 void ServerNetworkIncomingUpdate_HandleReceiveEvent_DispatchByChannel(
     const ENetEvent* event,
     uint32_t connectionId,
