@@ -1,0 +1,24 @@
+#pragma once
+
+#include <deque> // std::deque
+
+#include "network/state.h"
+#include "core/threading/queues/http_to_simulation.h"
+#include "core/threading/queues/simulation_to_network_outgoing.h"
+
+/**
+ * @brief Traite les messages entrants provenant du thread HTTP.
+ *
+ * Cette fonction parcourt les messages déjà drainés depuis la queue
+ * HTTP -> simulation puis dispatch le traitement en fonction du type
+ * de message reçu.
+ *
+ * @param networkState État réseau global du serveur.
+ * @param simToNetQueue Queue simulation -> réseau utilisée pour préparer
+ *        les réponses réseau envoyées aux clients.
+ * @param httpMessages Messages entrants HTTP déjà drainés pour le tick courant.
+ */
+void ServerSimulationUpdate_ProcessHttpMessages(
+    NetworkState& networkState,
+    SimulationToNetworkOUTQueue& simToNetQueue,
+    std::deque<HttpToSimulationMessage>& httpMessages);

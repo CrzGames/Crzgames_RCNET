@@ -3,6 +3,7 @@
 #include <cstdint> // uint16_t, uint32_t, etc.
 #include <deque>   // std::deque
 #include <array>   // std::array
+#include <string>  // std::string
 
 #include <sodium.h> // crypto_kx_PUBLICKEYBYTES, crypto_kx_SESSIONKEYBYTES
 
