@@ -4,7 +4,6 @@
 #include "server_debug_network_stats.h"
 #include "server_queues.h"
 #include "server_network_send_packets_server.h"
-#include "server_network_byte_reader.h"
 #include "server_network_serialize_packets_server.h"
 #include "server_network_deserialize_packets_server.h"
 
