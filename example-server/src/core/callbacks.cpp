@@ -1,0 +1,43 @@
+#include "core/callbacks.h"
+#include "core/context.h"
+#include "network/transport/incoming/update_entrypoint.h"
+#include "network/transport/outgoing/update_entrypoint.h"
+#include "simulation/update_entrypoint.h"
+#include "crypto/crypto_kx.h"
+
+#include <RCNET/RCNET.h>
+
+void rcnet_load(void)
+{
+    NetworkState& networkState = GetNetworkState();
+    if (!ServerCryptoKx_Initialize(networkState.cryptoKxState))
+    {
+        // TODO: fatal error
+        RCNET_log(RCNET_LOG_ERROR, "Failed to initialize server crypto KX state\n");
+    }
+}
+
+void rcnet_unload(void)
+{
+
+}
+
+void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
+{
+    ServerNetworkIncomingUpdate_ProcessENetEvent(host, event);
+}
+
+void rcnet_network_outgoing_update(ENetHost* host)
+{
+    ServerNetworkOutgoingUpdate_DrainCoalesceAndSendMessages(host);
+}
+
+void rcnet_simulation_update(uint64_t currentTick, uint64_t serverTimeNs, uint64_t dtNs, double dt)
+{
+    ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(currentTick, serverTimeNs, dtNs, dt);
+}
+
+void rcnet_http_update(void)
+{
+
+}
