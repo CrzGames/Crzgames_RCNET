@@ -1,14 +1,16 @@
 #pragma once
 
-#include <mutex>   // std::mutex pour protéger l'accès à la file d'attente
-#include <deque>   // std::deque pour la file d'attente des messages du réseau vers la simulation
+#include <mutex>   // std::mutex
+#include <deque>   // std::deque
 #include <cstdint> // uint16_t, uint32_t, etc.
-#include <vector>  // std::vector pour le payload des messages de la simulation vers le réseau
+#include <vector>  // std::vector
+#include <string>  // std::string
 
 #include "server_network_packets_client_unreliable.h"
 #include "server_network_packets_client_reliable.h"
 #include "server_network_packets_server_unreliable.h"
 #include "server_network_packets_server_reliable.h"
+#include "server_auth.h"
 
 // ======================================================================================
 // Queues de messages entre le réseau et la simulation (Network IN -> Simulation)
@@ -102,6 +104,83 @@ struct SimulationToNetworkOUTQueue
     }
 
     void drain(std::deque<SimulationToNetworkOUTMessage>& out)
+    {
+        std::lock_guard<std::mutex> lock(mtx);
+        out.swap(q);
+    }
+};
+
+
+// ======================================================================================
+// Messages de la simulation vers le thread HTTP (Simulation -> HTTP)
+// ======================================================================================
+
+enum class SimulationToHttpMessageType : uint8_t
+{
+    AUTH_VALIDATE_TOKEN_REQUEST = 0,
+};
+
+struct SimulationToHttpMessage
+{
+    SimulationToHttpMessageType type;
+
+    // Client concerné
+    uint32_t connectionId = 0;
+
+    // Pour le type AUTH_VALIDATE_TOKEN_REQUEST, le token à valider auprès du backend
+    AuthTokenVerificationHTTPRequest authTokenVerificationRequest;
+};
+
+struct SimulationToHttpQueue
+{
+    std::mutex mtx;
+    std::deque<SimulationToHttpMessage> q;
+
+    void push(const SimulationToHttpMessage& m)
+    {
+        std::lock_guard<std::mutex> lock(mtx);
+        q.push_back(m);
+    }
+
+    void drain(std::deque<SimulationToHttpMessage>& out)
+    {
+        std::lock_guard<std::mutex> lock(mtx);
+        out.swap(q);
+    }
+};
+
+// ======================================================================================
+// Messages du thread HTTP vers la simulation (HTTP -> Simulation)
+// ======================================================================================
+
+enum class HttpToSimulationMessageType : uint8_t
+{
+    AUTH_VALIDATE_TOKEN_RESPONSE = 0,
+};
+
+struct HttpToSimulationMessage
+{
+    HttpToSimulationMessageType type;
+
+    // Client concerné
+    uint32_t connectionId = 0;
+
+    // Pour le type AUTH_VALIDATE_TOKEN_RESPONSE, la réponse du backend d'authentification après vérification du token
+    AuthTokenVerificationHTTPResponse authTokenVerificationResponse;
+};
+
+struct HttpToSimulationQueue
+{
+    std::mutex mtx;
+    std::deque<HttpToSimulationMessage> q;
+
+    void push(const HttpToSimulationMessage& m)
+    {
+        std::lock_guard<std::mutex> lock(mtx);
+        q.push_back(m);
+    }
+
+    void drain(std::deque<HttpToSimulationMessage>& out)
     {
         std::lock_guard<std::mutex> lock(mtx);
         out.swap(q);

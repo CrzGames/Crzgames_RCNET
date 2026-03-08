@@ -4,6 +4,7 @@
 #include "server_debug_network_stats.h"
 #include "server_network_packets_server_reliable.h"
 #include "server_network_serialize_packets_server.h"
+#include "server_auth.h"
 
 #include <RCNET/RCNET.h>
 
@@ -13,18 +14,28 @@
 #include <unordered_map>   // std::unordered_map
 
 // ======================================================================================
-// Internal helpers - Queue draining & message handling
+// Internal helpers - Queue draining
 // ======================================================================================
 
 static void ServerSimulationUpdate_DrainNetworkToSimulationQueue_IntoLocalDeque(
     NetworkINToSimulationQueue& netToSimQueue,
     std::deque<NetworkINToSimulationMessage>& messages)
 {
-    // 2) Drainer la queue (moins de lock)
+    // Drainer la queue réseau -> simulation, qui contient les messages ENet traités 
+    // et parsés par le thread réseau, puis transférés à la simulation.
     netToSimQueue.drain(messages);
 }
 
-static void ServerSimulationUpdate_HandleConnectMessage(
+static void ServerSimulationUpdate_DrainHttpToSimulationQueue_IntoLocalDeque(
+    HttpToSimulationQueue& httpToSimQueue,
+    std::deque<HttpToSimulationMessage>& messages)
+{
+    // Drainer la queue HTTP -> Simulation, qui contient les messages HTTP traités et 
+    // parsés par le thread HTTP, puis transférés à la simulation.
+    httpToSimQueue.drain(messages);
+}
+
+static void ServerSimulationUpdate_NetworkIN_HandleConnectMessage(
     NetworkState& networkState,
     const NetworkINToSimulationMessage& msg)
 {
@@ -44,7 +55,7 @@ static void ServerSimulationUpdate_HandleConnectMessage(
               msg.connectionId);
 }
 
-static void ServerSimulationUpdate_HandleDisconnectMessage(
+static void ServerSimulationUpdate_NetworkIN_HandleDisconnectMessage(
     NetworkState& networkState,
     const NetworkINToSimulationMessage& msg)
 {
@@ -65,22 +76,6 @@ static void ServerSimulationUpdate_HandleDisconnectMessage(
         networkState.sessions.erase(sit);
     }
 
-    // Trouver le peer ENet qui correspond à cette connectionId
-    std::unordered_map<uint32_t, ENetPeer*>::iterator pit = networkState.connectionIdToEnetPeer.find(msg.connectionId);
-
-    // Si aucun peer n’est trouvé pour cette connectionId, on peut logguer et abandonner
-    if (pit == networkState.connectionIdToEnetPeer.end())
-    {
-        RCNET_log(RCNET_LOG_WARN,
-                  "[SERVER] [SIMULATION] [DISCONNECT] - No ENet peer found for connectionId=%u when handling disconnect (might be already cleaned up)\n",
-                  msg.connectionId);
-        return;
-    }
-    else
-    {
-        networkState.connectionIdToEnetPeer.erase(pit);
-    }
-
     // TODO :
     // - libérer des ressources associées à cette session comme l'entité joueur dans le monde, etc.
     // - informer d'autres clients que ce client s'est déconnecté (via un message simulation -> réseau)
@@ -91,7 +86,7 @@ static void ServerSimulationUpdate_HandleDisconnectMessage(
               msg.connectionId);
 }
 
-static void ServerSimulationUpdate_HandleInputMessage(
+static void ServerSimulationUpdate_NetworkIN_HandleInputMessage(
     NetworkState& networkState,
     const NetworkINToSimulationMessage& msg)
 {
@@ -145,7 +140,7 @@ static void ServerSimulationUpdate_HandleInputMessage(
 // - mettre à jour l’état de session
 // - construire la réponse serveur à renvoyer au client
 // - push cette réponse dans la queue Simulation -> Network OUT
-static void ServerSimulationUpdate_HandleSecureSessionHelloMessage(
+static void ServerSimulationUpdate_NetworkIN_HandleSecureSessionHelloMessage(
     NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,
     const NetworkINToSimulationMessage& msg)
@@ -153,7 +148,7 @@ static void ServerSimulationUpdate_HandleSecureSessionHelloMessage(
     // Trouve la session du client qui a envoyé ce message via son connectionId
     std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
 
-    // Si aucune session n’existe pour cette connectionId, on ne peut pas traiter ce message.
+    // Si aucune session nexiste pour cette connectionId, on ne peut pas traiter ce message.
     if (sit == networkState.sessions.end())
     {
         // Log d’avertissement : le message secure session a été reçu pour une connexion inconnue.
@@ -250,25 +245,72 @@ static void ServerSimulationUpdate_HandleSecureSessionHelloMessage(
               session.isSecureSessionEstablished ? 1u : 0u);
 }
 
-static void ServerSimulationUpdate_HandleAuthMessage(
+static void ServerSimulationUpdate_NetworkIN_HandleAuthMessage(
     NetworkState& networkState,
-    SimulationToNetworkOUTQueue& simToNetQueue,
-    const NetworkINToSimulationMessage& msg)
-{
-    // TODO : implémenter la gestion du message d’authentification client.
-    // Cela implique de vérifier le token d’authentification envoyé par le client
-    // auprès du backend d’authentification, puis de mettre à jour session.isAuthenticated
-    // en conséquence pour autoriser ou refuser les étapes suivantes du flow de gameplay.
-}
-
-static void ServerSimulationUpdate_HandleReadyForMatchMessage(
-    NetworkState& networkState,
+    SimulationToHttpQueue& simToHttpQueue,
     const NetworkINToSimulationMessage& msg)
 {
     // Trouve la session du client qui a envoyé ce message via son connectionId
     std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
 
     // Si aucune session n’existe pour cette connectionId, on ne peut pas traiter ce message.
+    if (sit == networkState.sessions.end())
+    {
+        // Log d’avertissement : le message d’authentification a été reçu pour une connexion inconnue.
+        RCNET_log(RCNET_LOG_WARN,
+                  "[SERVER] [SIMULATION] [AUTH] - Unknown connectionId=%u\n",
+                  msg.connectionId);
+        return;
+    }
+
+    // Référence directe vers la session du client.
+    ClientSession& session = sit->second;
+
+    // Si une auth est déjà validée, on ignore les nouvelles demandes
+    if (session.authStatus == AuthStatus::Valid)
+    {
+        RCNET_log(RCNET_LOG_INFO,
+                  "[SERVER] [SIMULATION] [AUTH] - connectionId=%u already authenticated\n",
+                  msg.connectionId);
+        return;
+    }
+
+    // Si une auth est déjà en cours, on ignore pour éviter le spam
+    if (session.authStatus == AuthStatus::WaitingAuth)
+    {
+        RCNET_log(RCNET_LOG_INFO,
+                  "[SERVER] [SIMULATION] [AUTH] - connectionId=%u auth already pending\n",
+                  msg.connectionId);
+        return;
+    }
+
+    // Préparer un message à destination du thread HTTP pour valider le token d’authentification reçu du client.
+    SimulationToHttpMessage httpMessage{};
+    httpMessage.type = SimulationToHttpMessageType::AUTH_VALIDATE_TOKEN_REQUEST;
+    httpMessage.connectionId = msg.connectionId;
+    httpMessage.authTokenVerificationRequest.authToken = msg.authPacket.authToken;
+
+    // Marquer la session comme en attente de validation backend
+    session.authStatus = AuthStatus::WaitingAuth;
+
+    // Envoyer le message au thread HTTP pour qu’il puisse faire la requête 
+    // de validation du token auprès du backend d’authentification.
+    simToHttpQueue.push(httpMessage);
+
+    // Log d’information indiquant que la requête d’authentification a été envoyée au thread HTTP.
+    RCNET_log(RCNET_LOG_INFO,
+              "[SERVER] [SIMULATION] [AUTH] - connectionId=%u auth request sent to HTTP thread\n",
+              msg.connectionId);
+}
+
+static void ServerSimulationUpdate_NetworkIN_HandleReadyForMatchMessage(
+    NetworkState& networkState,
+    const NetworkINToSimulationMessage& msg)
+{
+    // Trouve la session du client qui a envoyé ce message via son connectionId
+    std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
+
+    // Si aucune session nexiste pour cette connectionId, on ne peut pas traiter ce message.
     if (sit == networkState.sessions.end())
     {
         // Log d’avertissement : le message ready for match a été reçu pour une connexion inconnue.
@@ -294,9 +336,10 @@ static void ServerSimulationUpdate_HandleReadyForMatchMessage(
 static void ServerSimulationUpdate_ProcessIncomingNetworkMessages(
     NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,
+    SimulationToHttpQueue& simToHttpQueue,
     std::deque<NetworkINToSimulationMessage>& messages)
 {
-    // 4) Traiter les messages réseau (création/suppression session, input queue, etc.)
+    // 4) Traiter les messages réseau venant de network IN
     for (std::deque<NetworkINToSimulationMessage>::iterator it = messages.begin();
          it != messages.end();
          ++it)
@@ -305,27 +348,94 @@ static void ServerSimulationUpdate_ProcessIncomingNetworkMessages(
 
         if (msg.type == NetworkINToSimulationMessageType::CLIENT_EVENT_CONNECT)
         {
-            ServerSimulationUpdate_HandleConnectMessage(networkState, msg);
+            ServerSimulationUpdate_NetworkIN_HandleConnectMessage(networkState, msg);
         }
         else if (msg.type == NetworkINToSimulationMessageType::CLIENT_EVENT_DISCONNECT)
         {
-            ServerSimulationUpdate_HandleDisconnectMessage(networkState, msg);
+            ServerSimulationUpdate_NetworkIN_HandleDisconnectMessage(networkState, msg);
         }
         else if (msg.type == NetworkINToSimulationMessageType::CLIENT_INPUT_PACKET_UNRELIABLE)
         {
-            ServerSimulationUpdate_HandleInputMessage(networkState, msg);
+            ServerSimulationUpdate_NetworkIN_HandleInputMessage(networkState, msg);
         }
         else if (msg.type == NetworkINToSimulationMessageType::CLIENT_SECURE_SESSION_HELLO_PACKET_RELIABLE)
         {
-            ServerSimulationUpdate_HandleSecureSessionHelloMessage(networkState, simToNetQueue, msg);
+            ServerSimulationUpdate_NetworkIN_HandleSecureSessionHelloMessage(networkState, simToNetQueue, msg);
         }
         else if (msg.type == NetworkINToSimulationMessageType::CLIENT_AUTH_PACKET_RELIABLE)
         {
-            ServerSimulationUpdate_HandleAuthMessage(networkState, simToNetQueue, msg);
+            ServerSimulationUpdate_NetworkIN_HandleAuthMessage(networkState, simToHttpQueue, msg);
         }
         else if (msg.type == NetworkINToSimulationMessageType::CLIENT_READY_FOR_MATCH_PACKET_RELIABLE)
         {
-            ServerSimulationUpdate_HandleReadyForMatchMessage(networkState, msg);
+            ServerSimulationUpdate_NetworkIN_HandleReadyForMatchMessage(networkState, msg);
+        }
+    }
+}
+
+static void ServerSimulationUpdate_HTTP_HandleAuthValidateTokenResponse(
+    NetworkState& networkState,
+    SimulationToNetworkOUTQueue& simToNetQueue,
+    const HttpToSimulationMessage& httpMessage)
+{
+    // Trouve la session du client qui a envoyé ce message via son connectionId
+    std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(httpMessage.connectionId);
+
+    // Si aucune session nexiste pour cette connectionId, on ne peut pas traiter ce message.
+    if (sit == networkState.sessions.end())
+    {
+        // Log d’avertissement : le message de réponse d’authentification a été reçu pour une connexion inconnue.
+        RCNET_log(RCNET_LOG_WARN,
+                  "[SERVER] [SIMULATION] [AUTH] - Received auth validation response for unknown connectionId=%u\n",
+                  httpMessage.connectionId);
+        return;
+    }
+
+    // Référence directe vers la session du client.
+    ClientSession& session = sit->second;
+
+    // Traite la réponse d’authentification et met à jour l’état de la session en conséquence.
+    if (httpMessage.authTokenVerificationResponse.isValid)
+    {
+        session.authStatus = AuthStatus::Valid;
+        session.accountIdDatabase = httpMessage.authTokenVerificationResponse.accountIdDatabase;
+        session.accountUsernameDatabase = httpMessage.authTokenVerificationResponse.accountUsernameDatabase;
+
+        RCNET_log(RCNET_LOG_INFO,
+                  "[SERVER] [SIMULATION] [AUTH] - connectionId=%u authenticated successfully with accountId=%llu username=%s\n",
+                  httpMessage.connectionId,
+                  (unsigned long long)session.accountIdDatabase,
+                  session.accountUsernameDatabase.c_str());
+    }
+    else
+    {
+        session.authStatus = AuthStatus::Invalid;
+        session.authErrorMessage = httpMessage.authTokenVerificationResponse.errorMessage;
+
+        RCNET_log(RCNET_LOG_INFO,
+                  "[SERVER] [SIMULATION] [AUTH] - connectionId=%u authentication failed: %s\n",
+                  httpMessage.connectionId,
+                  session.authErrorMessage.c_str());
+    }
+}
+
+static void ServerSimulationUpdate_ProcessHTTPMessages(
+    NetworkState& networkState,
+    SimulationToNetworkOUTQueue& simToNetQueue,
+    std::deque<HttpToSimulationMessage>& httpMessages)
+{
+    // 1) Traiter les messages venant du thread HTTP
+    for (std::deque<HttpToSimulationMessage>::iterator it = httpMessages.begin();
+         it != httpMessages.end();
+         ++it)
+    {
+        // Référence directe vers le message HTTP à traiter.
+        HttpToSimulationMessage& msg = *it;
+
+        // Dispatch du traitement selon le type de message HTTP reçu.
+        if (msg.type == HttpToSimulationMessageType::AUTH_VALIDATE_TOKEN_RESPONSE)
+        {
+            ServerSimulationUpdate_HTTP_HandleAuthValidateTokenResponse(networkState, simToNetQueue, msg);
         }
     }
 }
@@ -657,33 +767,45 @@ static void ServerSimulationUpdate_BuildSnapshotsForAllSessionsAndEnqueueToNetwo
 
 void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(uint64_t currentTick, uint64_t serverTimeNs, uint64_t dtNs, double dt)
 {
-    // 1) Récupérer la queue réseau -> simulation et la queue simulation -> réseau (pour envoyer des messages à la fin de ce tick)
-    NetworkINToSimulationQueue& netToSimQueue = GetNetworkINToSimulationQueue();
-    SimulationToNetworkOUTQueue& simToNetQueue = GetSimulationToNetworkOUTQueue();
+    // Récupérer les références vers les queues de messages entre les threads
+    NetworkINToSimulationQueue& networkInToSimulationQueue = GetNetworkINToSimulationQueue();
+    SimulationToNetworkOUTQueue& simulationToNetworkOUTQueue = GetSimulationToNetworkOUTQueue();
+    SimulationToHttpQueue& simulationToHttpQueue = GetSimulationToHttpQueue();
+    HttpToSimulationQueue& httpToSimulationQueue = GetHttpToSimulationQueue();
 
-    // 2) Drainer la queue (moins de lock), qui contient les messages ENet traités et parsés par le thread réseau, puis transférés à la simulation.
-    std::deque<NetworkINToSimulationMessage> messages;
-    ServerSimulationUpdate_DrainNetworkToSimulationQueue_IntoLocalDeque(netToSimQueue, messages);
+    // Drainer les queues de messages entrants (network IN et HTTP) dans des deques locales pour traitement.
+    std::deque<NetworkINToSimulationMessage> networkInToSimulationMessages;
+    ServerSimulationUpdate_DrainNetworkToSimulationQueue_IntoLocalDeque(networkInToSimulationQueue, networkInToSimulationMessages);
 
-    // 3) Accès au state global du jeu et du réseau
+    std::deque<HttpToSimulationMessage> httpToSimulationMessages;
+    ServerSimulationUpdate_DrainHttpToSimulationQueue_IntoLocalDeque(httpToSimulationQueue, httpToSimulationMessages);
+
+    // Accès au state global du jeu et du réseau
     GameState& gameState = GetGameState();
     NetworkState& networkState = GetNetworkState();
 
-    // 4) Traiter les messages réseau qui viennent d’être drainés venant de NETWORK IN
-    ServerSimulationUpdate_ProcessIncomingNetworkMessages(networkState, simToNetQueue, messages);
+    // Traiter les messages réseau qui viennent d’être drainés venant du thread réseau IN
+    ServerSimulationUpdate_ProcessIncomingNetworkMessages(networkState, simulationToNetworkOUTQueue, simulationToHttpQueue, networkInToSimulationMessages);
 
-    // 5) Gérer le flow de préparation du match (envoi des packets init, attendre que les clients soient prêts, envoyer le packet de démarrage, etc.)
-    ServerSimulationUpdate_CheckMatchFlow(gameState, networkState, simToNetQueue, currentTick);
+    // Traiter les messages http qui viennent d’être drainés venant du thread HTTP
+    ServerSimulationUpdate_ProcessHTTPMessages(
+        networkState,
+        simulationToNetworkOUTQueue,
+        httpToSimulationMessages
+    );
 
-    // 6) Simuler le monde, appliquer la logique de jeu, etc.
+    // Gérer le flow de préparation du match (envoi des packets init, attendre que les clients soient prêts, envoyer le packet de démarrage, etc.)
+    ServerSimulationUpdate_CheckMatchFlow(gameState, networkState, simulationToNetworkOUTQueue, currentTick);
+
+    // Simuler le monde, appliquer la logique de jeu, etc.
     ServerSimulationUpdate_RunGameplayLogicAndWorldSimulation(gameState, currentTick, serverTimeNs, dtNs, dt);
 
-    // 7) Bloquer la construction/envoi des snapshots au rythme du NETWORK OUT (ex: 32Hz) et pas de la SIMULATION (ex: 128Hz)
+    // Bloquer la construction/envoi des snapshots au rythme du NETWORK OUT (ex: 32Hz) et pas de la SIMULATION (ex: 128Hz)
     if (!ServerSimulationUpdate_ShouldBuildAndSendSnapshotsBasedOnNetworkOutgoingRate(currentTick))
     {
         return;
     }
 
-    // 8) Construire et enqueuer les snapshots (full pour l’instant)
-    ServerSimulationUpdate_BuildSnapshotsForAllSessionsAndEnqueueToNetworkOut(simToNetQueue, networkState, currentTick);
+    // Construire et enqueuer les snapshots (full pour l’instant)
+    ServerSimulationUpdate_BuildSnapshotsForAllSessionsAndEnqueueToNetworkOut(simulationToNetworkOUTQueue, networkState, currentTick);
 }

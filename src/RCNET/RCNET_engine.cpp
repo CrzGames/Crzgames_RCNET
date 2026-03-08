@@ -98,6 +98,7 @@ RCNET_Callbacks callbacksServerEngine = {
     nullptr, // rcnet_simulation_update
     nullptr, // rcnet_network_incoming_update
     nullptr, // rcnet_network_outgoing_update
+    nullptr  // rcnet_http_update
 };
 
 // ======================================================
@@ -242,6 +243,9 @@ static void rcnet_engine_setCallbacks(RCNET_Callbacks* callbacksUser)
 
     if (callbacksUser->rcnet_network_outgoing_update)
         callbacksServerEngine.rcnet_network_outgoing_update = callbacksUser->rcnet_network_outgoing_update;
+
+    if (callbacksUser->rcnet_http_update)
+        callbacksServerEngine.rcnet_http_update = callbacksUser->rcnet_http_update;
 }
 
 // ======================================================
@@ -358,6 +362,19 @@ uint32_t rcnet_engine_getNetworkOutgoingTickRateHz(void)
 void rcnet_engine_eventQuit(void)
 {
     serverIsRunning.store(false, std::memory_order_relaxed);
+}
+
+static void rcnet_engine_httpThreadMain(void)
+{
+    while (serverIsRunning.load(std::memory_order_relaxed))
+    {
+        if (callbacksServerEngine.rcnet_http_update != nullptr)
+            callbacksServerEngine.rcnet_http_update();
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    RCNET_log(RCNET_LOG_INFO, "Thread HTTP terminé.");
 }
 
 // Thread simulation : tick fixe
@@ -506,7 +523,6 @@ static void rcnet_engine_networkThreadMain(void)
         if (serviceResult < 0)
         {
             RCNET_log(RCNET_LOG_ERROR, "enet_host_service() error");
-            // Option: rcnet_engine_eventQuit();
             rcnet_engine_networkIncomingUpdate(g_enetServerHost, nullptr);
         }
         // Si on a au moins 1 event, on le traite et on draine les suivants sans attendre (timeout 0).
@@ -637,12 +653,14 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, const RCNET_ServerConfig* 
     // -----------------------
     std::thread simThread(rcnet_engine_simulationThreadMain);
     std::thread netThread(rcnet_engine_networkThreadMain);
+    std::thread httpThread(rcnet_engine_httpThreadMain);
 
     // -----------------------
     // G) Join (bloquant)
     // -----------------------
     simThread.join();
     netThread.join();
+    httpThread.join();
 
     // -----------------------
     // H) Callback unload (thread principal)

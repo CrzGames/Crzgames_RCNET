@@ -10,7 +10,7 @@ enum class AuthStatus : uint8_t
 {
     // Aucun statut d'authentification défini (par défaut à la connexion)
     None = 0,
-    // En attente de validation du token d'authentification auprès du backend
+    // Requête partie au thread HTTP, réponse pas encore revenue
     WaitingAuth,
     // Authentification validée avec succès auprès du backend
     Valid,
@@ -42,5 +42,5 @@ struct AuthTokenVerificationHTTPResponse
     uint64_t accountIdDatabase = 0;
 
     // Nom d'utilisateur du compte joueur.
-    std::string accountUsername = "";
+    std::string accountUsernameDatabase = "";
 };

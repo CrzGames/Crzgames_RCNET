@@ -4,6 +4,8 @@ static GameState g_gameState;
 static NetworkState g_networkState;
 static NetworkINToSimulationQueue g_netToSimQueue;
 static SimulationToNetworkOUTQueue g_simToNetQueue;
+static SimulationToHttpQueue g_simToHttpQueue;
+static HttpToSimulationQueue g_httpToSimQueue;
 
 GameState& GetGameState()
 {
@@ -23,4 +25,14 @@ NetworkINToSimulationQueue& GetNetworkINToSimulationQueue()
 SimulationToNetworkOUTQueue& GetSimulationToNetworkOUTQueue()
 {
     return g_simToNetQueue;
+}
+
+SimulationToHttpQueue& GetSimulationToHttpQueue()
+{
+    return g_simToHttpQueue;
+}
+
+HttpToSimulationQueue& GetHttpToSimulationQueue()
+{
+    return g_httpToSimQueue;
 }

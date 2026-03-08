@@ -25,6 +25,7 @@ int main(int argc, char* argv[])
     myServerCallbacks.rcnet_network_incoming_update = rcnet_network_incoming_update;
     myServerCallbacks.rcnet_network_outgoing_update = rcnet_network_outgoing_update;
     myServerCallbacks.rcnet_simulation_update = rcnet_simulation_update;
+    myServerCallbacks.rcnet_http_update = rcnet_http_update;
 
     // Récupérer une référence à notre état réseau global pour configurer le moteur
     NetworkState& networkState = GetNetworkState();

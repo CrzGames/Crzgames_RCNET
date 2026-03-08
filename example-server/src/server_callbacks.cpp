@@ -39,3 +39,8 @@ void rcnet_simulation_update(uint64_t currentTick, uint64_t serverTimeNs, uint64
     ServerDebugNetworkStats_OnSimulationTick();
     ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(currentTick, serverTimeNs, dtNs, dt);
 }
+
+void rcnet_http_update(void)
+{
+
+}

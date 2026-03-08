@@ -52,6 +52,9 @@ struct ClientSession
     // Set à true après authentification validé par le serveur au près du backend / api d'authentification.
     AuthStatus authStatus = AuthStatus::None;
 
+    // En cas de AuthStatus::Invalid, contient le message d'erreur (ex: token expiré, compte banni, etc.)
+    std::string authErrorMessage = "";
+
     // Set à true à la connexion lors de l'événement ENET_EVENT_TYPE_CONNECT, 
     bool isTransportConnected = false;
 
@@ -72,7 +75,7 @@ struct ClientSession
 
     // Nom d'utilisateur du compte joueur.
     // Il est généralement obtenu après le check du token d'authentification auprès du backend d'authentification.
-    std::string accountUsername = "";
+    std::string accountUsernameDatabase = "";
 
     // Identifiant unique de la connexion réseau active.
     // Généré par le serveur lors du CONNECT.
