@@ -3,6 +3,7 @@
 #include <cstdint> // uint32_t
 
 #include "game/state.h"
+#include "game/data/player_config.h"
 
 /**
  * @brief Crée une entité joueur et initialise son état runtime associé.
