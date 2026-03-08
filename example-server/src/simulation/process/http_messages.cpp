@@ -1,6 +1,6 @@
 #include "simulation/process/http_messages.h"
 
-#include "simulation/process/http/auth_validate_token_response.h"
+#include "simulation/process/http/auth_validate_token_response_message.h"
 
 void ServerSimulationUpdate_ProcessHttpMessages(
     NetworkState& networkState,
@@ -20,7 +20,7 @@ void ServerSimulationUpdate_ProcessHttpMessages(
         if (msg.type == HttpToSimulationMessageType::AUTH_VALIDATE_TOKEN_RESPONSE)
         {
             // Traiter la réponse backend de validation de token.
-            ServerSimulationUpdate_ProcessHttpMessages_HandleAuthValidateTokenResponse(
+            ServerSimulationUpdate_ProcessHttpMessages_HandleAuthValidateTokenResponseMessage(
                 networkState,
                 simToNetQueue,
                 msg);
