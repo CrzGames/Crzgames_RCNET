@@ -51,37 +51,44 @@ static void ServerSimulationUpdate_HandleDisconnectMessage(
     // Trouver la session du client qui s’est déconnecté via son connectionId (si elle existe)
     std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
 
-    // Supprimer la session du client du network state (si existante)
-    if (sit != networkState.sessions.end())
+    // Si aucune session n’existe pour cette connectionId, on peut juste logguer et abandonner.
+    if (sit == networkState.sessions.end())
+    {
+        RCNET_log(RCNET_LOG_WARN,
+                  "[SERVER] [SIMULATION] [DISCONNECT] - Received disconnect for unknown connectionId=%u (ignoring)\n",
+                  msg.connectionId);
+        return;
+    }
+    // Session trouvée, on peut la supprimer du network state
+    else
     {
         networkState.sessions.erase(sit);
-
-        RCNET_log(RCNET_LOG_INFO,
-            "[SERVER] [SIMULATION] [DISCONNECT] - connectionId=%u (session removed)\n",
-            msg.connectionId);
     }
 
     // Trouver le peer ENet qui correspond à cette connectionId
     std::unordered_map<uint32_t, ENetPeer*>::iterator pit = networkState.connectionIdToEnetPeer.find(msg.connectionId);
 
-    // Supprimer le mapping connectionId -> ENetPeer* du network state (si existant)
-    if (pit != networkState.connectionIdToEnetPeer.end())
+    // Si aucun peer n’est trouvé pour cette connectionId, on peut logguer et abandonner
+    if (pit == networkState.connectionIdToEnetPeer.end())
+    {
+        RCNET_log(RCNET_LOG_WARN,
+                  "[SERVER] [SIMULATION] [DISCONNECT] - No ENet peer found for connectionId=%u when handling disconnect (might be already cleaned up)\n",
+                  msg.connectionId);
+        return;
+    }
+    else
     {
         networkState.connectionIdToEnetPeer.erase(pit);
-
-        RCNET_log(RCNET_LOG_INFO,
-            "[SERVER] [SIMULATION] [DISCONNECT] - connectionId=%u (ENet peer mapping removed)\n",
-            msg.connectionId);
     }
+
+    // TODO :
+    // - libérer des ressources associées à cette session comme l'entité joueur dans le monde, etc.
+    // - informer d'autres clients que ce client s'est déconnecté (via un message simulation -> réseau)
 
     // Log d’information indiquant la déconnexion et l’ID de session concerné.
     RCNET_log(RCNET_LOG_INFO,
               "[SERVER] [SIMULATION] [DISCONNECT] - connectionId=%u\n",
               msg.connectionId);
-
-    // TODO :
-    // - libérer des ressources associées à cette session comme l'entité joueur dans le monde, etc.
-    // - informer d'autres clients que ce client s'est déconnecté (via un message simulation -> réseau)
 }
 
 static void ServerSimulationUpdate_HandleInputMessage(
@@ -258,17 +265,25 @@ static void ServerSimulationUpdate_HandleReadyForMatchMessage(
     NetworkState& networkState,
     const NetworkINToSimulationMessage& msg)
 {
-    // Marquer la session comme prête pour le match
+    // Trouve la session du client qui a envoyé ce message via son connectionId
     std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
-    if (sit != networkState.sessions.end())
-    {
-        ClientSession& session = sit->second;
-        session.isReadyForMatch = true;
 
-        RCNET_log(RCNET_LOG_INFO,
-                    "[SERVER] [SIMULATION] [READY_FOR_MATCH] - connectionId=%u is ready for match\n",
-                    msg.connectionId);
+    // Si aucune session n’existe pour cette connectionId, on ne peut pas traiter ce message.
+    if (sit == networkState.sessions.end())
+    {
+        // Log d’avertissement : le message ready for match a été reçu pour une connexion inconnue.
+        RCNET_log(RCNET_LOG_WARN,
+                  "[SERVER] [SIMULATION] [READY_FOR_MATCH] - Unknown connectionId=%u\n",
+                  msg.connectionId);
+
+        // On abandonne le traitement.
+        return;
     }
+
+    // Référence directe vers la session du client.
+    ClientSession& session = sit->second;
+    // Marque la session comme prête pour le match.
+    session.isReadyForMatch = true;
 
     // Log d’information indiquant que ce client est prêt pour le match.
     RCNET_log(RCNET_LOG_INFO,
