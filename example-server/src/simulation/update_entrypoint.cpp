@@ -1,6 +1,6 @@
 #include "core/context.h"
 #include "network/packets/server/unreliable.h"
-#include "game/world/entrypoint.h"
+#include "game/world/update_entrypoint.h"
 #include "network/packets/server/reliable.h"
 #include "network/serialization/serialize_packets_server.h"
 #include "auth/types.h"

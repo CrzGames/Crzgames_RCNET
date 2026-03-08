@@ -1,4 +1,4 @@
-#include "game/world/entrypoint.h"
+#include "game/world/update_entrypoint.h"
 
 uint32_t SpawnPlayer(GameState& gameState, PlayerType type)
 {
