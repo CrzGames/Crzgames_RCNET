@@ -29,7 +29,7 @@ void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(
     std::deque<NetworkINToSimulationMessage> networkInToSimulationMessages;
 
     // Drainer la queue réseau -> simulation.
-    ServerSimulationUpdate_DrainNetworkIncomingMessages(
+    ServerSimulationUpdate_DrainNetworkIncomingToSimulationMessages(
         networkInToSimulationQueue,
         networkInToSimulationMessages);
 
@@ -37,7 +37,7 @@ void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(
     std::deque<HttpToSimulationMessage> httpToSimulationMessages;
 
     // Drainer la queue HTTP -> simulation.
-    ServerSimulationUpdate_DrainHttpIncomingMessages(
+    ServerSimulationUpdate_DrainHttpToSimulationMessages(
         httpToSimulationQueue,
         httpToSimulationMessages);
 

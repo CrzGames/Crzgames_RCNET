@@ -15,7 +15,7 @@
  * @param netToSimQueue Queue thread-safe réseau -> simulation.
  * @param outMessages Deque de sortie recevant les messages drainés.
  */
-void ServerSimulationUpdate_DrainNetworkIncomingMessages(
+void ServerSimulationUpdate_DrainNetworkIncomingToSimulationMessages(
     NetworkINToSimulationQueue& netToSimQueue,
     std::deque<NetworkINToSimulationMessage>& outMessages);
 
@@ -29,6 +29,6 @@ void ServerSimulationUpdate_DrainNetworkIncomingMessages(
  * @param httpToSimQueue Queue thread-safe HTTP -> simulation.
  * @param outMessages Deque de sortie recevant les messages drainés.
  */
-void ServerSimulationUpdate_DrainHttpIncomingMessages(
+void ServerSimulationUpdate_DrainHttpToSimulationMessages(
     HttpToSimulationQueue& httpToSimQueue,
     std::deque<HttpToSimulationMessage>& outMessages);
