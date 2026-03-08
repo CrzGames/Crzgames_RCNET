@@ -80,4 +80,13 @@ void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(
             networkState,
             currentTick);
     }
+
+    // Produire les messages de synchronisation d'horloge au rythme de 3 Hz.
+    /*if (ServerSimulationUpdate_IsNetworkOutgoingProductionTick(currentTick, 3))
+    {
+        ServerSimulationUpdate_BuildServerClockSyncMessagesAndEnqueue(
+            simulationToNetworkOUTQueue,
+            networkState,
+            currentTick);
+    }*/
 }
