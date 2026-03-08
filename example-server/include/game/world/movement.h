@@ -3,7 +3,6 @@
 #include <cstdint> // uint64_t
 
 #include "game/state.h"
-#include "game/config.h"
 
 /**
  * @brief Applique le mouvement des entités pour le tick courant.

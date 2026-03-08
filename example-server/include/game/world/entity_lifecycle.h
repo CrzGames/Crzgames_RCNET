@@ -3,7 +3,6 @@
 #include <cstdint> // uint64_t
 
 #include "game/state.h"
-#include "game/config.h"
 
 /**
  * @brief Met à jour le cycle de vie runtime des entités du monde.

@@ -3,7 +3,6 @@
 #include <cstdint> // uint64_t
 
 #include "game/state.h"
-#include "game/config.h"
 
 /**
  * @brief Résout les collisions du monde pour le tick courant.

@@ -3,7 +3,6 @@
 #include <cstdint> // uint64_t
 
 #include "game/state.h"
-#include "game/config.h"
 
 /**
  * @brief Applique les règles métier du jeu pour le tick courant.

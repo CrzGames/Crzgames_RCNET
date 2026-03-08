@@ -3,7 +3,6 @@
 #include <cstdint> // uint64_t
 
 #include "game/state.h"
-#include "game/config.h"
 
 /**
  * @brief Construit les intentions de jeu des joueurs à partir des inputs reçus.

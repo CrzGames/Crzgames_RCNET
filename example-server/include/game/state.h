@@ -3,8 +3,8 @@
 #include <cstdint>       // uint16_t, uint32_t, etc.
 #include <unordered_map> // std::unordered_map
 
-#include "game/entities.h" // EntityState
-#include "game/player_runtime.h" // PlayerRuntime (runtime spécifique pour les entités de type joueur)
+#include "game/data/entity_types.h" // EntityType (types d'entités principaux du jeu : Player, Projectile, Item, etc.)
+#include "game/runtime/player_runtime.h" // PlayerRuntime (runtime spécifique pour les entités de type joueur, ex: points de vie, mana, etc.)
 
 struct GameState
 {
