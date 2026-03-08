@@ -70,6 +70,10 @@ struct ClientSession
     // Il est généralement obtenu après le check du token d'authentification auprès du backend d'authentification.
     uint64_t accountIdDatabase = 0;
 
+    // Nom d'utilisateur du compte joueur.
+    // Il est généralement obtenu après le check du token d'authentification auprès du backend d'authentification.
+    std::string accountUsername = "";
+
     // Identifiant unique de la connexion réseau active.
     // Généré par le serveur lors du CONNECT.
     // Il change si le joueur se reconnecte.
