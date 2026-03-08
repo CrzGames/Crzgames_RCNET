@@ -73,15 +73,11 @@ void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(
         dt);
 
     // Vérifier si ce tick autorise l'envoi de snapshots.
-    if (!ServerSimulationUpdate_IsSnapshotSendTick(currentTick))
+    if (ServerSimulationUpdate_IsSnapshotSendTick(currentTick))
     {
-        // Si non, on s'arrête ici pour cette partie réseau sortante.
-        return;
+        ServerSimulationUpdate_BuildSnapshotsForAllSessionsAndEnqueue(
+            simulationToNetworkOUTQueue,
+            networkState,
+            currentTick);
     }
-
-    // Construire et enqueuer les snapshots pour toutes les sessions.
-    ServerSimulationUpdate_BuildSnapshotsForAllSessionsAndEnqueue(
-        simulationToNetworkOUTQueue,
-        networkState,
-        currentTick);
 }
