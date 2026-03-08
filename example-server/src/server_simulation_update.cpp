@@ -394,12 +394,19 @@ static void ServerSimulationUpdate_HTTP_HandleAuthValidateTokenResponse(
     // Référence directe vers la session du client.
     ClientSession& session = sit->second;
 
+    // Construire la réponse réseau serveur -> client
+    ServerAuthResponsePacketReliable authResponsePacket{};
+    authResponsePacket.header.type = ServerReliablePacketType::SERVER_AUTH_RESPONSE_PACKET_RELIABLE;
+
     // Traite la réponse d’authentification et met à jour l’état de la session en conséquence.
     if (httpMessage.authTokenVerificationResponse.isValid)
     {
         session.authStatus = AuthStatus::Valid;
         session.accountIdDatabase = httpMessage.authTokenVerificationResponse.accountIdDatabase;
         session.accountUsernameDatabase = httpMessage.authTokenVerificationResponse.accountUsernameDatabase;
+        session.authErrorMessage.clear();
+
+        authResponsePacket.status = ServerAuthResponseStatus::SUCCESS;
 
         RCNET_log(RCNET_LOG_INFO,
                   "[SERVER] [SIMULATION] [AUTH] - connectionId=%u authenticated successfully with accountId=%llu username=%s\n",
@@ -412,11 +419,22 @@ static void ServerSimulationUpdate_HTTP_HandleAuthValidateTokenResponse(
         session.authStatus = AuthStatus::Invalid;
         session.authErrorMessage = httpMessage.authTokenVerificationResponse.errorMessage;
 
+        authResponsePacket.status = ServerAuthResponseStatus::INVALID_AUTH_TOKEN;
+
         RCNET_log(RCNET_LOG_INFO,
                   "[SERVER] [SIMULATION] [AUTH] - connectionId=%u authentication failed: %s\n",
                   httpMessage.connectionId,
                   session.authErrorMessage.c_str());
     }
+
+    // Construire un message simulation -> réseau pour envoyer la réponse d’authentification au client.
+    SimulationToNetworkOUTMessage outMsg{};
+    outMsg.type = SimulationToNetworkOUTMessageType::SERVER_AUTH_RESPONSE_PACKET_RELIABLE;
+    outMsg.connectionId = httpMessage.connectionId;
+    outMsg.serializedPacket = serializeServerAuthResponsePacketReliable(authResponsePacket);
+
+    // Push le message dans la queue simulation -> réseau pour qu’il soit envoyé au client.
+    simToNetQueue.push(outMsg);
 }
 
 static void ServerSimulationUpdate_ProcessHTTPMessages(
