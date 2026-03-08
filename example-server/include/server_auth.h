@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cstdint> // uint16_t, uint32_t, etc.
+#include <string>  // std::string
+
 // ============================================================================
 // Statut d'authentification du client
 // ============================================================================
