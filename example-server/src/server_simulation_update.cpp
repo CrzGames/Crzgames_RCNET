@@ -192,16 +192,16 @@ static void ServerSimulationUpdate_HandleSecureSessionHelloMessage(
         serverTxKey);
 
     // Crée le packet de réponse que le serveur renverra au client.
-    ServerSecureSessionHelloResponsePacketReliable secureSessionHelloResponse{};
+    ServerSecureSessionHelloResponsePacketReliable secureSessionHelloResponsePacket{};
 
     // Renseigne le type du packet de réponse.
-    secureSessionHelloResponse.header.type = ServerReliablePacketType::SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE;
+    secureSessionHelloResponsePacket.header.type = ServerReliablePacketType::SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE;
 
     // Si le calcul des clés de session a échoué...
     if (!ok)
     {
         // ... le serveur indique que la clé publique client est invalide ou inacceptable.
-        secureSessionHelloResponse.status = ServerSecureSessionHelloResponseStatus::INVALID_CLIENT_KEY;
+        secureSessionHelloResponsePacket.status = ServerSecureSessionHelloResponseStatus::INVALID_CLIENT_KEY;
     }
     else
     {
@@ -218,12 +218,12 @@ static void ServerSimulationUpdate_HandleSecureSessionHelloMessage(
         session.isSecureSessionEstablished = true;
 
         // Indique dans la réponse que l’opération a réussi.
-        secureSessionHelloResponse.status = ServerSecureSessionHelloResponseStatus::SUCCESS;
+        secureSessionHelloResponsePacket.status = ServerSecureSessionHelloResponseStatus::SUCCESS;
 
         // Copie la clé publique du serveur dans le packet de réponse.
         // Le client l’utilisera pour calculer ses propres clés de session
         // avec crypto_kx_client_session_keys().
-        secureSessionHelloResponse.serverPublicKey = networkState.cryptoKxState.serverPublicKey;
+        secureSessionHelloResponsePacket.serverPublicKey = networkState.cryptoKxState.serverPublicKey;
     }
 
     // Crée un message sortant simulation -> réseau.
@@ -236,7 +236,7 @@ static void ServerSimulationUpdate_HandleSecureSessionHelloMessage(
     outMsg.connectionId = msg.connectionId;
 
     // Sérialise le packet de réponse serveur en payload binaire prêt à être envoyé par Network OUT.
-    outMsg.serializedPacket = serializeServerSecureSessionHelloResponsePacketReliable(secureSessionHelloResponse);
+    outMsg.serializedPacket = serializeServerSecureSessionHelloResponsePacketReliable(secureSessionHelloResponsePacket);
 
     // Push le message dans la queue simulation -> réseau.
     // Le thread réseau se chargera ensuite de l’envoyer via ENet au bon client.
