@@ -1,11 +1,11 @@
-#include "network/transport/incoming/channel_dispatch.h"
+#include "network/transport/incoming/channels/dispatch_by_channel.h"
 
 #include "network/channels/channel.h"
-#include "network/transport/incoming/channel_guards.h"
-#include "network/transport/incoming/channel_secure_session_reliable.h"
-#include "network/transport/incoming/channel_auth_reliable.h"
-#include "network/transport/incoming/channel_game_reliable.h"
-#include "network/transport/incoming/channel_game_unreliable.h"
+#include "network/transport/incoming/guards_channels.h"
+#include "network/transport/incoming/channels/secure_session_reliable.h"
+#include "network/transport/incoming/channels/auth_reliable.h"
+#include "network/transport/incoming/channels/game_reliable.h"
+#include "network/transport/incoming/channels/game_unreliable.h"
 
 #include <RCNET/RCNET.h>
 

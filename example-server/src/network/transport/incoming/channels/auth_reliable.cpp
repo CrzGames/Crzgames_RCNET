@@ -1,4 +1,4 @@
-#include "network/transport/incoming/channel_auth_reliable.h"
+#include "network/transport/incoming/channels/auth_reliable.h"
 
 #include "network/packets/client/reliable.h"
 #include "network/serialization/deserialize_packets_client.h"

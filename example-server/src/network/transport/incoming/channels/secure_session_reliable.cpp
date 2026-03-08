@@ -1,4 +1,4 @@
-#include "network/transport/incoming/channel_secure_session_reliable.h"
+#include "network/transport/incoming/channels/secure_session_reliable.h"
 
 #include "network/packets/client/reliable.h"
 #include "network/protocol/version.h"

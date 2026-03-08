@@ -1,7 +1,7 @@
-#include "network/transport/incoming/event_receive.h"
+#include "network/transport/incoming/events/receive.h"
 
 #include "network/transport/incoming/connection_validation.h"
-#include "network/transport/incoming/channel_dispatch.h"
+#include "network/transport/incoming/channels/dispatch_by_channel.h"
 
 void ServerNetworkIncomingUpdate_HandleReceiveEvent(
     const ENetEvent* event,

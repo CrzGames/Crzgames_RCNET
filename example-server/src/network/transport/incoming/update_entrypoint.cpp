@@ -1,9 +1,9 @@
 #include "network/transport/incoming/update_entrypoint.h"
 
 #include "core/context.h"
-#include "network/transport/incoming/event_connect.h"
-#include "network/transport/incoming/event_disconnect.h"
-#include "network/transport/incoming/event_receive.h"
+#include "network/transport/incoming/events/connect.h"
+#include "network/transport/incoming/events/disconnect.h"
+#include "network/transport/incoming/events/receive.h"
 
 void ServerNetworkIncomingUpdate_ProcessENetEvent(ENetHost* host, const ENetEvent* event)
 {

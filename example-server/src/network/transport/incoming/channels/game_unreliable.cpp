@@ -1,7 +1,7 @@
-#include "network/transport/incoming/channel_game_unreliable.h"
+#include "network/transport/incoming/channels/game_unreliable.h"
 
 #include "network/transport/incoming/packet_type_reader.h"
-#include "network/transport/incoming/packet_game_unreliable_input.h"
+#include "network/transport/incoming/packets/game_unreliable_input.h"
 
 #include <RCNET/RCNET.h>
 

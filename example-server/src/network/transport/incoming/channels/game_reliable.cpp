@@ -1,7 +1,7 @@
-#include "network/transport/incoming/channel_game_reliable.h"
+#include "network/transport/incoming/channels/game_reliable.h"
 
 #include "network/transport/incoming/packet_type_reader.h"
-#include "network/transport/incoming/packet_game_reliable_ready_for_match.h"
+#include "network/transport/incoming/packets/game_reliable_ready_for_match.h"
 
 #include <RCNET/RCNET.h>
 
