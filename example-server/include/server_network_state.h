@@ -39,8 +39,6 @@ struct NetworkState
     static constexpr std::string baseUrlApi = "https://staging.api.aetherroyale.crzgames.com";
 #elif SERVER_ENV_PRODUCTION
     static constexpr std::string baseUrlApi = "https://api.aetherroyale.crzgames.com";
-#else
-#   error "Environnement serveur inconnu"
 #endif
 
 
