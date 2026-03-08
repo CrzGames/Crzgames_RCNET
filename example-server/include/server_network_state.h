@@ -33,6 +33,11 @@ struct NetworkState
     // Durée de sommeil entre chaque tick réseau IN en ms (ex: 1)
     static constexpr uint32_t networkIncomingSleepMs = 1;
 
+
+    // --------------------------------------------------------------------------
+    // API externe (pour les appels HTTP vers l'API du jeu, ex: pour checker les tokens d'authentification, etc.)
+    // --------------------------------------------------------------------------
+
 #if SERVER_ENV_DEV
     static constexpr std::string baseUrlApi = "http://localhost:3400";
 #elif SERVER_ENV_STAGING

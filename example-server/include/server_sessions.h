@@ -24,6 +24,17 @@ struct PlayerControl
 };
 
 // ============================================================================
+// Statut d'authentification du client
+// ============================================================================
+enum class AuthStatus : uint8_t
+{
+    None = 0,
+    WaitingAuth,
+    Valid,
+    Invalid,
+};
+
+// ============================================================================
 // Données autoritaires spécifiques à un client connecté.
 // ============================================================================
 //
@@ -49,7 +60,7 @@ struct ClientSession
     std::array<uint8_t, crypto_kx_SESSIONKEYBYTES> serverTxKey{};
 
     // Set à true après authentification validé par le serveur au près du backend / api d'authentification.
-    bool isAuthenticated = false;
+    AuthStatus authStatus = AuthStatus::None;
 
     // Set à true à la connexion lors de l'événement ENET_EVENT_TYPE_CONNECT, 
     bool isTransportConnected = false;

@@ -14,16 +14,19 @@
 
 static ClientSession* FindSessionByConnectionId(uint32_t connectionId)
 {
+    // Récupère une référence vers l’état réseau global du serveur.
     NetworkState& networkState = GetNetworkState();
 
-    std::unordered_map<uint32_t, ClientSession>::iterator it =
-        networkState.sessions.find(connectionId);
+    // Cherche la session correspondant à ce connectionId dans la map des sessions actives (si existante).
+    std::unordered_map<uint32_t, ClientSession>::iterator it = networkState.sessions.find(connectionId);
 
+    // Si aucune session n’est trouvée pour ce connectionId, retourne nullptr.
     if (it == networkState.sessions.end())
     {
         return nullptr;
     }
 
+    // Retourne un pointeur vers la session trouvée.
     return &it->second;
 }
 
@@ -79,7 +82,7 @@ static bool IsConnectionSecureSessionEstablished(
 //
 // Retourne true si :
 // - la session existe
-// - isAuthenticated == true
+// - authStatus == AuthStatus::Valid
 //
 // Retourne false sinon.
 static bool IsConnectionAuthenticated(
@@ -94,7 +97,7 @@ static bool IsConnectionAuthenticated(
     }
 
     // Retourne l’état d’authentification de la session.
-    return session->isAuthenticated;
+    return session->authStatus == AuthStatus::Valid;
 }
 
 static bool IsConnectionAllowedForAuthChannel(uint32_t connectionId)
