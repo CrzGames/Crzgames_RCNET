@@ -16,18 +16,18 @@ enum class AuthStatus : uint8_t
 };
 
 // ============================================================================
-// Request HTTP du serveur vers le backend d'authentification pour valider un token d'authentification.
+// Request HTTP du serveur vers le backend d'authentification pour vérifier un token d'authentification.
 // ============================================================================
-struct AuthHTTPRequest
+struct AuthVerificationHTTPRequest
 {
-    // Token d'authentification à valider auprès du backend.
+    // Token d'authentification à vérifier auprès du backend.
     std::string authToken;
 };
 
 // ============================================================================
-// Response HTTP du backend d'authentification vers le serveur après validation d'un token d'authentification.
+// Response HTTP du backend d'authentification vers le serveur après vérification du token d'authentification.
 // ============================================================================
-struct AuthHTTPResponse
+struct AuthVerificationHTTPResponse
 {
     bool isValid = false;
     uint64_t accountIdDatabase = 0;
