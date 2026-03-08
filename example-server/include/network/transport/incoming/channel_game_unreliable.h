@@ -6,7 +6,7 @@
 
 #include "core/threading/queues/network_incoming_to_simulation.h"
 
-void ServerNetworkIncomingUpdate_HandleReceiveEvent_DispatchByChannel(
+void ServerNetworkIncomingUpdate_HandleReceiveEvent_Channel3GameUnreliable(
     const ENetEvent* event,
     uint32_t connectionId,
     NetworkINToSimulationQueue& netToSimQueue);
