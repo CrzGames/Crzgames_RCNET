@@ -1,4 +1,4 @@
-#include "simulation/process/http/auth_validate_token_response.h"
+#include "simulation/process/http/auth_validate_token_response_message.h"
 
 #include "auth/types.h"
 #include "network/packets/server/reliable.h"
