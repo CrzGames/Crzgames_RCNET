@@ -8,49 +8,64 @@
 
 static ClientSession* FindSessionByConnectionId(uint32_t connectionId)
 {
+    // Récupère une référence au NetworkState global.
     NetworkState& networkState = GetNetworkState();
 
-    std::unordered_map<uint32_t, ClientSession>::iterator it =
-        networkState.sessions.find(connectionId);
+    // Cherche la session client associée à l'identifiant de connexion dans la map des sessions.
+    std::unordered_map<uint32_t, ClientSession>::iterator it = networkState.sessions.find(connectionId);
 
+    // Si aucune session n'est trouvée pour cet ID de connexion, retourne nullptr.
     if (it == networkState.sessions.end())
     {
         return nullptr;
     }
 
+    // Retourne un pointeur vers la session client trouvée.
     return &it->second;
 }
 
 static bool IsConnectionTransportConnected(uint32_t connectionId)
 {
+    // Cherche la session client associée à l'identifiant de connexion.
     ClientSession* session = FindSessionByConnectionId(connectionId);
+
+    // Si aucune session n'est trouvée, considère que la connexion n'est pas valide (pas connectée).
     if (session == nullptr)
     {
         return false;
     }
 
+    // Retourne l'état de connexion transport de la session.
     return session->isTransportConnected;
 }
 
 static bool IsConnectionSecureSessionEstablished(uint32_t connectionId)
 {
+    // Cherche la session client associée à l'identifiant de connexion.
     ClientSession* session = FindSessionByConnectionId(connectionId);
+
+    // Si aucune session n'est trouvée, considère que la connexion n'est pas valide (pas de session sécurisée établie).
     if (session == nullptr)
     {
         return false;
     }
 
+    // Retourne l'état de session sécurisée établie de la session.
     return session->isSecureSessionEstablished;
 }
 
 static bool IsConnectionAuthenticated(uint32_t connectionId)
 {
+    // Cherche la session client associée à l'identifiant de connexion.
     ClientSession* session = FindSessionByConnectionId(connectionId);
+
+    // Si aucune session n'est trouvée, considère que la connexion n'est pas valide (pas authentifiée).
     if (session == nullptr)
     {
         return false;
     }
 
+    // Retourne true si le statut d'authentification de la session est "Valid", indiquant que la connexion est authentifiée.
     return session->authStatus == AuthStatus::Valid;
 }
 
