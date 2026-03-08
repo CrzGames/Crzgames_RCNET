@@ -1,7 +1,7 @@
 #include "network/transport/incoming/channel_dispatch.h"
 
 #include "network/channels/channel.h"
-#include "network/transport/incoming/session_guards.h"
+#include "network/transport/incoming/channel_guards.h"
 #include "network/transport/incoming/channel_secure_session_reliable.h"
 #include "network/transport/incoming/channel_auth_reliable.h"
 #include "network/transport/incoming/channel_game_reliable.h"
