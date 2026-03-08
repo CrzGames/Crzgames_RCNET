@@ -30,15 +30,13 @@ static void ServerSimulationUpdate_HandleConnectMessage(
 {
     // Créer une session pour ce client
     ClientSession session{};
-
     // Assigner un ID de connexion unique à cette session
     session.connectionId = msg.connectionId;
+    // Mettre à jour des propriété de la session
+    session.isTransportConnected = true;
 
     // Ajouter la session au network state
     networkState.sessions[msg.connectionId] = session;
-
-    // Mettre à jour des propriété de la session
-    session.isTransportConnected = true;
 
     // Log d’information indiquant la nouvelle connexion et l’ID de session associé.
     RCNET_log(RCNET_LOG_INFO,
@@ -50,8 +48,10 @@ static void ServerSimulationUpdate_HandleDisconnectMessage(
     NetworkState& networkState,
     const NetworkINToSimulationMessage& msg)
 {
-    // Supprimer la mapping connectionId -> session (si existante)
+    // Trouver la session du client qui s’est déconnecté via son connectionId (si elle existe)
     std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
+
+    // Supprimer la session du client du network state (si existante)
     if (sit != networkState.sessions.end())
     {
         networkState.sessions.erase(sit);
@@ -61,8 +61,10 @@ static void ServerSimulationUpdate_HandleDisconnectMessage(
             msg.connectionId);
     }
 
-    // Supprimer la mapping connectionId -> ENetPeer* (si existante)
+    // Trouver le peer ENet qui correspond à cette connectionId
     std::unordered_map<uint32_t, ENetPeer*>::iterator pit = networkState.connectionIdToEnetPeer.find(msg.connectionId);
+
+    // Supprimer le mapping connectionId -> ENetPeer* du network state (si existant)
     if (pit != networkState.connectionIdToEnetPeer.end())
     {
         networkState.connectionIdToEnetPeer.erase(pit);
@@ -86,8 +88,10 @@ static void ServerSimulationUpdate_HandleInputMessage(
     NetworkState& networkState,
     const NetworkINToSimulationMessage& msg)
 {
-    // Trouver la session du client qui a envoyé cet input
+    // Trouver la session du client qui a envoyé cet input via son connectionId
     std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
+
+    // Si aucune session n’existe pour cette connectionId, on ne peut pas traiter cet input.
     if (sit == networkState.sessions.end())
     {
         RCNET_log(RCNET_LOG_WARN,
@@ -98,14 +102,12 @@ static void ServerSimulationUpdate_HandleInputMessage(
 
     // Session trouvée, traiter l'input
     ClientSession& session = sit->second;
-
     // Garde le dernier input reçu (utile si on n’a rien de neuf ce tick)
     session.latestReceivedInputPacket = msg.inputPacket;
-
     // Met à jour le dernier snapshot ACKé par le client (pour la reconciliation côté client et pour estimer la latence)
     session.clientLastAckedSnapshotId = msg.inputPacket.lastReceivedSnapshotId;
 
-    // Anti-doublons / ordre
+    // Vérifie que cet input n’a pas déjà été traité (via son numéro de séquence).
     if (msg.inputPacket.inputSequenceNumber <= session.serverLastProcessedInputSequenceNumber)
     {
         // input déjà traité ou trop vieux
@@ -141,10 +143,10 @@ static void ServerSimulationUpdate_HandleSecureSessionHelloMessage(
     SimulationToNetworkOUTQueue& simToNetQueue,
     const NetworkINToSimulationMessage& msg)
 {
-    // Cherche la session correspondant à la connexion source du message.
+    // Trouve la session du client qui a envoyé ce message via son connectionId
     std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
 
-    // Si aucune session n’existe pour cette connectionId, on ne peut pas poursuivre.
+    // Si aucune session n’existe pour cette connectionId, on ne peut pas traiter ce message.
     if (sit == networkState.sessions.end())
     {
         // Log d’avertissement : le message secure session a été reçu pour une connexion inconnue.
