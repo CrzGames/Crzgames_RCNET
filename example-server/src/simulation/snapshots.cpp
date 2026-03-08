@@ -45,7 +45,7 @@ void ServerSimulationUpdate_CreateFullSnapshotAndEnqueue(
     simToNetQueue.push(outMsg);
 }
 
-void ServerSimulationUpdate_BuildSnapshotsForAllSessionsAndEnqueue(
+void ServerSimulationUpdate_Create_FullSnapshots_ForAllSessionsAndEnqueueForNetworkOutgoing(
     SimulationToNetworkOUTQueue& simToNetQueue,
     NetworkState& networkState,
     uint64_t currentTick)

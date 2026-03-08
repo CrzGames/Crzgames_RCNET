@@ -78,7 +78,7 @@ void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(
     // Produire les snapshots au rythme maximal du thread réseau sortant.
     if (ServerSimulationUpdate_IsNetworkOutgoingProductionTick(currentTick, rcnet_engine_getNetworkOutgoingTickRateHz()))
     {
-        ServerSimulationUpdate_BuildSnapshotsForAllSessionsAndEnqueue(
+        ServerSimulationUpdate_Create_FullSnapshots_ForAllSessionsAndEnqueueForNetworkOutgoing(
             simulationToNetworkOUTQueue,
             networkState,
             currentTick);
@@ -87,7 +87,7 @@ void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(
     // Produire les messages de synchronisation d'horloge au rythme de 3 Hz.
     /*if (ServerSimulationUpdate_IsNetworkOutgoingProductionTick(currentTick, 3))
     {
-        ServerSimulationUpdate_BuildServerClockSyncMessagesAndEnqueue(
+        ServerSimulationUpdate_CreateServerClockSyncMessagesAndEnqueue(
             simulationToNetworkOUTQueue,
             networkState,
             currentTick);
