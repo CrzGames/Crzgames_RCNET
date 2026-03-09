@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <RCNET/RCNET.h>
 
-uint32_t ServerNetworkIncomingUpdate_GetValidatedConnectionIdOrZero(
+uint32_t ServerNetworkIncoming_GetValidatedConnectionIdOrZero(
     const ENetEvent* event,
     const NetworkState& networkState)
 {

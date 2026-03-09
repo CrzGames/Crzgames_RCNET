@@ -5,7 +5,7 @@
 
 #include <RCNET/RCNET.h>
 
-void ServerNetworkIncomingUpdate_HandlePacket_ReadyForMatch(
+void ServerNetworkIncoming_HandlePacket_ReadyForMatch(
     const ENetEvent* event,
     uint32_t connectionId,
     NetworkINToSimulationQueue& netToSimQueue)

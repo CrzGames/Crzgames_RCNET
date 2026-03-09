@@ -5,7 +5,7 @@
 #include "network/transport/incoming/events/disconnect.h"
 #include "network/transport/incoming/events/receive.h"
 
-void ServerNetworkIncomingUpdate_ProcessENetEvent(ENetHost* host, const ENetEvent* event)
+void ServerNetworkIncoming_ProcessENetEvent(ENetHost* host, const ENetEvent* event)
 {
     // Vérifie que les pointeurs d’entrée sont valides.
     if (host == nullptr || event == nullptr)
@@ -23,18 +23,18 @@ void ServerNetworkIncomingUpdate_ProcessENetEvent(ENetHost* host, const ENetEven
     if (event->type == ENET_EVENT_TYPE_CONNECT)
     {
         // Traite l’événement de connexion.
-        ServerNetworkIncomingUpdate_Event_HandleConnect(event, networkState, netToSimQueue);
+        ServerNetworkIncoming_Event_HandleConnect(event, networkState, netToSimQueue);
     }
     // Vérifie si l’événement est une déconnexion normale faite par le client ou un client qui ne répond plus (timeout).
     else if (event->type == ENET_EVENT_TYPE_DISCONNECT || event->type == ENET_EVENT_TYPE_DISCONNECT_TIMEOUT)
     {
         // Traite l’événement de déconnexion.
-        ServerNetworkIncomingUpdate_Event_HandleDisconnect(event, networkState, netToSimQueue);
+        ServerNetworkIncoming_Event_HandleDisconnect(event, networkState, netToSimQueue);
     }
     // Vérifie si l’événement est une réception de packet.
     else if (event->type == ENET_EVENT_TYPE_RECEIVE)
     {
         // Traite l’événement de réception de packet.
-        ServerNetworkIncomingUpdate_Event_HandleReceive(event, networkState, netToSimQueue);
+        ServerNetworkIncoming_Event_HandleReceive(event, networkState, netToSimQueue);
     }
 }

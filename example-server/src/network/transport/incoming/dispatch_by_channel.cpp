@@ -9,7 +9,7 @@
 
 #include <RCNET/RCNET.h>
 
-void ServerNetworkIncomingUpdate_DispatchByChannel(
+void ServerNetworkIncoming_DispatchByChannel(
     const ENetEvent* event,
     uint32_t connectionId,
     NetworkINToSimulationQueue& netToSimQueue)
@@ -23,7 +23,7 @@ void ServerNetworkIncomingUpdate_DispatchByChannel(
     {
         // Pour les channels de gameplay, vérifie que le client est autorisé à envoyer des packets de gameplay.
         // Cela implique que le client doit être authentifié et que la session sécurisée doit être établie.
-        if (!IsConnectionAllowedForGameplayChannels(connectionId))
+        if (!ServerNetworkIncoming_IsConnectionAllowedForGameplayChannels(connectionId))
         {
             RCNET_log(RCNET_LOG_WARN,
                       "[SERVER] [NETWORK_IN] [RECEIVE] - ConnectionId=%u is not allowed to send on gameplay channel %u (not authenticated or secure session not established)\n",
@@ -36,7 +36,7 @@ void ServerNetworkIncomingUpdate_DispatchByChannel(
     {
         // Pour le channel d’authentification, vérifie que le client est autorisé à envoyer des packets d’authentification.
         // Cela implique que la session sécurisée doit être établie, mais pas forcément que le client soit déjà authentifié.
-        if (!IsConnectionAllowedForAuthChannel(connectionId))
+        if (!ServerNetworkIncoming_IsConnectionAllowedForAuthChannel(connectionId))
         {
             RCNET_log(RCNET_LOG_WARN,
                       "[SERVER] [NETWORK_IN] [RECEIVE] - ConnectionId=%u is not allowed to send on auth channel %u (secure session not established)\n",
@@ -50,22 +50,22 @@ void ServerNetworkIncomingUpdate_DispatchByChannel(
     switch (channel)
     {
         case NetworkChannel::SECURE_SESSION_RELIABLE:
-            ServerNetworkIncomingUpdate_Channel_SecureSessionReliable(
+            ServerNetworkIncoming_Channel_SecureSessionReliable(
                 event, connectionId, netToSimQueue);
             break;
 
         case NetworkChannel::AUTH_RELIABLE:
-            ServerNetworkIncomingUpdate_Channel_AuthReliable(
+            ServerNetworkIncoming_Channel_AuthReliable(
                 event, connectionId, netToSimQueue);
             break;
 
         case NetworkChannel::GAME_RELIABLE:
-            ServerNetworkIncomingUpdate_Channel_GameReliable(
+            ServerNetworkIncoming_Channel_GameReliable(
                 event, connectionId, netToSimQueue);
             break;
 
         case NetworkChannel::GAME_UNRELIABLE:
-            ServerNetworkIncomingUpdate_Channel_GameUnreliable(
+            ServerNetworkIncoming_Channel_GameUnreliable(
                 event, connectionId, netToSimQueue);
             break;
 

@@ -15,4 +15,4 @@
  * @param host Instance ENetHost serveur ayant produit l'événement.
  * @param event Événement ENet brut à traiter.
  */
-void ServerNetworkIncomingUpdate_ProcessENetEvent(ENetHost* host, const ENetEvent* event);
+void ServerNetworkIncoming_ProcessENetEvent(ENetHost* host, const ENetEvent* event);

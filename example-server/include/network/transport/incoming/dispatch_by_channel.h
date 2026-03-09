@@ -24,7 +24,7 @@
  * @param netToSimQueue Queue thread-safe utilisée pour transférer les messages
  *        du thread réseau vers le thread simulation.
  */
-void ServerNetworkIncomingUpdate_DispatchByChannel(
+void ServerNetworkIncoming_DispatchByChannel(
     const ENetEvent* event,
     uint32_t connectionId,
     NetworkINToSimulationQueue& netToSimQueue);

@@ -3,7 +3,7 @@
 #include "network/transport/incoming/entrypoint.h"
 #include "network/transport/outgoing/entrypoint.h"
 #include "simulation/entrypoint.h"
-#include "crypto/crypto_kx.h"
+#include "crypto/kx.h"
 
 #include <RCNET/RCNET.h>
 
@@ -24,7 +24,7 @@ void rcnet_unload(void)
 
 void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
 {
-    ServerNetworkIncomingUpdate_ProcessENetEvent(host, event);
+    ServerNetworkIncoming_ProcessENetEvent(host, event);
 }
 
 void rcnet_network_outgoing_update(ENetHost* host)

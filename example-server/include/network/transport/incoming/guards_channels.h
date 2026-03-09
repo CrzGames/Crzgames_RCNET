@@ -14,7 +14,7 @@
  * @return `true` si la connexion peut utiliser le channel d'authentification,
  *         `false` sinon.
  */
-bool IsConnectionAllowedForAuthChannel(uint32_t connectionId);
+bool ServerNetworkIncoming_IsConnectionAllowedForAuthChannel(uint32_t connectionId);
 
 /**
  * @brief Indique si une connexion est autorisée à envoyer sur les channels gameplay.
@@ -29,4 +29,4 @@ bool IsConnectionAllowedForAuthChannel(uint32_t connectionId);
  * @return `true` si la connexion peut utiliser les channels gameplay,
  *         `false` sinon.
  */
-bool IsConnectionAllowedForGameplayChannels(uint32_t connectionId);
+bool ServerNetworkIncoming_IsConnectionAllowedForGameplayChannels(uint32_t connectionId);

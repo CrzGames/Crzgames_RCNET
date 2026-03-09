@@ -20,6 +20,6 @@
  * @return L'identifiant de connexion validé si tout est cohérent,
  *         ou `0` si la validation échoue.
  */
-uint32_t ServerNetworkIncomingUpdate_GetValidatedConnectionIdOrZero(
+uint32_t ServerNetworkIncoming_GetValidatedConnectionIdOrZero(
     const ENetEvent* event,
     const NetworkState& networkState);

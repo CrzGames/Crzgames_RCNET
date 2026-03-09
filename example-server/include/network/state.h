@@ -8,7 +8,7 @@
 
 #include "network/client_session.h" // ClientSession
 #include "network/channels/channel.h" // NetworkChannel
-#include "crypto/crypto_kx.h"         // ServerCryptoKxState
+#include "crypto/kx.h"         // ServerCryptoKxState
 
 struct NetworkState
 {

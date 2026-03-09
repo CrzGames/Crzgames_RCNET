@@ -18,7 +18,7 @@
  * @param netToSimQueue Queue thread-safe utilisée pour transférer le message
  *        de connexion vers le thread simulation.
  */
-void ServerNetworkIncomingUpdate_Event_HandleConnect(
+void ServerNetworkIncoming_Event_HandleConnect(
     const ENetEvent* event,
     NetworkState& networkState,
     NetworkINToSimulationQueue& netToSimQueue);

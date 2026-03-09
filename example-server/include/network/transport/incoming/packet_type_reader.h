@@ -17,7 +17,7 @@
  * @return `true` si le type de paquet a pu être lu correctement,
  *         `false` si le buffer est vide, invalide ou trop court.
  */
-bool ServerNetworkIncomingUpdate_ReadClientReliablePacketType(
+bool ServerNetworkIncoming_ReadClientReliablePacketType(
     const ENetEvent* event,
     ClientReliablePacketType& outType);
 
@@ -33,6 +33,6 @@ bool ServerNetworkIncomingUpdate_ReadClientReliablePacketType(
  * @return `true` si le type de paquet a pu être lu correctement,
  *         `false` si le buffer est vide, invalide ou trop court.
  */
-bool ServerNetworkIncomingUpdate_ReadClientUnreliablePacketType(
+bool ServerNetworkIncoming_ReadClientUnreliablePacketType(
     const ENetEvent* event,
     ClientUnreliablePacketType& outType);

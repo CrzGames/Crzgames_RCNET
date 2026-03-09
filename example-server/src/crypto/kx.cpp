@@ -1,4 +1,4 @@
-#include "crypto/crypto_kx.h"
+#include "crypto/kx.h"
 
 bool ServerCryptoKx_Initialize(ServerCryptoKxState& state)
 {

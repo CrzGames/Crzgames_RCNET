@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <RCNET/RCNET.h>
 
-void ServerNetworkIncomingUpdate_Event_HandleDisconnect(
+void ServerNetworkIncoming_Event_HandleDisconnect(
     const ENetEvent* event,
     NetworkState& networkState,
     NetworkINToSimulationQueue& netToSimQueue)

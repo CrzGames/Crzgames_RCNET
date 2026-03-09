@@ -5,14 +5,14 @@
 
 #include <RCNET/RCNET.h>
 
-void ServerNetworkIncomingUpdate_Channel_GameReliable(
+void ServerNetworkIncoming_Channel_GameReliable(
     const ENetEvent* event,
     uint32_t connectionId,
     NetworkINToSimulationQueue& netToSimQueue)
 {
     // Tente de lire le type de packet fiable envoyé par le client.
     ClientReliablePacketType packetType{};
-    if (!ServerNetworkIncomingUpdate_ReadClientReliablePacketType(event, packetType))
+    if (!ServerNetworkIncoming_ReadClientReliablePacketType(event, packetType))
     {
         // Si la désérialisation échoue, le packet est invalide ou mal formé.
         // Log d’avertissement indiquant que le packet fiable est invalide.
@@ -26,7 +26,7 @@ void ServerNetworkIncomingUpdate_Channel_GameReliable(
     switch (packetType)
     {
         case ClientReliablePacketType::CLIENT_READY_FOR_MATCH_PACKET_RELIABLE:
-            ServerNetworkIncomingUpdate_HandlePacket_ReadyForMatch(
+            ServerNetworkIncoming_HandlePacket_ReadyForMatch(
                 event, connectionId, netToSimQueue);
             break;
 

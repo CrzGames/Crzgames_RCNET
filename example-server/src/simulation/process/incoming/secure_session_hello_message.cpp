@@ -1,13 +1,15 @@
 #include "simulation/process/incoming/secure_session_hello_message.h"
 
-#include "crypto/crypto_kx.h"
+#include "crypto/kx.h"
 #include "network/packets/server/reliable.h"
 #include "network/serialization/serialize_packets_server.h"
 
-#include <array>
-#include <unordered_map>
+#include <array>         // std::array
+#include <unordered_map> // std::unordered_map
+#include <cstdint>       // uint32_t, etc.
 
-#include <sodium/crypto_kx.h>
+#include <sodium.h>
+
 #include <RCNET/RCNET.h>
 
 void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloMessage(

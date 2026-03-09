@@ -2,7 +2,7 @@
 
 #include "network/serialization/byte_reader.h"
 
-bool ServerNetworkIncomingUpdate_ReadClientReliablePacketType(
+bool ServerNetworkIncoming_ReadClientReliablePacketType(
     const ENetEvent* event,
     ClientReliablePacketType& outType)
 {
@@ -26,7 +26,7 @@ bool ServerNetworkIncomingUpdate_ReadClientReliablePacketType(
     return true;
 }
 
-bool ServerNetworkIncomingUpdate_ReadClientUnreliablePacketType(
+bool ServerNetworkIncoming_ReadClientUnreliablePacketType(
     const ENetEvent* event,
     ClientUnreliablePacketType& outType)
 {

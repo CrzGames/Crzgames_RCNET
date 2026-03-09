@@ -6,7 +6,7 @@
 
 #include <unordered_map> // std::unordered_map
 
-static ClientSession* FindSessionByConnectionId(uint32_t connectionId)
+static ClientSession* ServerNetworkIncoming_FindSessionByConnectionId(uint32_t connectionId)
 {
     // Récupère une référence au NetworkState global.
     NetworkState& networkState = GetNetworkState();
@@ -24,10 +24,10 @@ static ClientSession* FindSessionByConnectionId(uint32_t connectionId)
     return &it->second;
 }
 
-static bool IsConnectionTransportConnected(uint32_t connectionId)
+static bool ServerNetworkIncoming_IsConnectionTransportConnected(uint32_t connectionId)
 {
     // Cherche la session client associée à l'identifiant de connexion.
-    ClientSession* session = FindSessionByConnectionId(connectionId);
+    ClientSession* session = ServerNetworkIncoming_FindSessionByConnectionId(connectionId);
 
     // Si aucune session n'est trouvée, considère que la connexion n'est pas valide (pas connectée).
     if (session == nullptr)
@@ -39,10 +39,10 @@ static bool IsConnectionTransportConnected(uint32_t connectionId)
     return session->isTransportConnected;
 }
 
-static bool IsConnectionSecureSessionEstablished(uint32_t connectionId)
+static bool ServerNetworkIncoming_IsConnectionSecureSessionEstablished(uint32_t connectionId)
 {
     // Cherche la session client associée à l'identifiant de connexion.
-    ClientSession* session = FindSessionByConnectionId(connectionId);
+    ClientSession* session = ServerNetworkIncoming_FindSessionByConnectionId(connectionId);
 
     // Si aucune session n'est trouvée, considère que la connexion n'est pas valide (pas de session sécurisée établie).
     if (session == nullptr)
@@ -54,10 +54,10 @@ static bool IsConnectionSecureSessionEstablished(uint32_t connectionId)
     return session->isSecureSessionEstablished;
 }
 
-static bool IsConnectionAuthenticated(uint32_t connectionId)
+static bool ServerNetworkIncoming_IsConnectionAuthenticated(uint32_t connectionId)
 {
     // Cherche la session client associée à l'identifiant de connexion.
-    ClientSession* session = FindSessionByConnectionId(connectionId);
+    ClientSession* session = ServerNetworkIncoming_FindSessionByConnectionId(connectionId);
 
     // Si aucune session n'est trouvée, considère que la connexion n'est pas valide (pas authentifiée).
     if (session == nullptr)
@@ -69,15 +69,15 @@ static bool IsConnectionAuthenticated(uint32_t connectionId)
     return session->authStatus == AuthStatus::Valid;
 }
 
-bool IsConnectionAllowedForAuthChannel(uint32_t connectionId)
+bool ServerNetworkIncoming_IsConnectionAllowedForAuthChannel(uint32_t connectionId)
 {
-    return IsConnectionTransportConnected(connectionId) &&
-           IsConnectionSecureSessionEstablished(connectionId);
+    return ServerNetworkIncoming_IsConnectionTransportConnected(connectionId) &&
+           ServerNetworkIncoming_IsConnectionSecureSessionEstablished(connectionId);
 }
 
-bool IsConnectionAllowedForGameplayChannels(uint32_t connectionId)
+bool ServerNetworkIncoming_IsConnectionAllowedForGameplayChannels(uint32_t connectionId)
 {
-    return IsConnectionTransportConnected(connectionId) &&
-           IsConnectionSecureSessionEstablished(connectionId) &&
-           IsConnectionAuthenticated(connectionId);
+    return ServerNetworkIncoming_IsConnectionTransportConnected(connectionId) &&
+           ServerNetworkIncoming_IsConnectionSecureSessionEstablished(connectionId) &&
+           ServerNetworkIncoming_IsConnectionAuthenticated(connectionId);
 }
