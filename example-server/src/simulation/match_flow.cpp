@@ -3,6 +3,7 @@
 #include "core/context.h"
 #include "network/packets/server/reliable.h"
 #include "network/serialization/serialize_packets_server.h"
+#include "network/server_config.h"
 
 #include <unordered_map>
 
@@ -11,7 +12,7 @@
 bool ServerSimulation_AreAllSessionsReadyForMatch(const NetworkState& networkState)
 {
     // Vérifier d'abord qu'il y a assez de sessions connectées.
-    if (networkState.sessions.size() < networkState.maxClientsConnected)
+    if (networkState.sessions.size() < ServerConfig::maxClientsConnected)
     {
         // Pas assez de joueurs pour lancer le match.
         return false;
@@ -44,7 +45,7 @@ void ServerSimulation_CheckMatchFlow(
 {
     // Tant qu'il n'y a pas assez de joueurs connectés,
     // on ne lance aucune étape du flow.
-    if (networkState.sessions.size() < networkState.maxClientsConnected)
+    if (networkState.sessions.size() < ServerConfig::maxClientsConnected)
     {
         return;
     }

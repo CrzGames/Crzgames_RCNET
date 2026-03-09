@@ -7,11 +7,10 @@
 #include "simulation/process/http_dispatcher.h"
 #include "simulation/match_flow.h"
 #include "simulation/snapshots.h"
-#include "simulation/tick_scheduling.h"
 
 #include <deque> // std::deque
 
-#include <RCNET/RCNET.h> // rcnet_engine_getNetworkOutgoingTickRateHz
+#include <RCNET/RCNET.h>
 
 void ServerSimulation_RunCurrentTick(
     uint64_t currentTick,
@@ -76,7 +75,7 @@ void ServerSimulation_RunCurrentTick(
         dt);
 
     // Produire les snapshots au rythme maximal du thread réseau sortant.
-    if (ServerSimulation_IsNetworkOutgoingProductionTick(currentTick, rcnet_engine_getNetworkOutgoingTickRateHz()))
+    if (rcnet_engine_isNetworkOutgoingProductionTick(currentTick, rcnet_engine_getNetworkOutgoingTickRateHz()))
     {
         ServerSimulation_CreateFullSnapshotsForAllSessionsAndEnqueueForNetworkOutgoing(
             simulationToNetworkOUTQueue,
@@ -85,7 +84,7 @@ void ServerSimulation_RunCurrentTick(
     }
 
     // Produire les messages de synchronisation d'horloge au rythme de 3 Hz.
-    /*if (ServerSimulation_IsNetworkOutgoingProductionTick(currentTick, 3))
+    /*if (rcnet_engine_isNetworkOutgoingProductionTick(currentTick, 3))
     {
         ServerSimulation_CreateServerClockSyncMessagesAndEnqueue(
             simulationToNetworkOUTQueue,

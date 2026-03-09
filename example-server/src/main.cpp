@@ -1,5 +1,6 @@
 #include "core/callbacks.h"
 #include "core/context.h"
+#include "network/server_config.h"
 
 #include <cstring> // memset
 
@@ -27,17 +28,15 @@ int main(int argc, char* argv[])
     myServerCallbacks.rcnet_simulation_update = rcnet_simulation_update;
     myServerCallbacks.rcnet_http_update = rcnet_http_update;
 
-    // Récupérer une référence à notre état réseau global pour configurer le moteur
-    NetworkState& networkState = GetNetworkState();
-
-    // Configuration serveur (port, tick rates, etc.)
-    RCNET_ServerConfig config{};
-    config.port = networkState.serverPort;
-    config.maxClients = networkState.maxClientsConnected;
-    config.channelCount = networkState.channelCount;
-    config.networkIncomingSleepMs = networkState.networkIncomingSleepMs;
-    config.networkOutgoingTickHz = networkState.networkOutgoingTickRateHz;
-    config.simulationTickHz = networkState.simulationTickRateHz;
+    // Construire la config serveur
+    RCNET_ServerConfig config;
+    config.port = ServerConfig::serverPort;
+    config.maxClients = ServerConfig::maxClientsConnected;
+    config.channelCount = ServerConfig::channelCount;
+    config.simulationTickHz = ServerConfig::simulationTickRateHz;
+    config.networkOutgoingTickHz = ServerConfig::networkOutgoingTickRateHz;
+    config.networkIncomingPollTimeoutMs = ServerConfig::networkIncomingPollTimeoutMs;
+    config.httpThreadSleepMs = ServerConfig::httpThreadSleepMs;
 
     // Lancer le moteur avec nos callbacks et les tick rates désirés
     if(!rcnet_engine_run(&myServerCallbacks, &config))
