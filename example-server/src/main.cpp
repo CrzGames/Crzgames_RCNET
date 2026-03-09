@@ -1,7 +1,7 @@
 #include "core/callbacks.h"
 #include "network/server_config.h"
 
-#include <cstring> // memset
+#include <cstdlib> // std::getenv
 
 #include <RCNET/RCNET.h>
 
@@ -37,12 +37,12 @@ int main(int argc, char* argv[])
     config.natsThreadSleepMs = ServerConfig::natsThreadSleepMs;
     // Configuration NATS
     config.natsConfig.enabled = ServerConfig::natsEnabled;
-    config.natsConfig.natsServerURL = ServerConfig::natsServerURL.data();
+    config.natsConfig.natsServerURL = ServerConfig::natsServerURL;
     config.natsConfig.useTLS = ServerConfig::natsUseTLS;
     config.natsConfig.skipVerifyCertsServer = ServerConfig::natsSkipVerifyCertsServer;
 #if SERVER_ENV_DEV
-    config.natsConfig.publicKeyNKey = ServerConfig::natsPublicKeyNKey.data();
-    config.natsConfig.privateKeySeedNKey = ServerConfig::natsPrivateKeySeedNKey.data();
+    config.natsConfig.publicKeyNKey = ServerConfig::natsPublicKeyNKey;
+    config.natsConfig.privateKeySeedNKey = ServerConfig::natsPrivateKeySeedNKey;
 #else
     config.natsConfig.publicKeyNKey = std::getenv("NATS_NKEY_PUBLIC");
     config.natsConfig.privateKeySeedNKey = std::getenv("NATS_NKEY_PRIVATE");
