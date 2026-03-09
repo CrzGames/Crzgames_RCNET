@@ -35,7 +35,7 @@ void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
 
 void rcnet_network_outgoing_update(ENetHost* host)
 {
-    ServerNetworkOutgoing_DrainSimulationMessagesAndSendPackets(host);
+    ServerNetworkOutgoing_DrainSimulationMessages_And_SendPackets(host);
 }
 
 void rcnet_simulation_update(uint64_t currentTick, uint64_t serverTimeNs, uint64_t dtNs, double dt)

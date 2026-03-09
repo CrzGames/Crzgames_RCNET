@@ -2,4 +2,4 @@
 
 #include <rcenet/RCENET_enet.h> // EnetHost
 
-void ServerNetworkOutgoing_DrainSimulationMessagesAndSendPackets(ENetHost* host);
+void ServerNetworkOutgoing_DrainSimulationMessages_And_SendPackets(ENetHost* host);
