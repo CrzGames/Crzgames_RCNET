@@ -90,10 +90,10 @@ typedef struct {
  * @param {const char*} caFile - Chemin vers le fichier CA (peut être NULL).
  * @param {bool} skipVerifyCertsServer - Indicateur pour ignorer la vérification des certificats du serveur.
  * @param {const char*} publicKeyNKey - Clé publique NKey pour l'authentification.
- * @param {void*} privateKeySeedNKey - Clé seed privée NKey pour la signature.
+ * @param {const char*} privateKeySeedNKey - Clé privée NKey pour l'authentification.
  * @return {int} 0 en cas de succès, -1 en cas d'erreur.
  */
-int rcnet_nats_initialize(RCNET_NATSClient *client, const char *natsServerURL, const char *certFile, const char *keyFile, const char *caFile, bool skipVerifyCertsServer, const char *publicKeyNKey, void *privateKeySeedNKey);
+int rcnet_nats_initialize(RCNET_NATSClient *client, const char *natsServerURL, const char *certFile, const char *keyFile, const char *caFile, bool skipVerifyCertsServer, const char *publicKeyNKey, const char *privateKeySeedNKey);
 
 /**
  * @brief Nettoie et libère les ressources associées à un client NATS.

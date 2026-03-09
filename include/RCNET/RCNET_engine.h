@@ -35,7 +35,7 @@ typedef struct RCNET_NATSConfig
     bool enabled; // Indique si la serveur dois utiliser NATS ou pas
     const char* natsServerURL;
     const char* publicKeyNKey;
-    void* privateKeySeedNKey;
+    const char* privateKeySeedNKey;
     bool skipVerifyCertsServer;
 } RCNET_NATSConfig;
 

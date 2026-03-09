@@ -79,7 +79,7 @@ static RCNET_NATSClient g_natsClient = {0};
 static bool g_natsEnabled = false;
 static const char* g_natsServerURL = nullptr;
 static const char* g_natsPublicKeyNKey = nullptr;
-static void* g_natsPrivateKeySeedNKey = nullptr;
+static const char* g_natsPrivateKeySeedNKey = nullptr;
 static bool g_natsSkipVerifyCertsServer = false;
 
 // ============================================================================
