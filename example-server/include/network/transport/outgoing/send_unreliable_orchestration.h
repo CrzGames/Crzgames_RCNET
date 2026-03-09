@@ -16,6 +16,6 @@
  * @param networkState État réseau global du serveur.
  * @param lastUnreliablePerConnectionId Dernier message unreliable retenu par connexion.
  */
-void ServerNetworkOutgoingUpdate_SendUnreliableMessages(
+void ServerNetworkOutgoing_SendUnreliableMessages(
     NetworkState& networkState,
     std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastUnreliablePerConnectionId);

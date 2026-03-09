@@ -5,9 +5,9 @@
 
 #include <rcenet/RCENET_enet.h> // ENetPeer
 
-bool sendServerMatchInitPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes);
-bool sendServerWorldStaticStateInitPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes);
-bool sendServerMatchStartPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes);
-bool sendServerSnapshotFullPacketUnreliable(ENetPeer* peer, const std::vector<uint8_t>& bytes);
-bool sendServerSecureSessionHelloResponsePacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes);
-bool sendServerAuthResponsePacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes);
+bool ServerNetworkOutgoing_SendMatchInitPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes);
+bool ServerNetworkOutgoing_SendWorldStaticStateInitPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes);
+bool ServerNetworkOutgoing_SendMatchStartPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes);
+bool ServerNetworkOutgoing_SendSnapshotFullPacketUnreliable(ENetPeer* peer, const std::vector<uint8_t>& bytes);
+bool ServerNetworkOutgoing_SendSecureSessionHelloResponsePacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes);
+bool ServerNetworkOutgoing_SendAuthResponsePacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes);

@@ -14,6 +14,6 @@
  * @param networkState État réseau global du serveur.
  * @param reliableMessages Messages reliable à envoyer pendant ce tick réseau sortant.
  */
-void ServerNetworkOutgoingUpdate_SendReliableMessages(
+void ServerNetworkOutgoing_SendReliableMessages(
     NetworkState& networkState,
     const std::deque<SimulationToNetworkOUTMessage>& reliableMessages);

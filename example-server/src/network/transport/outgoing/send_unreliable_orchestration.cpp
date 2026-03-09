@@ -11,7 +11,7 @@
 
 #include <RCNET/RCNET.h>
 
-static ENetPeer* ServerNetworkOutgoingUpdate_SendUnreliableMessages_FindPeerByConnectionId(
+static ENetPeer* ServerNetworkOutgoing_FindPeerByConnectionId(
     NetworkState& networkState,
     uint32_t connectionId)
 {
@@ -51,7 +51,7 @@ static ENetPeer* ServerNetworkOutgoingUpdate_SendUnreliableMessages_FindPeerByCo
     return peer;
 }
 
-static void ServerNetworkOutgoingUpdate_SendUnreliableMessages_SendSnapshotFull(
+static void ServerNetworkOutgoing_SendSnapshotFull(
     NetworkState& networkState,
     ENetPeer* peer,
     const SimulationToNetworkOUTMessage& msg)
@@ -63,8 +63,7 @@ static void ServerNetworkOutgoingUpdate_SendUnreliableMessages_SendSnapshotFull(
     }
 
     // Rechercher la session cible pour patcher l'identifiant de snapshot.
-    std::unordered_map<uint32_t, ClientSession>::iterator sit =
-        networkState.sessions.find(msg.connectionId);
+    std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
 
     // Si la session n'existe pas, on ne peut pas poursuivre.
     if (sit == networkState.sessions.end())
@@ -101,14 +100,13 @@ static void ServerNetworkOutgoingUpdate_SendUnreliableMessages_SendSnapshotFull(
     session.serverLastSentSnapshotId = snapshotId;
 
     // Résérialiser le packet patché.
-    std::vector<uint8_t> patchedPacket =
-        serializeServerSnapshotFullPacketUnreliable(snapshotFullPacket);
+    std::vector<uint8_t> patchedPacket = serializeServerSnapshotFullPacketUnreliable(snapshotFullPacket);
 
     // Envoyer le snapshot unreliable patché.
-    sendServerSnapshotFullPacketUnreliable(peer, patchedPacket);
+    ServerNetworkOutgoing_SendSnapshotFullPacketUnreliable(peer, patchedPacket);
 }
 
-void ServerNetworkOutgoingUpdate_SendUnreliableMessages(
+void ServerNetworkOutgoing_SendUnreliableMessages(
     NetworkState& networkState,
     std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastUnreliablePerConnectionId)
 {
@@ -122,7 +120,7 @@ void ServerNetworkOutgoingUpdate_SendUnreliableMessages(
         SimulationToNetworkOUTMessage& msg = it->second;
 
         // Résoudre le peer ENet correspondant à la connexion cible.
-        ENetPeer* peer = ServerNetworkOutgoingUpdate_SendUnreliableMessages_FindPeerByConnectionId(
+        ENetPeer* peer = ServerNetworkOutgoing_FindPeerByConnectionId(
             networkState,
             msg.connectionId);
 
@@ -136,7 +134,7 @@ void ServerNetworkOutgoingUpdate_SendUnreliableMessages(
         if (msg.type == SimulationToNetworkOUTMessageType::SERVER_SNAPSHOT_FULL_PACKET_UNRELIABLE)
         {
             // Envoyer un snapshot full unreliable patché.
-            ServerNetworkOutgoingUpdate_SendUnreliableMessages_SendSnapshotFull(
+            ServerNetworkOutgoing_SendSnapshotFull(
                 networkState,
                 peer,
                 msg);

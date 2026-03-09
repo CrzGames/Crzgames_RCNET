@@ -14,6 +14,6 @@
  * @param simToNetQueue Queue thread-safe simulation -> réseau sortant.
  * @param outMessages Deque de sortie recevant les messages drainés.
  */
-void ServerNetworkOutgoingUpdate_DrainOutgoingMessages(
+void ServerNetworkOutgoing_DrainSimulationToNetworkOutgoingQueue(
     SimulationToNetworkOUTQueue& simToNetQueue,
     std::deque<SimulationToNetworkOUTMessage>& outMessages);

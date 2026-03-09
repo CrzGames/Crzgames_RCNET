@@ -18,7 +18,7 @@
  * @param lastUnreliablePerConnectionId Table de sortie recevant le dernier message unreliable
  *        à conserver pour chaque connectionId.
  */
-void ServerNetworkOutgoingUpdate_ClassifyOutgoingMessages(
+void ServerNetworkOutgoing_ClassifyOutgoingMessages(
     const std::deque<SimulationToNetworkOUTMessage>& outMessages,
     std::deque<SimulationToNetworkOUTMessage>& reliableMessages,
     std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastUnreliablePerConnectionId);

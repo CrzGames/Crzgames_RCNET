@@ -6,7 +6,7 @@
 
 #include <RCNET/RCNET.h>
 
-static ENetPeer* ServerNetworkOutgoingUpdate_SendReliableMessages_FindPeerByConnectionId(
+static ENetPeer* ServerNetworkOutgoing_FindPeerByConnectionId(
     NetworkState& networkState,
     uint32_t connectionId)
 {
@@ -46,7 +46,7 @@ static ENetPeer* ServerNetworkOutgoingUpdate_SendReliableMessages_FindPeerByConn
     return peer;
 }
 
-void ServerNetworkOutgoingUpdate_SendReliableMessages(
+void ServerNetworkOutgoing_SendReliableMessages(
     NetworkState& networkState,
     const std::deque<SimulationToNetworkOUTMessage>& reliableMessages)
 {
@@ -59,7 +59,7 @@ void ServerNetworkOutgoingUpdate_SendReliableMessages(
         const SimulationToNetworkOUTMessage& msg = *it;
 
         // Résoudre le peer ENet correspondant à la connexion cible.
-        ENetPeer* peer = ServerNetworkOutgoingUpdate_SendReliableMessages_FindPeerByConnectionId(
+        ENetPeer* peer = ServerNetworkOutgoing_FindPeerByConnectionId(
             networkState,
             msg.connectionId);
 
@@ -73,27 +73,27 @@ void ServerNetworkOutgoingUpdate_SendReliableMessages(
         if (msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_INIT_PACKET_RELIABLE)
         {
             // Envoyer un packet MATCH_INIT reliable.
-            sendServerMatchInitPacketReliable(peer, msg.serializedPacket);
+            ServerNetworkOutgoing_SendMatchInitPacketReliable(peer, msg.serializedPacket);
         }
         else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_WORLD_STATIC_STATE_INIT_PACKET_RELIABLE)
         {
             // Envoyer un packet WORLD_STATIC_STATE_INIT reliable.
-            sendServerWorldStaticStateInitPacketReliable(peer, msg.serializedPacket);
+            ServerNetworkOutgoing_SendWorldStaticStateInitPacketReliable(peer, msg.serializedPacket);
         }
         else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE)
         {
             // Envoyer un packet de réponse secure session reliable.
-            sendServerSecureSessionHelloResponsePacketReliable(peer, msg.serializedPacket);
+            ServerNetworkOutgoing_SendSecureSessionHelloResponsePacketReliable(peer, msg.serializedPacket);
         }
         else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_AUTH_RESPONSE_PACKET_RELIABLE)
         {
             // Envoyer un packet de réponse d'authentification reliable.
-            sendServerAuthResponsePacketReliable(peer, msg.serializedPacket);
+            ServerNetworkOutgoing_SendAuthResponsePacketReliable(peer, msg.serializedPacket);
         }
         else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_START_PACKET_RELIABLE)
         {
             // Envoyer un packet MATCH_START reliable.
-            sendServerMatchStartPacketReliable(peer, msg.serializedPacket);
+            ServerNetworkOutgoing_SendMatchStartPacketReliable(peer, msg.serializedPacket);
         }
     }
 }

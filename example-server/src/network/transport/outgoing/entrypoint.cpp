@@ -10,7 +10,7 @@
 #include <unordered_map> // std::unordered_map
 #include <cstdint>       // uint32_t
 
-void ServerNetworkOutgoingUpdate_DrainCoalesceAndSendMessages(ENetHost* host)
+void ServerNetworkOutgoing_DrainCoalesceAndSendMessages(ENetHost* host)
 {
     // Vérifier que l'host ENet est valide avant toute opération.
     if (host == nullptr)
@@ -28,7 +28,7 @@ void ServerNetworkOutgoingUpdate_DrainCoalesceAndSendMessages(ENetHost* host)
     std::deque<SimulationToNetworkOUTMessage> outMessages;
 
     // Drainer la queue simulation -> réseau sortant.
-    ServerNetworkOutgoingUpdate_DrainOutgoingMessages(
+    ServerNetworkOutgoing_DrainSimulationToNetworkOutgoingQueue(
         simToNetQueue,
         outMessages);
 
@@ -39,18 +39,18 @@ void ServerNetworkOutgoingUpdate_DrainCoalesceAndSendMessages(ENetHost* host)
     std::unordered_map<uint32_t, SimulationToNetworkOUTMessage> lastUnreliablePerConnectionId;
 
     // Classifier les messages sortants entre reliable et unreliable.
-    ServerNetworkOutgoingUpdate_ClassifyOutgoingMessages(
+    ServerNetworkOutgoing_ClassifyOutgoingMessages(
         outMessages,
         reliableMessages,
         lastUnreliablePerConnectionId);
 
     // Envoyer d'abord les messages reliable, plus prioritaires.
-    ServerNetworkOutgoingUpdate_SendReliableMessages(
+    ServerNetworkOutgoing_SendReliableMessages(
         networkState,
         reliableMessages);
 
     // Envoyer ensuite les messages unreliable retenus.
-    ServerNetworkOutgoingUpdate_SendUnreliableMessages(
+    ServerNetworkOutgoing_SendUnreliableMessages(
         networkState,
         lastUnreliablePerConnectionId);
 

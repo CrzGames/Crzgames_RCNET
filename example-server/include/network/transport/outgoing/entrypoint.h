@@ -2,4 +2,4 @@
 
 #include <rcenet/RCENET_enet.h> // EnetHost
 
-void ServerNetworkOutgoingUpdate_DrainCoalesceAndSendMessages(ENetHost* host);
+void ServerNetworkOutgoing_DrainCoalesceAndSendMessages(ENetHost* host);

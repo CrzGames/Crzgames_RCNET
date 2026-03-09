@@ -3,7 +3,7 @@
 
 #include <RCNET/RCNET.h> // RCNET_log
 
-static bool sendSerializedPacket(ENetPeer* peer, NetworkChannel channel, const std::vector<uint8_t>& bytes, enet_uint32 flags)
+static bool ServerNetworkOutgoing_SendPacket(ENetPeer* peer, NetworkChannel channel, const std::vector<uint8_t>& bytes, enet_uint32 flags)
 {
     // Vérification de la validité du peer avant d'essayer d'envoyer un packet.
     if (peer == nullptr)
@@ -45,9 +45,9 @@ static bool sendSerializedPacket(ENetPeer* peer, NetworkChannel channel, const s
     return true;
 }
 
-bool sendServerMatchInitPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes)
+bool ServerNetworkOutgoing_SendMatchInitPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes)
 {
-    return sendSerializedPacket(
+    return ServerNetworkOutgoing_SendPacket(
         peer,
         NetworkChannel::GAME_RELIABLE,
         bytes,
@@ -55,9 +55,9 @@ bool sendServerMatchInitPacketReliable(ENetPeer* peer, const std::vector<uint8_t
     );
 }
 
-bool sendServerWorldStaticStateInitPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes)
+bool ServerNetworkOutgoing_SendWorldStaticStateInitPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes)
 {
-    return sendSerializedPacket(
+    return ServerNetworkOutgoing_SendPacket(
         peer,
         NetworkChannel::GAME_RELIABLE,
         bytes,
@@ -65,9 +65,9 @@ bool sendServerWorldStaticStateInitPacketReliable(ENetPeer* peer, const std::vec
     );
 }
 
-bool sendServerMatchStartPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes)
+bool ServerNetworkOutgoing_SendMatchStartPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes)
 {
-    return sendSerializedPacket(
+    return ServerNetworkOutgoing_SendPacket(
         peer,
         NetworkChannel::GAME_RELIABLE,
         bytes,
@@ -75,9 +75,9 @@ bool sendServerMatchStartPacketReliable(ENetPeer* peer, const std::vector<uint8_
     );
 }
 
-bool sendServerSnapshotFullPacketUnreliable(ENetPeer* peer, const std::vector<uint8_t>& bytes)
+bool ServerNetworkOutgoing_SendSnapshotFullPacketUnreliable(ENetPeer* peer, const std::vector<uint8_t>& bytes)
 {
-    return sendSerializedPacket(
+    return ServerNetworkOutgoing_SendPacket(
         peer,
         NetworkChannel::GAME_UNRELIABLE,
         bytes,
@@ -85,9 +85,9 @@ bool sendServerSnapshotFullPacketUnreliable(ENetPeer* peer, const std::vector<ui
     );
 }
 
-bool sendServerSecureSessionHelloResponsePacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes)
+bool ServerNetworkOutgoing_SendSecureSessionHelloResponsePacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes)
 {
-    return sendSerializedPacket(
+    return ServerNetworkOutgoing_SendPacket(
         peer,
         NetworkChannel::SECURE_SESSION_RELIABLE,
         bytes,
@@ -95,9 +95,9 @@ bool sendServerSecureSessionHelloResponsePacketReliable(ENetPeer* peer, const st
     );
 }
 
-bool sendServerAuthResponsePacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes)
+bool ServerNetworkOutgoing_SendAuthResponsePacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes)
 {
-    return sendSerializedPacket(
+    return ServerNetworkOutgoing_SendPacket(
         peer,
         NetworkChannel::AUTH_RELIABLE,
         bytes,

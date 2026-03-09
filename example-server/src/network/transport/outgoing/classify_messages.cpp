@@ -1,6 +1,6 @@
 #include "network/transport/outgoing/classify_messages.h"
 
-void ServerNetworkOutgoingUpdate_ClassifyOutgoingMessages(
+void ServerNetworkOutgoing_ClassifyOutgoingMessages(
     const std::deque<SimulationToNetworkOUTMessage>& outMessages,
     std::deque<SimulationToNetworkOUTMessage>& reliableMessages,
     std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastUnreliablePerConnectionId)

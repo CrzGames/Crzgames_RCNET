@@ -1,6 +1,6 @@
 #include "network/transport/outgoing/queue_draining.h"
 
-void ServerNetworkOutgoingUpdate_DrainOutgoingMessages(
+void ServerNetworkOutgoing_DrainSimulationToNetworkOutgoingQueue(
     SimulationToNetworkOUTQueue& simToNetQueue,
     std::deque<SimulationToNetworkOUTMessage>& outMessages)
 {
