@@ -560,7 +560,7 @@ if(RCNET_BUILD_EXAMPLE)
   # ============================================================
   # Compile Definitions
   # ============================================================
-  rcnet_target_compile_definitions(${PROJECT_NAME})
+  rcnet_target_compile_definitions(${RCNET_EXAMPLE_SERVER_TARGET_NAME})
 
   # ============================================================
   # Include directories pour l’exemple
