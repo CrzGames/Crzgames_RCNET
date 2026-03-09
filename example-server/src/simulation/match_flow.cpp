@@ -111,8 +111,7 @@ void ServerSimulation_CheckMatchFlow(
             ServerWorldStaticStateInitPacketReliable worldStaticStateInitPacket{};
 
             // Renseigner son type.
-            worldStaticStateInitPacket.header.type =
-                ServerReliablePacketType::SERVER_WORLD_STATIC_STATE_INIT_PACKET_RELIABLE;
+            worldStaticStateInitPacket.header.type = ServerReliablePacketType::SERVER_WORLD_STATIC_STATE_INIT_PACKET_RELIABLE;
 
             // Construire le message simulation -> réseau.
             SimulationToNetworkOUTMessage msg{};
@@ -124,8 +123,7 @@ void ServerSimulation_CheckMatchFlow(
             msg.connectionId = session.connectionId;
 
             // Sérialiser le packet.
-            msg.serializedPacket =
-                serializeServerWorldStaticStateInitPacketReliable(worldStaticStateInitPacket);
+            msg.serializedPacket = serializeServerWorldStaticStateInitPacketReliable(worldStaticStateInitPacket);
 
             // Enqueuer le message pour le thread réseau sortant.
             simToNetQueue.push(msg);
