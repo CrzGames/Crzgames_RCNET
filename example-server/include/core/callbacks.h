@@ -4,6 +4,8 @@
 
 #include <rcenet/RCENET_enet.h> // ENetHost, ENetEvent
 
+#include <RCNET/RCNET.h>
+
 void rcnet_unload(void);
 void rcnet_load(void);
 void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event);

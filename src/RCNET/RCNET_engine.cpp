@@ -1157,7 +1157,6 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, const RCNET_ServerConfig* 
     g_natsClient.connection = nullptr;
     g_natsClient.subscriptions = nullptr;
     g_natsClient.subscriptionCount = 0;
-    g_natsClient.jetStreamContext = nullptr;
 
     // Reset le tick logique exposé.
     g_serverSimulationTick.store(0, std::memory_order_relaxed);
