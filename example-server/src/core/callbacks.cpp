@@ -15,8 +15,12 @@ void rcnet_load(void)
     if (!ServerCryptoKx_Initialize(networkState.cryptoKxState))
     {
         rcnet_engine_eventQuit(); // Arrêt du moteur en cas d'échec de l'initialisation
-        RCNET_log(RCNET_LOG_ERROR, "Failed to initialize server crypto KX state\n");
+        RCNET_log(RCNET_LOG_ERROR, "Failed to initialize server crypto KX state");
     }
+
+    // Dire que le serveur est prêt dès que la fin de cette fonction est atteinte.
+    // En effet, le moteur ne commencera à traiter les connexions entrantes et les ticks de simulation qu'après l'appel de cette fonction.
+    RCNET_log(RCNET_LOG_INFO, "Server is ready");
 }
 
 void rcnet_unload(void)
