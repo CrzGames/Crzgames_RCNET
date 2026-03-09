@@ -32,7 +32,7 @@ extern "C" {
  * - networkIncomingPollTimeoutMs : durée max de poll réseau entrant en ms
  * - networkOutgoingTickHz  : fréquence des envois réseau sortants
  * - simulationTickHz       : fréquence de simulation serveur
- * - httpThreadSleepMs      : Durée de sommeil appliquée entre deux itérations du thread HTTP.
+ * - httpThreadSleepMs      : durée de sommeil appliquée entre deux itérations du thread HTTP.
  */
 typedef struct RCNET_ServerConfig
 {
@@ -58,7 +58,7 @@ typedef struct RCNET_ServerConfig
  * - rcnet_simulation_update        : logique de simulation
  * - rcnet_network_incoming_update  : traitement des événements réseau entrants
  * - rcnet_network_outgoing_update  : envoi des données réseau sortantes
- * - rcnet_http_update              : tick du thread HTTP
+ * - rcnet_http_update              : logique de traitement HTTP (ex: pour l'API du jeu, etc.)
  *
  * IMPORTANT :
  * - rcnet_simulation_update() tourne dans le thread simulation
@@ -161,7 +161,7 @@ uint32_t rcnet_engine_durationMsToTicks(uint32_t durationMs);
 uint32_t rcnet_engine_ticksToDurationMs(uint32_t ticks);
 
 /**
- * @brief Indique si le tick courant de la simulation doit produire un flux destiné au réseau sortant.
+ * \brief Indique si le tick courant de la simulation doit produire un flux destiné au réseau sortant.
  *
  * Cette fonction sert à cadencer la production des messages que la simulation
  * pousse dans le thread réseau sortant.
@@ -180,10 +180,10 @@ uint32_t rcnet_engine_ticksToDurationMs(uint32_t ticks);
  * - `targetRateHz = 3` déclenche à environ 3 Hz ;
  * - `targetRateHz = 60` reste plafonné à 32 Hz.
  *
- * @param currentTick Tick courant de simulation.
- * @param targetRateHz Fréquence cible souhaitée pour ce flux sortant.
+ * \param currentTick Tick courant de simulation.
+ * \param targetRateHz Fréquence cible souhaitée pour ce flux sortant.
  *
- * @return `true` si la simulation doit produire ce flux à ce tick,
+ * \return `true` si la simulation doit produire ce flux à ce tick,
  *         `false` sinon.
  */
 bool rcnet_engine_isNetworkOutgoingProductionTick(uint64_t currentTick, uint32_t targetRateHz);
