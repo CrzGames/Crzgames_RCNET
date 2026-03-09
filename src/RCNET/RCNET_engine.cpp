@@ -277,7 +277,7 @@ static bool rcnet_engine_initRCENet(void)
     if (enet_initialize() < 0)
     {
         // Log erreur si l'initialisation échoue.
-        RCNET_log(RCNET_LOG_CRITICAL, "Erreur lors de l'initialisation de RCEnet.");
+        RCNET_log(RCNET_LOG_CRITICAL, "Erreur lors de l initialisation de RCEnet.");
         return false;
     }
 
@@ -308,14 +308,14 @@ static bool rcnet_engine_initOpenssl(void)
     {
         unsigned long err = ERR_get_error();
         RCNET_log(RCNET_LOG_ERROR,
-                  "Erreur lors de l'initialisation d'OpenSSL%s%s",
+                  "Erreur lors de l initialisation d OpenSSL%s%s",
                   err ? " : " : "",
                   err ? ERR_error_string(err, nullptr) : "");
         return false;
     }
 
     // Log succès.
-    RCNET_log(RCNET_LOG_INFO, "OpenSSL initialisé avec succès.");
+    RCNET_log(RCNET_LOG_INFO, "OpenSSL initialiser avec succes.");
     return true;
 }
 
@@ -328,12 +328,12 @@ static bool rcnet_engine_initLibSodium(void)
     if (sodium_init() < 0)
     {
         // Log erreur en cas d'échec.
-        RCNET_log(RCNET_LOG_ERROR, "Erreur lors de l'initialisation de libsodium.");
+        RCNET_log(RCNET_LOG_ERROR, "Erreur lors de l initialisation de libsodium.");
         return false;
     }
 
     // Log succès.
-    RCNET_log(RCNET_LOG_INFO, "libsodium initialisé avec succès.");
+    RCNET_log(RCNET_LOG_INFO, "libsodium initialiser avec succes.");
     return true;
 }
 
@@ -674,6 +674,9 @@ void rcnet_engine_eventQuit(void)
  */
 static void rcnet_engine_httpThreadMain(void)
 {
+    // Log de démarrage du thread HTTP.
+    RCNET_log(RCNET_LOG_INFO, "Thread HTTP demarrer.");
+
     // Tant que le serveur tourne.
     while (serverIsRunning.load(std::memory_order_relaxed))
     {
@@ -699,19 +702,22 @@ static void rcnet_engine_httpThreadMain(void)
  */
 static void rcnet_engine_natsThreadMain(void)
 {
+    // Log de démarrage du thread NATS.
+    RCNET_log(RCNET_LOG_INFO, "Thread NATS demarrer.");
+
     bool natsReady = false;
 
     // Initialise le client NATS si activé.
     if (g_natsEnabled)
     {
         // Note : on passe les paramètres de connexion NATS via des variables globales
-        if (rcnet_nats_initialize(
+        if (!rcnet_nats_initialize(
                 &g_natsClient,
                 g_natsServerURL,
                 g_natsUseTLS,
                 g_natsSkipVerifyCertsServer,
                 g_natsPublicKeyNKey,
-                g_natsPrivateKeySeedNKey) != 0)
+                g_natsPrivateKeySeedNKey))
         {
             RCNET_log(RCNET_LOG_ERROR, "Failed to initialize NATS client.");
             rcnet_engine_eventQuit();
@@ -757,6 +763,8 @@ static void rcnet_engine_natsThreadMain(void)
  */
 static void rcnet_engine_simulationThreadMain(void)
 {
+    RCNET_log(RCNET_LOG_INFO, "Thread simulation demarrer.");
+
     // Lit le temps courant au démarrage du thread.
     uint64_t nowNs = rcnet_engine_getCurrentTimeNs();
 
@@ -827,6 +835,9 @@ static void rcnet_engine_simulationThreadMain(void)
  */
 static void rcnet_engine_networkThreadMain(void)
 {
+    // Log de démarrage du thread réseau.
+    RCNET_log(RCNET_LOG_INFO, "Thread reseau demarrer.");
+
     // ------------------------------------------------------------------------
     // A) Création du host ENet
     // ------------------------------------------------------------------------

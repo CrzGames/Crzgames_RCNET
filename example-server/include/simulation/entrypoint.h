@@ -2,4 +2,4 @@
 
 #include <cstdint> // uint64_t
 
-void ServerSimulation_RunCurrentTick(uint64_t currentTick, uint64_t serverTimeNs, uint64_t dtNs, double dt);
+void ServerSimulation_DrainNetworkIncomingAndHttpAndNatsMessages_AndRunSimulationForCurrentTick(uint64_t currentTick, uint64_t serverTimeNs, uint64_t dtNs, double dt);

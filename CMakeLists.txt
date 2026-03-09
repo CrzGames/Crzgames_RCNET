@@ -503,6 +503,11 @@ if(RCNET_BUILD_EXAMPLE)
   set(RCNET_EXAMPLE_SERVER_TARGET_NAME "rcnet_example_server")
 
   # ============================================================
+  # Environnement de build pour l’exemple serveur
+  # ============================================================
+  set(SERVER_ENV "dev" CACHE STRING "Environment for the example server (dev, staging, production)")
+
+  # ============================================================
   # server example compile definitions
   # ============================================================
   function(rcnet_target_compile_definitions target_name)
