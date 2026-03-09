@@ -22,15 +22,19 @@
 ├── 📁 cmake                          
 │   └── 📄 setup_dependencies.cmake   # Script CMake chargé de lire `dependencies.txt` et cloner/configurer les dépendances dans `/dependencies`
 ├── 📁 dependencies (git ignored)     # Répertoire local contenant les dépendances clonées (ignoré par Git pour ne pas polluer le repo)
-│   ├── 📁 Crzgames_Libraries         # Librairies précompilées (OpenSSL, hiredis, nats, soduim) propres à Crzgames
-│   ├── 📁 SDL                        # SDL3 
 │   ├── 📁 cJSON                      # JSON
 │   ├── 📁 cpp-httplib                # HTTP/HTTPS
+│   ├── 📁 Crzgames_Libraries         # Librairies précompilée (OpenSSL, RCENET, libsodium, agones, grpc)
+│   ├── 📁 Crzgames_RC2D              # Librairie client pour l'exemple du client
+│   ├── 📁 hiredis                    # Redis
+│   ├── 📁 libwebsockets              # Websockets
+│   ├── 📁 nats                       # Broker message
+│   ├── 📁 SDL                        # SDL3 for log
 ├── 📁 docs                           # Documentation du moteur de serveur (pages Markdown, auto-générées)
-├── 📁 example                        # Exemples d’utilisation du moteur de serveur de jeu RCNET (projets de démo, test de fonctionnalités)
+├── 📁 example-client                 # Exemple d'un client
+├── 📁 example-server                 # Exemple d'un serveur
 ├── 📁 include                        # En-têtes publics exposés aux utilisateurs de la lib (API du moteur de serveur)
 ├── 📁 src                            # Code source interne de la bibliothèque RCNET (implémentations .c)
-├── 📁 tests                          # Tests unitaires (avec Criterion) pour vérifier les modules du moteur
 ├── 📄 .gitignore                     # Fichiers/dossiers à ignorer par Git (ex: /dependencies, builds temporaires)
 ├── 📄 CHANGELOG.md                   # Historique des versions avec les modifications apportées à chaque release
 ├── 📄 CMakeLists.txt                 # Point d’entrée de la configuration CMake
@@ -115,12 +119,12 @@
 |------------|----------------------------------------|----------------|----------------------|
 | **LZ4** | v1.10.0 | Compression des packets UDP | ⭐ Obligatoire (intégré statiquement) |
 | **cJSON** | v1.7.19 | JSON | ⭐ Obligatoire (intégré statiquement) |
-| **SDL3** | commit `29ca920fdf7ccfd0a73f4cb3427bb84815f9b7f3` | Gestion des thread | ⭐ Obligatoire |
-| **RCENet** | v1.4.6 | Communication réseau UDP (fork ENet) | ⭐ Obligatoire |
+| **SDL3** | commit `101273f429a336615218b7790ea677c5222e9d81` | Gestion des thread | ⭐ Obligatoire |
+| **RCENet** | v1.6.1 | Communication réseau UDP (fork ENet) | ⭐ Obligatoire |
 | **OpenSSL** | v3.6.1 | Hashing, chiffrement, crypto + cpp-httplib à besoin de OpenSSL >= 3.x.x | ⭐ Obligatoire |
-| **cpp-httplib** | v1.34.0 | HTTP/HTPS | ⭐ Obligatoire |
+| **cpp-httplib** | v0.37.0 | HTTP/HTPS | ⭐ Obligatoire |
 | **NATS** | v3.12.0 | Communication inter services | ⭐ Obligatoire |
-| **hiredis** | v1.3.0| Base de donnée en mémoire | ⭐ Obligatoire |
+| **hiredis** | v1.3.0 | Base de donnée en mémoire | ⭐ Obligatoire |
 
 <br /><br />
 
@@ -135,7 +139,7 @@
   ```
 2. Steps by Platform :
   ```bash  
-  # Windows (x64) :
+  # Windows (x64/arm64) :
   1. Requirements : Windows >= 10.
   2. Download and Install Visual Studio == 2022 (MSVC >= v143 + Windows SDK >= 10) : https://visualstudio.microsoft.com/fr/downloads/
   3. Download and Install CMake >= 3.28.0 : https://cmake.org/download/ and add PATH ENVIRONMENT.
@@ -146,7 +150,7 @@
 
 
 
-  # Linux (x64) :
+  # Linux (x64/arm64) :
   1. Requirements : glibc >= 2.35.0 (Exemple : Ubuntu >= 22.04 OR Debian >= 12.0), checker via : ldd --version
   2. Download and Install (gcc, g++, make..) :
      sudo apt update
@@ -204,7 +208,7 @@ cmake -P cmake/setup_dependencies.cmake
 
 <br /><br />
 
-## 🧱 Générer RCNET (lib statique) + Projet d'exemple
+## 🧱 Générer RCNET (lib statique) + Projet d'exemple Client/Serveur
 1. **Par défaut** : ces scripts **génèrent un projet CMake** dans `./build/`, puis **compilent RCNET en bibliothèque statique** et **construisent le projet d’exemple** pour la plateforme choisie.
 
    - ✅ **Si le projet est déjà généré** (ex: solution **Visual Studio 2022**, projet Xcode, Ninja, etc.) : vous pouvez simplement **recompiler depuis votre IDE** ou via votre outil de build (Build/Run) **sans relancer les scripts**, tant que la configuration CMake ne change pas.
@@ -215,12 +219,17 @@ cmake -P cmake/setup_dependencies.cmake
 
    - 🧩 **Qu’est-ce qui demande une recompilation ?**
      - Si vous modifiez `src/RCNET/**` ou `include/RCNET/**` → vous modifiez la **lib RCNET** → **recompiler RCNET** (IDE ou scripts).
-     - Si vous modifiez `example/src/**` ou `example/include/**` → vous modifiez **l’exemple** → **recompiler l’exemple** (IDE ou scripts).
+     - Si vous modifiez `example-client/src/**` / `example-client/include/**` ou `example-server/src/**` / `example-server/include/**` → vous modifiez **l’exemple** → **recompiler l’exemple** (IDE ou scripts).
 
 ```bash
 # Linux - x64
 chmod +x ./build-scripts/generate-project/linux-x64.sh
 ./build-scripts/generate-project/linux-x64.sh
+
+
+# Linux - arm64
+chmod +x ./build-scripts/generate-project/linux-arm64.sh
+./build-scripts/generate-project/linux-arm64.sh
 
 
 # macOS - Apple Silicon arm64
@@ -230,6 +239,10 @@ chmod +x ./build-scripts/generate-project/macos-arm64.sh
 
 # Windows - x64
 .\build-scripts\generate-project\windows-x64.bat
+
+
+# Windows - arm64
+.\build-scripts\generate-project\windows-arm64.bat
 ```
 3. Il y a un dossier `build` à la racine qui est générer.
 ```bash
