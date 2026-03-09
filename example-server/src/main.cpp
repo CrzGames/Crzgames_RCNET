@@ -15,11 +15,8 @@ int main(int argc, char* argv[])
     rcnet_logger_set_priority(RCNET_LOG_DEBUG);
 #endif
 
-    // Init à 0 pour éviter des pointeurs non initialisés
-    RCNET_Callbacks myServerCallbacks;
-    std::memset(&myServerCallbacks, 0, sizeof(myServerCallbacks));
-
-    // Appliquer nos callbacks
+    // Préparer les callbacks
+    RCNET_Callbacks myServerCallbacks{};
     myServerCallbacks.rcnet_unload = rcnet_unload;
     myServerCallbacks.rcnet_load = rcnet_load;
     myServerCallbacks.rcnet_network_incoming_update = rcnet_network_incoming_update;
@@ -29,7 +26,7 @@ int main(int argc, char* argv[])
     myServerCallbacks.rcnet_nats_update = rcnet_nats_update;
 
     // Construire la config serveur
-    RCNET_ServerConfig config;
+    RCNET_ServerConfig config{};
     config.port = ServerConfig::serverPort;
     config.maxClients = ServerConfig::maxClientsConnected;
     config.channelCount = ServerConfig::channelCount;
@@ -38,6 +35,18 @@ int main(int argc, char* argv[])
     config.networkIncomingPollTimeoutMs = ServerConfig::networkIncomingPollTimeoutMs;
     config.httpThreadSleepMs = ServerConfig::httpThreadSleepMs;
     config.natsThreadSleepMs = ServerConfig::natsThreadSleepMs;
+    // Configuration NATS
+    config.natsConfig.enabled = ServerConfig::natsEnabled;
+    config.natsConfig.natsServerURL = ServerConfig::natsServerURL.data();
+    config.natsConfig.useTLS = ServerConfig::natsUseTLS;
+    config.natsConfig.skipVerifyCertsServer = ServerConfig::natsSkipVerifyCertsServer;
+#if SERVER_ENV_DEV
+    config.natsConfig.publicKeyNKey = ServerConfig::natsPublicKeyNKey.data();
+    config.natsConfig.privateKeySeedNKey = ServerConfig::natsPrivateKeySeedNKey.data();
+#else
+    config.natsConfig.publicKeyNKey = std::getenv("NATS_NKEY_PUBLIC");
+    config.natsConfig.privateKeySeedNKey = std::getenv("NATS_NKEY_PRIVATE");
+#endif
 
     // Lancer le moteur avec nos callbacks et les tick rates désirés
     if(!rcnet_engine_run(&myServerCallbacks, &config))

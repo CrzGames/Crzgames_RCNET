@@ -8,7 +8,7 @@
 struct ServerConfig
 {
     // ------------------------------------------------------------------------
-    // Configuration du serveur
+    // Configuration du serveur ENet
     // ------------------------------------------------------------------------
 
     // Port d'écoute du serveur
@@ -19,6 +19,11 @@ struct ServerConfig
 
     // Nombre maximum de clients connectés
     static constexpr uint32_t maxClientsConnected = 2;
+
+
+    // ------------------------------------------------------------------------
+    // Configuration des tick rates du moteur
+    // ------------------------------------------------------------------------
 
     // Fréquence de tick de simulation du serveur en Hz (ex: 128)
     static constexpr uint32_t simulationTickRateHz = 128;
@@ -35,15 +40,42 @@ struct ServerConfig
     // Durée de sommeil entre chaque tick du thread NATS en ms (ex: 1)
     static constexpr uint32_t natsThreadSleepMs = 1;
 
+
     // --------------------------------------------------------------------------
     // API externe (pour les appels HTTP vers l'API du jeu, ex: pour checker les tokens d'authentification, etc.)
     // --------------------------------------------------------------------------
 
 #if SERVER_ENV_DEV
-    static constexpr std::string baseUrlApi = "http://localhost:3400";
+    static constexpr std::string_view baseUrlApi = "http://localhost:3400";
 #elif SERVER_ENV_STAGING
-    static constexpr std::string baseUrlApi = "https://staging.api.aetherroyale.crzgames.com";
+    static constexpr std::string_view baseUrlApi = "https://staging.api.aetherroyale.crzgames.com";
 #elif SERVER_ENV_PRODUCTION
-    static constexpr std::string baseUrlApi = "https://api.aetherroyale.crzgames.com";
+    static constexpr std::string_view baseUrlApi = "https://api.aetherroyale.crzgames.com";
+#endif
+
+
+    // ------------------------------------------------------------------------
+    // Configuration NATS
+    // ------------------------------------------------------------------------
+
+    // Indique si le serveur doit utiliser NATS ou pas
+    static constexpr bool natsEnabled = false;
+
+    // Bypass la vérification des certificats TLS du serveur NATS (uniquement si `natsUseTLS` est à `true`)
+    static constexpr bool natsSkipVerifyCertsServer = true;
+
+#if SERVER_ENV_DEV
+    static constexpr std::string_view natsServerURL = "nats://localhost:4222";
+    static constexpr bool natsUseTLS = false;
+    static constexpr std::string_view natsPublicKeyNKey = "UCFS4XRTGO7OUO3GCYYXOU4CYQJRPJ47DKJ2VMPLOX2EFEENU2BG44RW";
+    static constexpr std::string_view natsPrivateKeySeedNKey = "SUAG4ONEN4NCQHDTVEVW4TSYTSTOMSUBI4QOUIBSUQXKAD4HJ5PSK6QLYM";
+#elif SERVER_ENV_STAGING
+    static constexpr std::string_view natsServerURL = "tls://staging.nats.aetherroyale.crzgames.com:4222";
+    static constexpr bool natsUseTLS = true;
+    // En staging, les clés NKey sont fournies via des variables d'environnement pour éviter de les hardcoder dans le code source.
+#elif SERVER_ENV_PRODUCTION
+    static constexpr std::string_view natsServerURL = "tls://nats.aetherroyale.crzgames.com:4222";
+    static constexpr bool natsUseTLS = true;
+    // En production, les clés NKey sont fournies via des variables d'environnement pour éviter de les hardcoder dans le code source.   
 #endif
 };

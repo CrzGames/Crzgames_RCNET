@@ -503,6 +503,33 @@ if(RCNET_BUILD_EXAMPLE)
   set(RCNET_EXAMPLE_SERVER_TARGET_NAME "rcnet_example_server")
 
   # ============================================================
+  # server example compile definitions
+  # ============================================================
+  function(rcnet_target_compile_definitions target_name)
+    # Environement de build (dev/staging/production) : ajoute des macros préprocesseur pour différencier les builds
+    # dans le code source, par exemple pour activer des logs de debug en dev mais pas en production.
+    if(SERVER_ENV STREQUAL "dev")
+      target_compile_definitions(${target_name} PRIVATE
+        SERVER_ENV_DEV=1
+        SERVER_ENV_STAGING=0
+        SERVER_ENV_PRODUCTION=0
+      )
+    elseif(SERVER_ENV STREQUAL "staging")
+      target_compile_definitions(${target_name} PRIVATE
+        SERVER_ENV_DEV=0
+        SERVER_ENV_STAGING=1
+        SERVER_ENV_PRODUCTION=0
+      )
+    else() # production
+      target_compile_definitions(${target_name} PRIVATE
+        SERVER_ENV_DEV=0
+        SERVER_ENV_STAGING=0
+        SERVER_ENV_PRODUCTION=1
+      )
+    endif()
+  endfunction()
+
+  # ============================================================
   # Fichiers source de l’exemple
   #
   # Récupère automatiquement tous les fichiers sources .cpp de manière récursive 
@@ -529,6 +556,11 @@ if(RCNET_BUILD_EXAMPLE)
     ${EXAMPLE_SOURCES} 
     ${EXAMPLE_HEADERS}
   )
+
+  # ============================================================
+  # Compile Definitions
+  # ============================================================
+  rcnet_target_compile_definitions(${PROJECT_NAME})
 
   # ============================================================
   # Include directories pour l’exemple
