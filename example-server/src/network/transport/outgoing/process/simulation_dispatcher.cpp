@@ -5,16 +5,16 @@
 
 void ServerNetworkOutgoing_ProcessSimulationDispatcher(
     NetworkState& networkState,
-    const std::deque<SimulationToNetworkOUTMessage>& reliableMessages,
-    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastUnreliablePerConnectionId)
+    ServerNetworkOutgoingPreparedMessages& preparedMessages)
 {
     // Traiter d'abord les messages reliable.
     ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleReliableMessages(
         networkState,
-        reliableMessages);
+        preparedMessages.reliableMessages);
 
     // Traiter ensuite les messages unreliable.
     ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleUnreliableMessages(
         networkState,
-        lastUnreliablePerConnectionId);
+        preparedMessages.lastSnapshotPerConnectionId,
+        preparedMessages.lastClockSyncPerConnectionId);
 }

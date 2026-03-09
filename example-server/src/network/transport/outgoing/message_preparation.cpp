@@ -2,8 +2,7 @@
 
 void ServerNetworkOutgoing_SplitReliableAndCoalesceUnreliableMessages(
     const std::deque<SimulationToNetworkOUTMessage>& outMessages,
-    std::deque<SimulationToNetworkOUTMessage>& reliableMessages,
-    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastUnreliablePerConnectionId)
+    ServerNetworkOutgoingPreparedMessages& preparedMessages)
 {
     // Parcourir tous les messages sortants produits par la simulation.
     for (std::deque<SimulationToNetworkOUTMessage>::const_iterator it = outMessages.begin();
@@ -21,13 +20,19 @@ void ServerNetworkOutgoing_SplitReliableAndCoalesceUnreliableMessages(
             msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_START_PACKET_RELIABLE)
         {
             // Ajouter le message à la liste des reliable à envoyer.
-            reliableMessages.push_back(msg);
+            preparedMessages.reliableMessages.push_back(msg);
         }
         else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_SNAPSHOT_FULL_PACKET_UNRELIABLE)
         {
             // Pour les unreliable, ne garder que le dernier message
             // par connectionId pendant ce tick réseau sortant.
-            lastUnreliablePerConnectionId[msg.connectionId] = msg;
+            preparedMessages.lastSnapshotPerConnectionId[msg.connectionId] = msg;
+        }
+        else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_CLOCK_SYNC_PACKET_UNRELIABLE)
+        {
+            // Pour les unreliable, ne garder que le dernier message
+            // par connectionId pendant ce tick réseau sortant.
+            preparedMessages.lastClockSyncPerConnectionId[msg.connectionId] = msg;
         }
     }
 }

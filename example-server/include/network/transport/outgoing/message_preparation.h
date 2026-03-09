@@ -7,6 +7,23 @@
 #include "core/threading/queues/simulation_to_network_outgoing.h"
 
 /**
+ * @brief Structure regroupant les messages sortants préparés pour le tick réseau sortant courant.
+ *
+ * Cette structure contient :
+ * - une deque de messages reliable à envoyer dans l'ordre de production,
+ * - une table de coalescing pour les messages unreliable de type snapshot full,
+ *   ne gardant que le dernier message pertinent par connectionId,
+ * - une table de coalescing pour les messages unreliable de type clock sync,
+ *   ne gardant que le dernier message pertinent par connectionId.
+ */
+struct ServerNetworkOutgoingPreparedMessages
+{
+    std::deque<SimulationToNetworkOUTMessage> reliableMessages;
+    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage> lastSnapshotPerConnectionId;
+    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage> lastClockSyncPerConnectionId;
+};
+
+/**
  * @brief Classe les messages sortants produits par la simulation.
  *
  * Les messages reliable sont conservés dans l'ordre de production.
@@ -21,5 +38,4 @@
  */
 void ServerNetworkOutgoing_SplitReliableAndCoalesceUnreliableMessages(
     const std::deque<SimulationToNetworkOUTMessage>& outMessages,
-    std::deque<SimulationToNetworkOUTMessage>& reliableMessages,
-    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastUnreliablePerConnectionId);
+    ServerNetworkOutgoingPreparedMessages& preparedMessages);

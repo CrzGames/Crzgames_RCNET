@@ -7,16 +7,18 @@
 #include "core/threading/queues/simulation_to_network_outgoing.h"
 
 /**
- * @brief Traite et envoie les messages unreliable produits par la simulation.
+ * @brief Traite les messages unreliable issus de la simulation.
  *
- * Cette fonction parcourt les derniers messages unreliable retenus pour le tick
- * courant, résout le peer cible et applique si nécessaire des patchs de dernière
- * minute avant l'envoi effectif via ENet.
+ * Cette fonction reçoit les messages unreliable coalescés par connectionId,
+ * applique les patchs de dernière minute nécessaires (ex: assignation d'un
+ * identifiant de snapshot au moment de l'envoi), puis envoie les packets
+ * correspondants à chaque client.
  *
- * @param networkState État réseau global du serveur.
- * @param lastUnreliablePerConnectionId Dernier message unreliable retenu pour
- *        chaque connectionId.
+ * @param networkState État réseau global du serveur, utilisé pour accéder aux sessions clients.
+ * @param lastUnreliablePerConnectionId Dernier message unreliable retenu
+ *        pour chaque connectionId, à traiter et envoyer.
  */
 void ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleUnreliableMessages(
     NetworkState& networkState,
-    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastUnreliablePerConnectionId);
+    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastSnapshotPerConnectionId,
+    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastClockSyncPerConnectionId);

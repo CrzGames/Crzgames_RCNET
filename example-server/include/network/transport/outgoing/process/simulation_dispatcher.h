@@ -6,6 +6,7 @@
 
 #include "network/state.h"
 #include "core/threading/queues/simulation_to_network_outgoing.h"
+#include "network/transport/outgoing/message_preparation.h"
 
 /**
  * @brief Dispatch le traitement des messages simulation -> réseau sortant.
@@ -21,5 +22,4 @@
  */
 void ServerNetworkOutgoing_ProcessSimulationDispatcher(
     NetworkState& networkState,
-    const std::deque<SimulationToNetworkOUTMessage>& reliableMessages,
-    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastUnreliablePerConnectionId);
+    ServerNetworkOutgoingPreparedMessages& preparedMessages);

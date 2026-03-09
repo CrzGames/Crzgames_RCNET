@@ -5,9 +5,7 @@
 #include "network/transport/outgoing/queue_draining.h"
 #include "network/transport/outgoing/process/simulation_dispatcher.h"
 
-#include <cstdint>       // uint32_t
-#include <deque>         // std::deque
-#include <unordered_map> // std::unordered_map
+#include <deque> // std::deque
 
 void ServerNetworkOutgoing_DrainSimulationMessagesAndSendPackets(ENetHost* host)
 {
@@ -31,24 +29,22 @@ void ServerNetworkOutgoing_DrainSimulationMessagesAndSendPackets(ENetHost* host)
         simToNetQueue,
         outMessages);
 
-    // Préparer le conteneur des messages reliable à envoyer dans l'ordre.
-    std::deque<SimulationToNetworkOUTMessage> reliableMessages;
+    // Préparer la structure qui recevra les messages sortants
+    // déjà classés et coalescés par famille.
+    ServerNetworkOutgoingPreparedMessages preparedMessages{};
 
-    // Préparer le conteneur des derniers unreliable retenus par connexion.
-    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage> lastUnreliablePerConnectionId;
-
-    // Classer les messages sortants en séparant les reliable (ordre préservé)
-    // et en coalesçant les unreliable (dernier message retenu par connectionId).
+    // Classer les messages sortants en :
+    // - reliable conservés dans l'ordre
+    // - snapshots unreliable coalescés par connectionId
+    // - clock sync unreliable coalescés par connectionId
     ServerNetworkOutgoing_SplitReliableAndCoalesceUnreliableMessages(
         outMessages,
-        reliableMessages,
-        lastUnreliablePerConnectionId);
+        preparedMessages);
 
     // Dispatcher le traitement des messages issus de la simulation.
     ServerNetworkOutgoing_ProcessSimulationDispatcher(
         networkState,
-        reliableMessages,
-        lastUnreliablePerConnectionId);
+        preparedMessages);
 
     // Forcer le flush ENet pour limiter la latence d'envoi.
     enet_host_flush(host);

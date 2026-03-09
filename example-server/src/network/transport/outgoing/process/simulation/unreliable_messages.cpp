@@ -12,7 +12,7 @@
 
 #include <RCNET/RCNET.h>
 
-static void ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleUnreliableMessages_SendSnapshotFull(
+static void ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleSnapshotFullMessage(
     NetworkState& networkState,
     ENetPeer* peer,
     const SimulationToNetworkOUTMessage& msg)
@@ -68,12 +68,13 @@ static void ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleUnreliableMe
 
 void ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleUnreliableMessages(
     NetworkState& networkState,
-    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastUnreliablePerConnectionId)
+    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastSnapshotPerConnectionId,
+    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastClockSyncPerConnectionId)
 {
-    // Parcourir le dernier unreliable retenu pour chaque connexion.
+    // Parcourir tous les messages unreliable de type snapshot full coalescés par connectionId.
     for (std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>::iterator it =
-             lastUnreliablePerConnectionId.begin();
-         it != lastUnreliablePerConnectionId.end();
+            lastSnapshotPerConnectionId.begin();
+         it != lastSnapshotPerConnectionId.end();
          ++it)
     {
         // Référence directe vers le message courant.
@@ -93,10 +94,38 @@ void ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleUnreliableMessages(
         // Envoyer le message unreliable en fonction de son type exact.
         if (msg.type == SimulationToNetworkOUTMessageType::SERVER_SNAPSHOT_FULL_PACKET_UNRELIABLE)
         {
-            ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleUnreliableMessages_SendSnapshotFull(
+            ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleSnapshotFullMessage(
                 networkState,
                 peer,
                 msg);
+        }
+    }
+
+
+    // Parcourir tous les messages unreliable de type clock sync coalescés par connectionId.
+    for (std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>::iterator it =
+            lastClockSyncPerConnectionId.begin();
+         it != lastClockSyncPerConnectionId.end();
+         ++it)
+    {
+        // Référence directe vers le message courant.
+        SimulationToNetworkOUTMessage& msg = it->second;
+
+        // Résoudre le peer ENet correspondant à la connexion cible.
+        ENetPeer* peer = ServerNetworkOutgoing_FindPeerByConnectionId(
+            networkState,
+            msg.connectionId);
+
+        // Si aucun peer valide n'est trouvé, ignorer ce message.
+        if (peer == nullptr)
+        {
+            continue;
+        }
+
+        // Envoyer le message unreliable en fonction de son type exact.
+        if (msg.type == SimulationToNetworkOUTMessageType::SERVER_CLOCK_SYNC_PACKET_UNRELIABLE)
+        {
+            //ServerNetworkOutgoing_SendClockSyncPacketUnreliable(peer, msg.serializedPacket);
         }
     }
 }
