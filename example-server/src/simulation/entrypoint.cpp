@@ -13,7 +13,7 @@
 
 #include <RCNET/RCNET.h> // rcnet_engine_getNetworkOutgoingTickRateHz
 
-void ServerSimulation_RunFullSimulationPipelineForCurrentTick(
+void ServerSimulation_RunCurrentTick(
     uint64_t currentTick,
     uint64_t serverTimeNs,
     uint64_t dtNs,
