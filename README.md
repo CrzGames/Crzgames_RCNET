@@ -122,7 +122,7 @@
 | **nats** | v3.12.0 | Communication inter services | ⭐ Obligatoire |
 | **libsodium** | v1.0.21 | Crypto | ⭐ Obligatoire |
 | **agones sdk client** | v1.56.0 | Utiliser dans le cluster kubernetes entre le serveur de jeu et kubernetes | ⭐ Obligatoire |
-| **grpc** | v1.76.0 | agones sdk client à besoin de grpc == 1.76.0 | ⭐ Obligatoire |
+| **grpc** | v1.76.0 | agones à besoin de grpc == 1.76.0 | ⭐ Obligatoire |
 
 <br /><br />
 
