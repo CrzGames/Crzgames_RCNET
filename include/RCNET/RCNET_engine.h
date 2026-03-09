@@ -96,7 +96,7 @@ typedef struct RCNET_Callbacks
     void (*rcnet_network_incoming_update)(ENetHost* host, const ENetEvent* event);
     void (*rcnet_network_outgoing_update)(ENetHost* host);
     void (*rcnet_http_update)(void);
-    void (*rcnet_nats_update)(RCNET_NATSClient* client);
+    void (*rcnet_nats_update)(RCNET_NATSClient* natsClient);
 } RCNET_Callbacks;
 
 // ============================================================================
