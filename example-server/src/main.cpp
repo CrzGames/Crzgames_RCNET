@@ -48,13 +48,6 @@ int main(int argc, char* argv[])
     config.natsConfig.privateKeySeedNKey = std::getenv("NATS_NKEY_PRIVATE");
 #endif
 
-    // log la config nats
-    RCNET_log(RCNET_LOG_INFO, "NATS Config - Enabled: %s, ServerURL: %s, UseTLS: %s, SkipVerifyCerts: %s",
-              config.natsConfig.enabled ? "true" : "false",
-              config.natsConfig.natsServerURL ? config.natsConfig.natsServerURL : "null",
-              config.natsConfig.useTLS ? "true" : "false",
-              config.natsConfig.skipVerifyCertsServer ? "true" : "false");
-
     // Lancer le moteur avec nos callbacks et les tick rates désirés
     if(!rcnet_engine_run(&myServerCallbacks, &config))
     {
