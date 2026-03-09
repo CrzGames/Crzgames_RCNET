@@ -36,8 +36,6 @@ bool rcnet_nats_initialize(
         return false;
     }
 
-    memset(client, 0, sizeof(*client));
-
     natsStatus status;
     natsOptions *opts = NULL;
 
@@ -193,14 +191,16 @@ bool rcnet_nats_subscribe(RCNET_NATSClient *client, const char *subject, natsMsg
     natsStatus status = natsConnection_Subscribe(&newSubscription, client->connection, subject, messageHandler, closure);
     
     // Vérifier si l'abonnement a été créé avec succès
-    if (status != NATS_OK) {
+    if (status != NATS_OK) 
+    {
         RCNET_log(RCNET_LOG_ERROR, "Failed to subscribe to subject: %s", natsStatus_GetText(status));
         return false;
     }
 
     // Redimensionner le tableau d'abonnements
     natsSubscription **newSubscriptions = (natsSubscription **)realloc(client->subscriptions, (client->subscriptionCount + 1) * sizeof(natsSubscription*));
-    if (newSubscriptions == NULL) {
+    if (newSubscriptions == NULL) 
+    {
         RCNET_log(RCNET_LOG_ERROR, "Failed to allocate memory for new subscription");
         natsSubscription_Destroy(newSubscription);
         return false;
