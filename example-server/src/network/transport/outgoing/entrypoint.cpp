@@ -1,7 +1,7 @@
 #include "network/transport/outgoing/entrypoint.h"
 
 #include "core/context.h"
-#include "network/transport/outgoing/message_classification.h"
+#include "network/transport/outgoing/message_preparation.h"
 #include "network/transport/outgoing/queue_draining.h"
 #include "network/transport/outgoing/process/simulation_dispatcher.h"
 
@@ -9,7 +9,7 @@
 #include <deque>         // std::deque
 #include <unordered_map> // std::unordered_map
 
-void ServerNetworkOutgoing_DrainCoalesceAndSendMessages(ENetHost* host)
+void ServerNetworkOutgoing_DrainSimulationMessagesAndSendPackets(ENetHost* host)
 {
     // Vérifier que l'host ENet est valide avant toute opération.
     if (host == nullptr)
@@ -37,8 +37,9 @@ void ServerNetworkOutgoing_DrainCoalesceAndSendMessages(ENetHost* host)
     // Préparer le conteneur des derniers unreliable retenus par connexion.
     std::unordered_map<uint32_t, SimulationToNetworkOUTMessage> lastUnreliablePerConnectionId;
 
-    // Classifier les messages sortants entre reliable et unreliable.
-    ServerNetworkOutgoing_ClassifyOutgoingMessages(
+    // Classer les messages sortants en séparant les reliable (ordre préservé)
+    // et en coalesçant les unreliable (dernier message retenu par connectionId).
+    ServerNetworkOutgoing_SplitReliableAndCoalesceUnreliableMessages(
         outMessages,
         reliableMessages,
         lastUnreliablePerConnectionId);

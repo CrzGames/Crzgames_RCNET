@@ -78,7 +78,7 @@ void ServerSimulation_RunFullSimulationPipelineForCurrentTick(
     // Produire les snapshots au rythme maximal du thread réseau sortant.
     if (ServerSimulation_IsNetworkOutgoingProductionTick(currentTick, rcnet_engine_getNetworkOutgoingTickRateHz()))
     {
-        ServerSimulation_Create_FullSnapshots_ForAllSessionsAndEnqueueForNetworkOutgoing(
+        ServerSimulation_CreateFullSnapshotsForAllSessionsAndEnqueueForNetworkOutgoing(
             simulationToNetworkOUTQueue,
             networkState,
             currentTick);
