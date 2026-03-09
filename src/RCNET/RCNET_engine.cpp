@@ -436,6 +436,13 @@ static bool rcnet_engine_init(void)
     // Expose la durée de sommeil du thread NATS entre deux itérations.
     g_natsThreadSleepMs.store(natsThreadSleepMs, std::memory_order_relaxed);
 
+    // Log de la configuration effective du moteur
+    RCNET_log(RCNET_LOG_INFO, "Simulation tick rate: %u Hz", rcnet_engine_getSimulationTickRateHz());
+    RCNET_log(RCNET_LOG_INFO, "Network outgoing tick rate: %u Hz", rcnet_engine_getNetworkOutgoingTickRateHz());
+    RCNET_log(RCNET_LOG_INFO, "Network incoming poll timeout: %u ms", rcnet_engine_getNetworkIncomingPollTimeoutMs());
+    RCNET_log(RCNET_LOG_INFO, "HTTP thread sleep duration: %u ms", rcnet_engine_getHttpThreadSleepMs());
+    RCNET_log(RCNET_LOG_INFO, "NATS thread sleep duration: %u ms", rcnet_engine_getNatsThreadSleepMs());
+
     // Init OK.
     return true;
 }
