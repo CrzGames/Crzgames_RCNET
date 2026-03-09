@@ -26,13 +26,13 @@ void ServerNetworkOutgoing_SplitReliableAndCoalesceUnreliableMessages(
         {
             // Pour les unreliable, ne garder que le dernier message
             // par connectionId pendant ce tick réseau sortant.
-            preparedMessages.lastSnapshotPerConnectionId[msg.connectionId] = msg;
+            preparedMessages.lastSnapshotFullUnreliablePerConnectionId[msg.connectionId] = msg;
         }
         else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_CLOCK_SYNC_PACKET_UNRELIABLE)
         {
             // Pour les unreliable, ne garder que le dernier message
             // par connectionId pendant ce tick réseau sortant.
-            preparedMessages.lastClockSyncPerConnectionId[msg.connectionId] = msg;
+            preparedMessages.lastClockSyncUnreliablePerConnectionId[msg.connectionId] = msg;
         }
     }
 }

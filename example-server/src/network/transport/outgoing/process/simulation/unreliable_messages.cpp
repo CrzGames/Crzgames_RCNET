@@ -68,13 +68,13 @@ static void ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleSnapshotFull
 
 void ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleUnreliableMessages(
     NetworkState& networkState,
-    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastSnapshotPerConnectionId,
-    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastClockSyncPerConnectionId)
+    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastSnapshotFullUnreliablePerConnectionId,
+    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastClockSyncUnreliablePerConnectionId)
 {
     // Parcourir tous les messages unreliable de type snapshot full coalescés par connectionId.
     for (std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>::iterator it =
-            lastSnapshotPerConnectionId.begin();
-         it != lastSnapshotPerConnectionId.end();
+            lastSnapshotFullUnreliablePerConnectionId.begin();
+         it != lastSnapshotFullUnreliablePerConnectionId.end();
          ++it)
     {
         // Référence directe vers le message courant.
@@ -104,8 +104,8 @@ void ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleUnreliableMessages(
 
     // Parcourir tous les messages unreliable de type clock sync coalescés par connectionId.
     for (std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>::iterator it =
-            lastClockSyncPerConnectionId.begin();
-         it != lastClockSyncPerConnectionId.end();
+            lastClockSyncUnreliablePerConnectionId.begin();
+         it != lastClockSyncUnreliablePerConnectionId.end();
          ++it)
     {
         // Référence directe vers le message courant.

@@ -7,20 +7,29 @@
 #include "core/threading/queues/simulation_to_network_outgoing.h"
 
 /**
- * @brief Structure regroupant les messages sortants préparés pour le tick réseau sortant courant.
+ * @brief Regroupe les messages sortants préparés pour le tick réseau sortant courant.
  *
- * Cette structure contient :
- * - une deque de messages reliable à envoyer dans l'ordre de production,
- * - une table de coalescing pour les messages unreliable de type snapshot full,
- *   ne gardant que le dernier message pertinent par connectionId,
- * - une table de coalescing pour les messages unreliable de type clock sync,
- *   ne gardant que le dernier message pertinent par connectionId.
+ * Cette structure contient les messages issus de la simulation après préparation
+ * pour le tick réseau sortant courant.
+ *
+ * Politique de conservation :
+ * - les messages reliable sont tous conservés dans leur ordre de production ;
+ * - certains messages unreliable sont coalescés par famille, en ne gardant
+ *   que le dernier message pertinent par connectionId.
+ *
+ * Contenu actuel :
+ * - `reliableMessages` :
+ *   tous les messages reliable à envoyer dans l'ordre ;
+ * - `lastSnapshotFullUnreliablePerConnectionId` :
+ *   dernier snapshot full unreliable retenu pour chaque connectionId ;
+ * - `lastClockSyncUnreliablePerConnectionId` :
+ *   dernier message clock sync unreliable retenu pour chaque connectionId.
  */
 struct ServerNetworkOutgoingPreparedMessages
 {
     std::deque<SimulationToNetworkOUTMessage> reliableMessages;
-    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage> lastSnapshotPerConnectionId;
-    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage> lastClockSyncPerConnectionId;
+    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage> lastSnapshotFullUnreliablePerConnectionId;
+    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage> lastClockSyncUnreliablePerConnectionId;
 };
 
 /**

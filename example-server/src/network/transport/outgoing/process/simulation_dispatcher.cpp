@@ -15,6 +15,6 @@ void ServerNetworkOutgoing_ProcessSimulationDispatcher(
     // Traiter ensuite les messages unreliable.
     ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleUnreliableMessages(
         networkState,
-        preparedMessages.lastSnapshotPerConnectionId,
-        preparedMessages.lastClockSyncPerConnectionId);
+        preparedMessages.lastSnapshotFullUnreliablePerConnectionId,
+        preparedMessages.lastClockSyncUnreliablePerConnectionId);
 }
