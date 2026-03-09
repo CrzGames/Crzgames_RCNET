@@ -32,6 +32,9 @@ struct ServerConfig
     // Durée de sommeil entre chaque tick du thread HTTP en ms (ex: 5)
     static constexpr uint32_t httpThreadSleepMs = 5;
 
+    // Durée de sommeil entre chaque tick du thread NATS en ms (ex: 1)
+    static constexpr uint32_t natsThreadSleepMs = 1;
+
     // --------------------------------------------------------------------------
     // API externe (pour les appels HTTP vers l'API du jeu, ex: pour checker les tokens d'authentification, etc.)
     // --------------------------------------------------------------------------

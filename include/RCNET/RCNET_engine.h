@@ -14,6 +14,11 @@
 
 #include <rcenet/RCENET_enet.h>
 
+// ============================================================================
+// Dépendance
+// ============================================================================
+#include <RCNET/RCNET_nats.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -21,6 +26,18 @@ extern "C" {
 // ============================================================================
 // Configuration serveur
 // ============================================================================
+
+/**
+ * \brief Configuration pour la connexion NATS.
+ */
+typedef struct RCNET_NATSConfig
+{
+    bool enabled; // Indique si la serveur dois utiliser NATS ou pas
+    const char* natsServerURL;
+    const char* publicKeyNKey;
+    void* privateKeySeedNKey;
+    bool skipVerifyCertsServer;
+} RCNET_NATSConfig;
 
 /**
  * \brief Configuration runtime du serveur RCNET.
@@ -33,6 +50,7 @@ extern "C" {
  * - networkOutgoingTickHz  : fréquence des envois réseau sortants
  * - simulationTickHz       : fréquence de simulation serveur
  * - httpThreadSleepMs      : durée de sommeil appliquée entre deux itérations du thread HTTP.
+ * - natsThreadSleepMs      : durée de sommeil appliquée entre deux itérations du thread NATS.
  */
 typedef struct RCNET_ServerConfig
 {
@@ -43,6 +61,8 @@ typedef struct RCNET_ServerConfig
     uint32_t networkOutgoingTickHz;
     uint32_t simulationTickHz;
     uint32_t httpThreadSleepMs;
+    uint32_t natsThreadSleepMs;
+    RCNET_NATSConfig natsConfig;
 } RCNET_ServerConfig;
 
 // ============================================================================
@@ -59,12 +79,14 @@ typedef struct RCNET_ServerConfig
  * - rcnet_network_incoming_update  : traitement des événements réseau entrants
  * - rcnet_network_outgoing_update  : envoi des données réseau sortantes
  * - rcnet_http_update              : logique de traitement HTTP (ex: pour l'API du jeu, etc.)
+ * - rcnet_nats_update              : logique de traitement NATS (ex: pour la communication inter-serveurs, etc.)
  *
  * IMPORTANT :
  * - rcnet_simulation_update() tourne dans le thread simulation
  * - rcnet_network_incoming_update() tourne dans le thread réseau
  * - rcnet_network_outgoing_update() tourne dans le thread réseau
  * - rcnet_http_update() tourne dans le thread HTTP
+ * - rcnet_nats_update() tourne dans le thread NATS
  */
 typedef struct RCNET_Callbacks
 {
@@ -74,6 +96,7 @@ typedef struct RCNET_Callbacks
     void (*rcnet_network_incoming_update)(ENetHost* host, const ENetEvent* event);
     void (*rcnet_network_outgoing_update)(ENetHost* host);
     void (*rcnet_http_update)(void);
+    void (*rcnet_nats_update)(RCNET_NATSClient* client);
 } RCNET_Callbacks;
 
 // ============================================================================
@@ -87,6 +110,7 @@ typedef struct RCNET_Callbacks
  * - 1 thread simulation
  * - 1 thread réseau
  * - 1 thread HTTP
+ * - 1 thread NATS
  *
  * \param callbacks Pointeur vers les callbacks utilisateur.
  * \param config    Pointeur vers la configuration serveur.
@@ -141,6 +165,11 @@ uint32_t rcnet_engine_getNetworkIncomingPollTimeoutMs(void);
  * \brief Retourne la durée de sommeil du thread HTTP entre deux itérations.
  */
 uint32_t rcnet_engine_getHttpThreadSleepMs(void);
+
+/**
+ * \brief Retourne la durée de sommeil du thread NATS entre deux itérations.
+ */
+uint32_t rcnet_engine_getNatsThreadSleepMs(void);
 
 // ============================================================================
 // Helpers utilitaires

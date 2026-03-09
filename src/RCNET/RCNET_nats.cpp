@@ -9,7 +9,8 @@ static natsStatus customSignatureHandler(char **customErrTxt, unsigned char **si
     const char *seed = (const char*) closure;
     natsStatus status = nats_Sign(seed, nonce, signature, signatureLength);
 
-    if (status != NATS_OK) {
+    if (status != NATS_OK) 
+    {
         *customErrTxt = strdup("Erreur lors de la signature");
     }
 

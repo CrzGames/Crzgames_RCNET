@@ -49,3 +49,8 @@ void rcnet_http_update(void)
 {
 
 }
+
+void rcnet_nats_update(void)
+{
+
+}

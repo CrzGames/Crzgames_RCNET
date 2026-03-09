@@ -50,6 +50,9 @@ static std::atomic<uint32_t> g_networkOutgoingTickRateHz{32};
 // Durée de sommeil du thread HTTP entre deux itérations.
 static std::atomic<uint32_t> g_httpThreadSleepMs{1};
 
+// Durée de sommeil du thread NATS entre deux itérations.
+static std::atomic<uint32_t> g_natsThreadSleepMs{1};
+
 // ============================================================================
 // 2) État global interne moteur
 // ============================================================================
@@ -71,6 +74,14 @@ static uint32_t g_serverChannelCount = 0;
 // IMPORTANT : il n'est manipulé que dans le thread réseau.
 static ENetHost* g_enetServerHost = nullptr;
 
+// Client NATS global.
+static RCNET_NATSClient g_natsClient = {0};
+static bool g_natsEnabled = false;
+static const char* g_natsServerURL = nullptr;
+static const char* g_natsPublicKeyNKey = nullptr;
+static void* g_natsPrivateKeySeedNKey = nullptr;
+static bool g_natsSkipVerifyCertsServer = false;
+
 // ============================================================================
 // 3) Paramètres runtime simulation / réseau
 // ============================================================================
@@ -84,6 +95,9 @@ static uint32_t networkIncomingPollTimeoutMs = 1;
 
 // Durée de sommeil du thread HTTP entre deux itérations.
 static uint32_t httpThreadSleepMs = 1;
+
+// Durée de sommeil du thread NATS entre deux itérations.
+static uint32_t natsThreadSleepMs = 1;
 
 // Fréquence réseau sortante en Hz.
 // Exemple : 32 signifie 32 ticks d'envoi par seconde.
@@ -125,6 +139,9 @@ static uint64_t networkOutgoingTickId = 0;
 // Identifiant interne du tick HTTP.
 static uint64_t httpTickId = 0;
 
+// Identifiant interne du tick NATS.
+static uint64_t natsTickId = 0;
+
 // ============================================================================
 // 6) Paramètres de robustesse des boucles
 // ============================================================================
@@ -152,7 +169,8 @@ static RCNET_Callbacks callbacksServerEngine = {
     nullptr, // rcnet_simulation_update
     nullptr, // rcnet_network_incoming_update
     nullptr, // rcnet_network_outgoing_update
-    nullptr  // rcnet_http_update
+    nullptr,  // rcnet_http_update
+    nullptr  // rcnet_nats_update
 };
 
 // ============================================================================
@@ -354,6 +372,10 @@ static void rcnet_engine_setCallbacks(RCNET_Callbacks* callbacksUser)
     // Si le callback HTTP existe, on l'enregistre.
     if (callbacksUser->rcnet_http_update)
         callbacksServerEngine.rcnet_http_update = callbacksUser->rcnet_http_update;
+
+    // Si le callback NATS existe, on l'enregistre.
+    if (callbacksUser->rcnet_nats_update)
+        callbacksServerEngine.rcnet_nats_update = callbacksUser->rcnet_nats_update;
 }
 
 // ============================================================================
@@ -410,6 +432,9 @@ static bool rcnet_engine_init(void)
     // Expose la durée de sommeil du thread HTTP entre deux itérations.
     g_httpThreadSleepMs.store(httpThreadSleepMs, std::memory_order_relaxed);
 
+    // Expose la durée de sommeil du thread NATS entre deux itérations.
+    g_natsThreadSleepMs.store(natsThreadSleepMs, std::memory_order_relaxed);
+
     // Init OK.
     return true;
 }
@@ -418,7 +443,6 @@ static bool rcnet_engine_init(void)
  * \brief Nettoie le moteur.
  *
  * NOTE : on conserve volontairement exactement ton ordre :
- * - cleanup OpenSSL
  * - cleanup RCENet
  */
 static void rcnet_engine_quit(void)
@@ -501,6 +525,19 @@ static inline void rcnet_engine_httpUpdate(void)
         callbacksServerEngine.rcnet_http_update();
 }
 
+/**
+ * \brief Exécute un tick NATS.
+ */
+static inline void rcnet_engine_natsUpdate(RCNET_NATSClient* client)
+{
+    // Incrémente le compteur interne de tick NATS.
+    natsTickId++;
+
+    // Si le callback utilisateur existe, on l'appelle.
+    if (callbacksServerEngine.rcnet_nats_update != nullptr)
+        callbacksServerEngine.rcnet_nats_update(client);
+}
+
 // ============================================================================
 // 13) Getters publics thread-safe
 // ============================================================================
@@ -539,6 +576,12 @@ uint32_t rcnet_engine_getHttpThreadSleepMs(void)
 {
     // Retourne la durée de sommeil du thread HTTP entre deux itérations.
     return g_httpThreadSleepMs.load(std::memory_order_relaxed);
+}
+
+uint32_t rcnet_engine_getNatsThreadSleepMs(void)
+{
+    // Retourne la durée de sommeil du thread NATS entre deux itérations.
+    return g_natsThreadSleepMs.load(std::memory_order_relaxed);
 }
 
 // ============================================================================
@@ -644,6 +687,64 @@ static void rcnet_engine_httpThreadMain(void)
 
     // Log de fin du thread HTTP.
     RCNET_log(RCNET_LOG_INFO, "Thread HTTP terminé.");
+}
+
+// ============================================================================
+// 17) Thread NATS
+// ============================================================================
+
+/**
+ * \brief Point d'entrée du thread NATS.
+ */
+static void rcnet_engine_natsThreadMain(void)
+{
+    bool natsReady = false;
+
+    // Initialise le client NATS si activé.
+    if (g_natsEnabled)
+    {
+        // Note : on passe les paramètres de connexion NATS via des variables globales
+        if (rcnet_nats_initialize(
+                &g_natsClient,
+                g_natsServerURL,
+                NULL,
+                NULL,
+                NULL,
+                g_natsSkipVerifyCertsServer,
+                g_natsPublicKeyNKey,
+                g_natsPrivateKeySeedNKey) != 0)
+        {
+            RCNET_log(RCNET_LOG_ERROR, "Failed to initialize NATS client.");
+            rcnet_engine_eventQuit();
+        }
+        else
+        {
+            natsReady = true;
+        }
+    }
+
+    // Tant que le serveur tourne.
+    while (serverIsRunning.load(std::memory_order_relaxed))
+    {
+        if (natsReady)
+        {
+            // Exécute un tick NATS.
+            rcnet_engine_natsUpdate(&g_natsClient);
+        }
+
+        // Petite pause pour éviter de monopoliser le CPU.
+        std::this_thread::sleep_for(
+            std::chrono::milliseconds(g_natsThreadSleepMs.load(std::memory_order_relaxed))
+        );
+    }
+
+    if (natsReady)
+    {
+        rcnet_nats_cleanup(&g_natsClient);
+    }
+
+    // Log de fin du thread NATS.
+    RCNET_log(RCNET_LOG_INFO, "Thread NATS terminé.");
 }
 
 // ============================================================================
@@ -1020,6 +1121,20 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, const RCNET_ServerConfig* 
     // Copie la durée de sommeil du thread HTTP entre deux itérations.
     httpThreadSleepMs = config->httpThreadSleepMs;
 
+    // Copie la durée de sommeil du thread NATS entre deux itérations.
+    natsThreadSleepMs = config->natsThreadSleepMs;
+
+    // Copie la configuration NATS.
+    g_natsEnabled =
+    config->natsConfig.enabled &&
+    config->natsConfig.natsServerURL != nullptr &&
+    config->natsConfig.publicKeyNKey != nullptr &&
+    config->natsConfig.privateKeySeedNKey != nullptr;
+    g_natsServerURL = config->natsConfig.natsServerURL;
+    g_natsPublicKeyNKey = config->natsConfig.publicKeyNKey;
+    g_natsPrivateKeySeedNKey = config->natsConfig.privateKeySeedNKey;
+    g_natsSkipVerifyCertsServer = config->natsConfig.skipVerifyCertsServer;
+
     // ------------------------------------------------------------------------
     // D) Reset de l'état d'exécution
     // ------------------------------------------------------------------------
@@ -1038,6 +1153,15 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, const RCNET_ServerConfig* 
 
     // Reset l'identifiant HTTP interne.
     httpTickId = 0;
+
+    // Reset l'identifiant NATS interne.
+    natsTickId = 0;
+
+    // 
+    g_natsClient.connection = nullptr;
+    g_natsClient.subscriptions = nullptr;
+    g_natsClient.subscriptionCount = 0;
+    g_natsClient.jetStreamContext = nullptr;
 
     // Reset le tick logique exposé.
     g_serverSimulationTick.store(0, std::memory_order_relaxed);
@@ -1077,6 +1201,13 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, const RCNET_ServerConfig* 
     // Lance le thread HTTP.
     std::thread httpThread(rcnet_engine_httpThreadMain);
 
+    // Lance le thread NATS si activé.
+    std::thread natsThread;
+    if (g_natsEnabled)
+    {
+        natsThread = std::thread(rcnet_engine_natsThreadMain);
+    }
+
     // ------------------------------------------------------------------------
     // H) Attente de fin des threads
     // ------------------------------------------------------------------------
@@ -1089,6 +1220,12 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, const RCNET_ServerConfig* 
 
     // Attend la fin du thread HTTP.
     httpThread.join();
+
+    // Attend la fin du thread NATS si activé.
+    if (g_natsEnabled)
+    {
+        natsThread.join();
+    }
 
     // ------------------------------------------------------------------------
     // I) Callback utilisateur de déchargement

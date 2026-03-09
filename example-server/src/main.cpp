@@ -26,6 +26,7 @@ int main(int argc, char* argv[])
     myServerCallbacks.rcnet_network_outgoing_update = rcnet_network_outgoing_update;
     myServerCallbacks.rcnet_simulation_update = rcnet_simulation_update;
     myServerCallbacks.rcnet_http_update = rcnet_http_update;
+    myServerCallbacks.rcnet_nats_update = rcnet_nats_update;
 
     // Construire la config serveur
     RCNET_ServerConfig config;
@@ -36,6 +37,7 @@ int main(int argc, char* argv[])
     config.networkOutgoingTickHz = ServerConfig::networkOutgoingTickRateHz;
     config.networkIncomingPollTimeoutMs = ServerConfig::networkIncomingPollTimeoutMs;
     config.httpThreadSleepMs = ServerConfig::httpThreadSleepMs;
+    config.natsThreadSleepMs = ServerConfig::natsThreadSleepMs;
 
     // Lancer le moteur avec nos callbacks et les tick rates désirés
     if(!rcnet_engine_run(&myServerCallbacks, &config))
