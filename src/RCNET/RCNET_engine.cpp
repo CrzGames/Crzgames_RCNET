@@ -284,41 +284,20 @@ static void rcnet_engine_cleanupRCENet(void)
  */
 static bool rcnet_engine_initOpenssl(void)
 {
-    // Initialise OpenSSL avec chargement des chaînes d'erreurs SSL + crypto.
-    if (OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS | OPENSSL_INIT_LOAD_CRYPTO_STRINGS, nullptr) == 0)
+    // Initialise OpenSSL 
+    if (OPENSSL_init_ssl(0, nullptr) != 1)
     {
-        // Log détaillé si erreur.
-        RCNET_log(RCNET_LOG_ERROR, "Erreur lors de l'initialisation d'OpenSSL : %s",
-                  ERR_error_string(ERR_get_error(), nullptr));
+        unsigned long err = ERR_get_error();
+        RCNET_log(RCNET_LOG_ERROR,
+                  "Erreur lors de l'initialisation d'OpenSSL%s%s",
+                  err ? " : " : "",
+                  err ? ERR_error_string(err, nullptr) : "");
         return false;
     }
 
     // Log succès.
     RCNET_log(RCNET_LOG_INFO, "OpenSSL initialisé avec succès.");
     return true;
-}
-
-/**
- * \brief Nettoie OpenSSL.
- *
- * NOTE : on garde strictement tes appels pour ne pas toucher au comportement.
- */
-static void rcnet_engine_cleanupOpenssl(void)
-{
-    // Libère les chaînes d'erreurs.
-    ERR_free_strings();
-
-    // Nettoyage EVP.
-    EVP_cleanup();
-
-    // Nettoyage ex-data.
-    CRYPTO_cleanup_all_ex_data();
-
-    // Nettoyage des méthodes de compression SSL.
-    SSL_COMP_free_compression_methods();
-
-    // Log succès.
-    RCNET_log(RCNET_LOG_INFO, "OpenSSL nettoyé avec succès.");
 }
 
 /**
@@ -444,9 +423,6 @@ static bool rcnet_engine_init(void)
  */
 static void rcnet_engine_quit(void)
 {
-    // Nettoie OpenSSL.
-    rcnet_engine_cleanupOpenssl();
-
     // Nettoie RCENet.
     rcnet_engine_cleanupRCENet();
 }
