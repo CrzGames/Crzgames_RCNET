@@ -9,10 +9,17 @@
 
 void rcnet_load(void)
 {
+    // Log de la configuration effective du moteur
+    RCNET_log(RCNET_LOG_INFO, "Simulation tick rate: %u Hz\n", rcnet_engine_getSimulationTickRateHz());
+    RCNET_log(RCNET_LOG_INFO, "Network outgoing tick rate: %u Hz\n", rcnet_engine_getNetworkOutgoingTickRateHz());
+    RCNET_log(RCNET_LOG_INFO, "Network incoming poll timeout: %u ms\n", rcnet_engine_getNetworkIncomingPollTimeoutMs());
+    RCNET_log(RCNET_LOG_INFO, "HTTP thread sleep duration: %u ms\n", rcnet_engine_getHttpThreadSleepMs());
+
+    // Initialisation les clés de cryptographie KX du serveur
     NetworkState& networkState = GetNetworkState();
     if (!ServerCryptoKx_Initialize(networkState.cryptoKxState))
     {
-        // TODO: fatal error
+        rcnet_engine_eventQuit(); // Arrêt du moteur en cas d'échec de l'initialisation
         RCNET_log(RCNET_LOG_ERROR, "Failed to initialize server crypto KX state\n");
     }
 }
