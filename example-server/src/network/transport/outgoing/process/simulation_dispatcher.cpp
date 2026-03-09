@@ -1,0 +1,20 @@
+#include "network/transport/outgoing/process/simulation_dispatcher.h"
+
+#include "network/transport/outgoing/process/simulation/reliable_messages.h"
+#include "network/transport/outgoing/process/simulation/unreliable_messages.h"
+
+void ServerNetworkOutgoing_ProcessSimulationDispatcher(
+    NetworkState& networkState,
+    const std::deque<SimulationToNetworkOUTMessage>& reliableMessages,
+    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastUnreliablePerConnectionId)
+{
+    // Traiter d'abord les messages reliable.
+    ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleReliableMessages(
+        networkState,
+        reliableMessages);
+
+    // Traiter ensuite les messages unreliable.
+    ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleUnreliableMessages(
+        networkState,
+        lastUnreliablePerConnectionId);
+}

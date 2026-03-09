@@ -1,14 +1,13 @@
 #include "network/transport/outgoing/entrypoint.h"
 
 #include "core/context.h"
+#include "network/transport/outgoing/message_classification.h"
 #include "network/transport/outgoing/queue_draining.h"
-#include "network/transport/outgoing/classify_messages.h"
-#include "network/transport/outgoing/send_reliable_orchestration.h"
-#include "network/transport/outgoing/send_unreliable_orchestration.h"
+#include "network/transport/outgoing/process/simulation_dispatcher.h"
 
+#include <cstdint>       // uint32_t
 #include <deque>         // std::deque
 #include <unordered_map> // std::unordered_map
-#include <cstdint>       // uint32_t
 
 void ServerNetworkOutgoing_DrainCoalesceAndSendMessages(ENetHost* host)
 {
@@ -44,14 +43,10 @@ void ServerNetworkOutgoing_DrainCoalesceAndSendMessages(ENetHost* host)
         reliableMessages,
         lastUnreliablePerConnectionId);
 
-    // Envoyer d'abord les messages reliable, plus prioritaires.
-    ServerNetworkOutgoing_SendReliableMessages(
+    // Dispatcher le traitement des messages issus de la simulation.
+    ServerNetworkOutgoing_ProcessSimulationDispatcher(
         networkState,
-        reliableMessages);
-
-    // Envoyer ensuite les messages unreliable retenus.
-    ServerNetworkOutgoing_SendUnreliableMessages(
-        networkState,
+        reliableMessages,
         lastUnreliablePerConnectionId);
 
     // Forcer le flush ENet pour limiter la latence d'envoi.

@@ -1,4 +1,4 @@
-#include "network/transport/outgoing/classify_messages.h"
+#include "network/transport/outgoing/message_classification.h"
 
 void ServerNetworkOutgoing_ClassifyOutgoingMessages(
     const std::deque<SimulationToNetworkOUTMessage>& outMessages,
