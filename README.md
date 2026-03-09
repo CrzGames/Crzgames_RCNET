@@ -24,12 +24,9 @@
 ├── 📁 dependencies (git ignored)     # Répertoire local contenant les dépendances clonées (ignoré par Git pour ne pas polluer le repo)
 │   ├── 📁 cJSON                      # JSON
 │   ├── 📁 cpp-httplib                # HTTP/HTTPS
-│   ├── 📁 Crzgames_Libraries         # Librairies précompilée (OpenSSL, RCENET, libsodium, agones, grpc)
+│   ├── 📁 Crzgames_Libraries         # Librairies précompilée (OpenSSL, RCENet, libsodium, agones, grpc)
 │   ├── 📁 Crzgames_RC2D              # Librairie client pour l'exemple du client
-│   ├── 📁 hiredis                    # Redis
-│   ├── 📁 libwebsockets              # Websockets
 │   ├── 📁 nats                       # Broker message
-│   ├── 📁 SDL                        # SDL3 for log
 ├── 📁 docs                           # Documentation du moteur de serveur (pages Markdown, auto-générées)
 ├── 📁 example-client                 # Exemple d'un client
 ├── 📁 example-server                 # Exemple d'un serveur
