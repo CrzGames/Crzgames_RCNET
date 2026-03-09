@@ -1,7 +1,7 @@
-#include "simulation/update_entrypoint.h"
+#include "simulation/entrypoint.h"
 
 #include "core/context.h"
-#include "game/world/update_entrypoint.h"
+#include "game/world/entrypoint.h"
 #include "simulation/queue_draining.h"
 #include "simulation/process/network_incoming_dispatcher.h"
 #include "simulation/process/http_dispatcher.h"
@@ -13,7 +13,7 @@
 
 #include <RCNET/RCNET.h> // rcnet_engine_getNetworkOutgoingTickRateHz
 
-void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(
+void ServerSimulation_RunFullSimulationPipelineForCurrentTick(
     uint64_t currentTick,
     uint64_t serverTimeNs,
     uint64_t dtNs,
@@ -29,7 +29,7 @@ void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(
     std::deque<NetworkINToSimulationMessage> networkInToSimulationMessages;
 
     // Drainer la queue réseau -> simulation.
-    ServerSimulationUpdate_DrainNetworkIncomingToSimulationMessages(
+    ServerSimulation_DrainNetworkIncomingToSimulationMessages(
         networkInToSimulationQueue,
         networkInToSimulationMessages);
 
@@ -37,7 +37,7 @@ void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(
     std::deque<HttpToSimulationMessage> httpToSimulationMessages;
 
     // Drainer la queue HTTP -> simulation.
-    ServerSimulationUpdate_DrainHttpToSimulationMessages(
+    ServerSimulation_DrainHttpToSimulationMessages(
         httpToSimulationQueue,
         httpToSimulationMessages);
 
@@ -48,20 +48,20 @@ void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(
     NetworkState& networkState = GetNetworkState();
 
     // Traiter tous les messages entrants provenant du thread réseau.
-    ServerSimulationUpdate_ProcessNetworkIncomingDispatcher(
+    ServerSimulation_ProcessNetworkIncomingDispatcher(
         networkState,
         simulationToNetworkOUTQueue,
         simulationToHttpQueue,
         networkInToSimulationMessages);
 
     // Traiter tous les messages entrants provenant du thread HTTP.
-    ServerSimulationUpdate_ProcessHttpDispatcher(
+    ServerSimulation_ProcessHttpDispatcher(
         networkState,
         simulationToNetworkOUTQueue,
         httpToSimulationMessages);
 
     // Gérer le flow global de match.
-    ServerSimulationUpdate_CheckMatchFlow(
+    ServerSimulation_CheckMatchFlow(
         gameState,
         networkState,
         simulationToNetworkOUTQueue,
@@ -76,18 +76,18 @@ void ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(
         dt);
 
     // Produire les snapshots au rythme maximal du thread réseau sortant.
-    if (ServerSimulationUpdate_IsNetworkOutgoingProductionTick(currentTick, rcnet_engine_getNetworkOutgoingTickRateHz()))
+    if (ServerSimulation_IsNetworkOutgoingProductionTick(currentTick, rcnet_engine_getNetworkOutgoingTickRateHz()))
     {
-        ServerSimulationUpdate_Create_FullSnapshots_ForAllSessionsAndEnqueueForNetworkOutgoing(
+        ServerSimulation_Create_FullSnapshots_ForAllSessionsAndEnqueueForNetworkOutgoing(
             simulationToNetworkOUTQueue,
             networkState,
             currentTick);
     }
 
     // Produire les messages de synchronisation d'horloge au rythme de 3 Hz.
-    /*if (ServerSimulationUpdate_IsNetworkOutgoingProductionTick(currentTick, 3))
+    /*if (ServerSimulation_IsNetworkOutgoingProductionTick(currentTick, 3))
     {
-        ServerSimulationUpdate_CreateServerClockSyncMessagesAndEnqueue(
+        ServerSimulation_CreateServerClockSyncMessagesAndEnqueue(
             simulationToNetworkOUTQueue,
             networkState,
             currentTick);

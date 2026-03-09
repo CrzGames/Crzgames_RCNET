@@ -8,7 +8,7 @@
 
 #include <RCNET/RCNET.h>
 
-bool ServerSimulationUpdate_AreAllSessionsReadyForMatch(const NetworkState& networkState)
+bool ServerSimulation_AreAllSessionsReadyForMatch(const NetworkState& networkState)
 {
     // Vérifier d'abord qu'il y a assez de sessions connectées.
     if (networkState.sessions.size() < networkState.maxClientsConnected)
@@ -36,7 +36,7 @@ bool ServerSimulationUpdate_AreAllSessionsReadyForMatch(const NetworkState& netw
     return true;
 }
 
-void ServerSimulationUpdate_CheckMatchFlow(
+void ServerSimulation_CheckMatchFlow(
     GameState& gameState,
     NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,
@@ -138,7 +138,7 @@ void ServerSimulationUpdate_CheckMatchFlow(
     // Si le countdown n'a pas encore été envoyé
     // et que tous les joueurs sont prêts, lancer l'étape MATCH_START.
     if (!gameState.matchStartSent &&
-        ServerSimulationUpdate_AreAllSessionsReadyForMatch(networkState))
+        ServerSimulation_AreAllSessionsReadyForMatch(networkState))
     {
         // Calculer la durée du countdown en ticks.
         const uint32_t countdownTicks = rcnet_engine_durationMsToTicks(3000);

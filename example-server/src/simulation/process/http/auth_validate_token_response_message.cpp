@@ -8,7 +8,7 @@
 
 #include <RCNET/RCNET.h>
 
-void ServerSimulationUpdate_ProcessHttpDispatcher_HandleAuthValidateTokenResponseMessage(
+void ServerSimulation_ProcessHttpDispatcher_HandleAuthValidateTokenResponseMessage(
     NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,
     const HttpToSimulationMessage& httpMessage)

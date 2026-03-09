@@ -15,7 +15,7 @@
  *        la réponse d'authentification au client.
  * @param httpMessage Message HTTP entrant contenant le résultat de validation.
  */
-void ServerSimulationUpdate_ProcessHttpDispatcher_HandleAuthValidateTokenResponseMessage(
+void ServerSimulation_ProcessHttpDispatcher_HandleAuthValidateTokenResponseMessage(
     NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,
     const HttpToSimulationMessage& httpMessage);

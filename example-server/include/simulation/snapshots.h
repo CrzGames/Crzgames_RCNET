@@ -13,7 +13,7 @@
  * @param networkState État réseau global du serveur.
  * @param currentTick Tick courant de simulation.
  */
-void ServerSimulationUpdate_Create_FullSnapshots_ForAllSessionsAndEnqueueForNetworkOutgoing(
+void ServerSimulation_Create_FullSnapshots_ForAllSessionsAndEnqueueForNetworkOutgoing(
     SimulationToNetworkOUTQueue& simToNetQueue,
     NetworkState& networkState,
     uint64_t currentTick);

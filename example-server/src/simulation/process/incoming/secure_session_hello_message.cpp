@@ -10,14 +10,13 @@
 #include <sodium/crypto_kx.h>
 #include <RCNET/RCNET.h>
 
-void ServerSimulationUpdate_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloMessage(
+void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloMessage(
     NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,
     const NetworkINToSimulationMessage& msg)
 {
     // Rechercher la session correspondant à cette connexion.
-    std::unordered_map<uint32_t, ClientSession>::iterator sit =
-        networkState.sessions.find(msg.connectionId);
+    std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
 
     // Si la session n'existe pas, on ne peut pas traiter le hello sécurisé.
     if (sit == networkState.sessions.end())
@@ -55,8 +54,7 @@ void ServerSimulationUpdate_ProcessNetworkIncomingDispatcher_HandleSecureSession
     ServerSecureSessionHelloResponsePacketReliable responsePacket{};
 
     // Renseigner le type du packet de réponse.
-    responsePacket.header.type =
-        ServerReliablePacketType::SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE;
+    responsePacket.header.type = ServerReliablePacketType::SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE;
 
     // Si le calcul crypto a échoué...
     if (!ok)
@@ -92,8 +90,7 @@ void ServerSimulationUpdate_ProcessNetworkIncomingDispatcher_HandleSecureSession
     outMsg.connectionId = msg.connectionId;
 
     // Sérialiser le packet prêt à être envoyé.
-    outMsg.serializedPacket =
-        serializeServerSecureSessionHelloResponsePacketReliable(responsePacket);
+    outMsg.serializedPacket = serializeServerSecureSessionHelloResponsePacketReliable(responsePacket);
 
     // Pousser le message vers le thread réseau sortant.
     simToNetQueue.push(outMsg);

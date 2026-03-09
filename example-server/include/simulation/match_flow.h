@@ -18,7 +18,7 @@
  * @return `true` si toutes les sessions requises sont prêtes,
  *         `false` sinon.
  */
-bool ServerSimulationUpdate_AreAllSessionsReadyForMatch(const NetworkState& networkState);
+bool ServerSimulation_AreAllSessionsReadyForMatch(const NetworkState& networkState);
 
 /**
  * @brief Gère le flow de préparation et de démarrage du match côté serveur.
@@ -33,7 +33,7 @@ bool ServerSimulationUpdate_AreAllSessionsReadyForMatch(const NetworkState& netw
  *        les paquets fiables liés au flow de match.
  * @param currentTick Tick courant de simulation.
  */
-void ServerSimulationUpdate_CheckMatchFlow(
+void ServerSimulation_CheckMatchFlow(
     GameState& gameState,
     NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,

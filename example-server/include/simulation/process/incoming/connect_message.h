@@ -12,6 +12,6 @@
  * @param networkState État réseau global du serveur.
  * @param msg Message réseau entrant de type connexion.
  */
-void ServerSimulationUpdate_ProcessNetworkIncomingDispatcher_HandleConnectMessage(
+void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleConnectMessage(
     NetworkState& networkState,
     const NetworkINToSimulationMessage& msg);

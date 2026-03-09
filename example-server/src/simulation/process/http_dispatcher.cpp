@@ -2,7 +2,7 @@
 
 #include "simulation/process/http/auth_validate_token_response_message.h"
 
-void ServerSimulationUpdate_ProcessHttpDispatcher(
+void ServerSimulation_ProcessHttpDispatcher(
     NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,
     std::deque<HttpToSimulationMessage>& httpMessages)
@@ -20,7 +20,7 @@ void ServerSimulationUpdate_ProcessHttpDispatcher(
         if (msg.type == HttpToSimulationMessageType::AUTH_VALIDATE_TOKEN_RESPONSE)
         {
             // Traiter la réponse backend de validation de token.
-            ServerSimulationUpdate_ProcessHttpDispatcher_HandleAuthValidateTokenResponseMessage(
+            ServerSimulation_ProcessHttpDispatcher_HandleAuthValidateTokenResponseMessage(
                 networkState,
                 simToNetQueue,
                 msg);

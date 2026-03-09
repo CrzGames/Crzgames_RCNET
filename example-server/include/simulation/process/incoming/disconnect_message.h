@@ -12,6 +12,6 @@
  * @param networkState État réseau global du serveur.
  * @param msg Message réseau entrant de type déconnexion.
  */
-void ServerSimulationUpdate_ProcessNetworkIncomingDispatcher_HandleDisconnectMessage(
+void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleDisconnectMessage(
     NetworkState& networkState,
     const NetworkINToSimulationMessage& msg);

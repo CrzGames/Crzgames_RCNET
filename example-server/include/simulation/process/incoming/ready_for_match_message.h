@@ -11,6 +11,6 @@
  * @param networkState État réseau global du serveur.
  * @param msg Message réseau entrant de type ready for match.
  */
-void ServerSimulationUpdate_ProcessNetworkIncomingDispatcher_HandleReadyForMatchMessage(
+void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleReadyForMatchMessage(
     NetworkState& networkState,
     const NetworkINToSimulationMessage& msg);

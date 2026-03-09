@@ -9,7 +9,7 @@
 
 #include <RCNET/RCNET.h> // rcnet_engine_getSimulationTickRateHz, rcnet_engine_getNetworkOutgoingTickRateHz, rcnet_engine_computeSnapshotPeriodFromRates, rcnet_engine_getCurrentServerTimeNsMonotonic
 
-void ServerSimulationUpdate_CreateFullSnapshotAndEnqueue(
+void ServerSimulation_CreateFullSnapshotAndEnqueue(
     SimulationToNetworkOUTQueue& simToNetQueue,
     ClientSession& session,
     uint64_t currentTick)
@@ -45,7 +45,7 @@ void ServerSimulationUpdate_CreateFullSnapshotAndEnqueue(
     simToNetQueue.push(outMsg);
 }
 
-void ServerSimulationUpdate_Create_FullSnapshots_ForAllSessionsAndEnqueueForNetworkOutgoing(
+void ServerSimulation_Create_FullSnapshots_ForAllSessionsAndEnqueueForNetworkOutgoing(
     SimulationToNetworkOUTQueue& simToNetQueue,
     NetworkState& networkState,
     uint64_t currentTick)
@@ -59,7 +59,7 @@ void ServerSimulationUpdate_Create_FullSnapshots_ForAllSessionsAndEnqueueForNetw
         ClientSession& session = sit->second;
 
         // Construire puis enqueuer un snapshot full pour cette session.
-        ServerSimulationUpdate_CreateFullSnapshotAndEnqueue(
+        ServerSimulation_CreateFullSnapshotAndEnqueue(
             simToNetQueue,
             session,
             currentTick);

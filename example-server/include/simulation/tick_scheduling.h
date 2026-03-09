@@ -28,6 +28,6 @@
  * @return `true` si la simulation doit produire ce flux à ce tick,
  *         `false` sinon.
  */
-bool ServerSimulationUpdate_IsNetworkOutgoingProductionTick(
+bool ServerSimulation_IsNetworkOutgoingProductionTick(
     uint64_t currentTick,
     uint32_t targetRateHz);

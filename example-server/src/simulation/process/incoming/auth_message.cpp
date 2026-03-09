@@ -6,7 +6,7 @@
 
 #include <RCNET/RCNET.h>
 
-void ServerSimulationUpdate_ProcessNetworkIncomingDispatcher_HandleAuthMessage(
+void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleAuthMessage(
     NetworkState& networkState,
     SimulationToHttpQueue& simToHttpQueue,
     const NetworkINToSimulationMessage& msg)

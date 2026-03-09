@@ -1,4 +1,4 @@
-#include "network/transport/outgoing/update_entrypoint.h"
+#include "network/transport/outgoing/entrypoint.h"
 
 #include "core/context.h"
 #include "network/transport/outgoing/queue_draining.h"

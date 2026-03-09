@@ -1,4 +1,4 @@
-#include "network/transport/incoming/update_entrypoint.h"
+#include "network/transport/incoming/entrypoint.h"
 
 #include "core/context.h"
 #include "network/transport/incoming/events/connect.h"

@@ -16,7 +16,7 @@
  *        la validation du token d'authentification.
  * @param msg Message réseau entrant transportant un token d'authentification.
  */
-void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleAuthMessage(
+void ServerSimulationUpdate_ProcessNetworkIncomingDispatcher_HandleAuthMessage(
     NetworkState& networkState,
     SimulationToHttpQueue& simToHttpQueue,
     const NetworkINToSimulationMessage& msg);

@@ -1,4 +1,4 @@
-#include "game/world/update_entrypoint.h"
+#include "game/world/entrypoint.h"
 
 #include "game/world/input_intents.h"
 #include "game/world/movement.h"

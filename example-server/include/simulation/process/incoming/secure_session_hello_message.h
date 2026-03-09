@@ -16,7 +16,7 @@
  *        la réponse d'établissement de session sécurisée.
  * @param msg Message réseau entrant transportant le hello sécurisé client.
  */
-void ServerSimulationUpdate_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloMessage(
+void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloMessage(
     NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,
     const NetworkINToSimulationMessage& msg);

@@ -1,6 +1,6 @@
 #include "simulation/queue_draining.h"
 
-void ServerSimulationUpdate_DrainNetworkIncomingToSimulationMessages(
+void ServerSimulation_DrainNetworkIncomingToSimulationMessages(
     NetworkINToSimulationQueue& netToSimQueue,
     std::deque<NetworkINToSimulationMessage>& outMessages)
 {
@@ -9,7 +9,7 @@ void ServerSimulationUpdate_DrainNetworkIncomingToSimulationMessages(
     netToSimQueue.drain(outMessages);
 }
 
-void ServerSimulationUpdate_DrainHttpToSimulationMessages(
+void ServerSimulation_DrainHttpToSimulationMessages(
     HttpToSimulationQueue& httpToSimQueue,
     std::deque<HttpToSimulationMessage>& outMessages)
 {

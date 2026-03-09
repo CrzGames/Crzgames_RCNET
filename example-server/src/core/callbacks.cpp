@@ -1,8 +1,8 @@
 #include "core/callbacks.h"
 #include "core/context.h"
-#include "network/transport/incoming/update_entrypoint.h"
-#include "network/transport/outgoing/update_entrypoint.h"
-#include "simulation/update_entrypoint.h"
+#include "network/transport/incoming/entrypoint.h"
+#include "network/transport/outgoing/entrypoint.h"
+#include "simulation/entrypoint.h"
 #include "crypto/crypto_kx.h"
 
 #include <RCNET/RCNET.h>
@@ -34,7 +34,7 @@ void rcnet_network_outgoing_update(ENetHost* host)
 
 void rcnet_simulation_update(uint64_t currentTick, uint64_t serverTimeNs, uint64_t dtNs, double dt)
 {
-    ServerSimulationUpdate_RunFullSimulationPipelineForCurrentTick(currentTick, serverTimeNs, dtNs, dt);
+    ServerSimulation_RunFullSimulationPipelineForCurrentTick(currentTick, serverTimeNs, dtNs, dt);
 }
 
 void rcnet_http_update(void)
