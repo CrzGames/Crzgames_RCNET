@@ -1,7 +1,8 @@
 #include "network/transport/incoming/connection_validation.h"
 
-#include <cstdint>
-#include <unordered_map>
+#include <cstdint>       // uint32_t, uint64_t
+#include <unordered_map> // std::unordered_map
+
 #include <RCNET/RCNET.h>
 
 uint32_t ServerNetworkIncoming_GetValidatedConnectionIdOrZero(

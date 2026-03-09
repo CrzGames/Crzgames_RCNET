@@ -1,4 +1,5 @@
 #include "network/serialization/serialize_packets_server.h"
+
 #include "network/serialization/byte_writer.h"
 
 std::vector<uint8_t> serializeServerMatchInitPacketReliable(const ServerMatchInitPacketReliable& packet)

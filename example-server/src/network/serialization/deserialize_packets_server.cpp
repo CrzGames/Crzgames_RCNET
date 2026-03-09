@@ -1,4 +1,5 @@
 #include "network/serialization/deserialize_packets_server.h"
+
 #include "network/serialization/byte_reader.h"
 
 bool deserializeServerSnapshotFullPacketUnreliable(

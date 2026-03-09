@@ -1,6 +1,6 @@
 #include "network/serialization/byte_writer.h"
 
-#include <stdexcept>
+#include <stdexcept> // std::runtime_error
 
 void ByteWriter::writeU8(uint8_t value)
 {

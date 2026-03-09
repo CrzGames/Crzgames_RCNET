@@ -1,4 +1,5 @@
 #include "network/serialization/deserialize_packets_client.h"
+
 #include "network/serialization/byte_reader.h"
 
 bool deserializeClientSecureSessionHelloPacketReliable(const void* data, size_t size, ClientSecureSessionHelloPacketReliable& outPacket)

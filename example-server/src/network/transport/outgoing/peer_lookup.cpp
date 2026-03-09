@@ -1,6 +1,6 @@
 #include "network/transport/outgoing/peer_lookup.h"
 
-#include <unordered_map>
+#include <unordered_map> // std::unordered_map
 
 #include <RCNET/RCNET.h>
 

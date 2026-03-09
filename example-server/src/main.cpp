@@ -1,5 +1,4 @@
 #include "core/callbacks.h"
-#include "core/context.h"
 #include "network/server_config.h"
 
 #include <cstring> // memset

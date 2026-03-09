@@ -1,6 +1,7 @@
 #include "network/transport/incoming/events/disconnect.h"
 
-#include <cstdint>
+#include <cstdint> // uint32_t, uint64_t
+
 #include <RCNET/RCNET.h>
 
 void ServerNetworkIncoming_Event_HandleDisconnect(

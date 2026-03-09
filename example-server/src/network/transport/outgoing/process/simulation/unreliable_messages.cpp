@@ -7,8 +7,8 @@
 #include "network/transport/outgoing/enet_send_packets.h"
 #include "network/transport/outgoing/peer_lookup.h"
 
-#include <unordered_map>
-#include <vector>
+#include <unordered_map> // std::unordered_map
+#include <vector>        // std::vector
 
 #include <RCNET/RCNET.h>
 
