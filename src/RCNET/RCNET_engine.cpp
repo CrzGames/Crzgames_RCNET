@@ -790,8 +790,10 @@ static void rcnet_engine_networkThreadMain(void)
     else
     {
         RCNET_log(RCNET_LOG_INFO,
-                  "ENet server listening on port %u (dual-stack)\n",
-                  address.port);
+                  "ENet server listening on port %u (dual-stack) with max clients %u and %u channels.",
+                  address.port,
+                  (unsigned)g_serverMaxClients,
+                  (unsigned)g_serverChannelCount);
     }
 
     // ------------------------------------------------------------------------

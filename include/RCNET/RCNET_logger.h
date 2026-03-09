@@ -4,8 +4,6 @@
 // Standard C/C++ Libraries
 #include <stdarg.h> // Required for : ... (va_list, va_start, va_end)
 
-#include <SDL3/SDL_assert.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -28,7 +26,7 @@ extern "C" {
  * \since Cette macro est disponible depuis RCNET 1.0.0.
  */
 #define RCNET_log(level, format, ...) \
-    rcnet_logger_log((level), SDL_FILE, SDL_LINE, SDL_FUNCTION, (format), ##__VA_ARGS__)
+    rcnet_logger_log((level), __FILE__, __LINE__, __func__, (format), ##__VA_ARGS__)
 
 /**
  * \brief Cette enum est utilisée pour définir le niveau de priorité des messages de log.

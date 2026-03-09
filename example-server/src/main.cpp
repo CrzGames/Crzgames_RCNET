@@ -7,7 +7,7 @@
 
 int main(int argc, char* argv[])
 {
-    RCNET_log(RCNET_LOG_INFO, "Server Started\n");
+    RCNET_log(RCNET_LOG_INFO, "Server Started");
 
 #ifdef NDEBUG // Si on est en Release mode
     rcnet_logger_set_priority(RCNET_LOG_ERROR);

@@ -11,10 +11,10 @@
 void rcnet_load(void)
 {
     // Log de la configuration effective du moteur
-    RCNET_log(RCNET_LOG_INFO, "Simulation tick rate: %u Hz\n", rcnet_engine_getSimulationTickRateHz());
-    RCNET_log(RCNET_LOG_INFO, "Network outgoing tick rate: %u Hz\n", rcnet_engine_getNetworkOutgoingTickRateHz());
-    RCNET_log(RCNET_LOG_INFO, "Network incoming poll timeout: %u ms\n", rcnet_engine_getNetworkIncomingPollTimeoutMs());
-    RCNET_log(RCNET_LOG_INFO, "HTTP thread sleep duration: %u ms\n", rcnet_engine_getHttpThreadSleepMs());
+    RCNET_log(RCNET_LOG_INFO, "Simulation tick rate: %u Hz", rcnet_engine_getSimulationTickRateHz());
+    RCNET_log(RCNET_LOG_INFO, "Network outgoing tick rate: %u Hz", rcnet_engine_getNetworkOutgoingTickRateHz());
+    RCNET_log(RCNET_LOG_INFO, "Network incoming poll timeout: %u ms", rcnet_engine_getNetworkIncomingPollTimeoutMs());
+    RCNET_log(RCNET_LOG_INFO, "HTTP thread sleep duration: %u ms", rcnet_engine_getHttpThreadSleepMs());
 
     // Initialisation des clés de cryptographie KX du serveur
     NetworkState& networkState = GetNetworkState();

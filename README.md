@@ -119,15 +119,13 @@
 |------------|----------------------------------------|----------------|----------------------|
 | **LZ4** | v1.10.0 | Compression des packets UDP | ⭐ Obligatoire (intégré statiquement) |
 | **cJSON** | v1.7.19 | JSON | ⭐ Obligatoire (intégré statiquement) |
-| **SDL3** | commit `101273f429a336615218b7790ea677c5222e9d81` | Gestion des thread | ⭐ Obligatoire |
 | **RCENet** | v1.6.1 | Communication réseau UDP (fork ENet) | ⭐ Obligatoire |
-| **OpenSSL** | v3.6.1 | Hashing, chiffrement, crypto + cpp-httplib à besoin de OpenSSL >= 3.x.x | ⭐ Obligatoire |
-| **cpp-httplib** | v0.37.0 | HTTP/HTPS | ⭐ Obligatoire |
-| **NATS** | v3.12.0 | Communication inter services | ⭐ Obligatoire |
-| **hiredis** | v1.3.0 | Base de donnée en mémoire | ⭐ Obligatoire |
+| **OpenSSL** | v3.6.1 | cpp-httplib à besoin de OpenSSL >= 3.x.x | ⭐ Obligatoire |
+| **cpp-httplib** | v0.37.0 | HTTP/HTTPS | ⭐ Obligatoire |
+| **nats** | v3.12.0 | Communication inter services | ⭐ Obligatoire |
 | **libsodium** | v1.0.21 | Crypto | ⭐ Obligatoire |
-| **agones sdk client** | v1.56.0 |  | ⭐ Obligatoire |
-| **grpc (for agones sdk client)** | v1.76.0 |  | ⭐ Obligatoire |
+| **agones sdk client** | v1.56.0 | Utiliser dans le cluster kubernetes entre le serveur de jeu et kubernetes | ⭐ Obligatoire |
+| **grpc** | v1.76.0 | agones sdk client à besoin de grpc == 1.76.0 | ⭐ Obligatoire |
 
 <br /><br />
 
