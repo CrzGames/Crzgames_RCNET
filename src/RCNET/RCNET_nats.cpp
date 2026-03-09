@@ -17,145 +17,174 @@ static natsStatus customSignatureHandler(char **customErrTxt, unsigned char **si
     return status;
 }
 
-int rcnet_nats_initialize(RCNET_NATSClient *client, const char *natsServerURL, const char *certFile, const char *keyFile, const char *caFile, bool skipVerifyCertsServer, const char *publicKeyNKey, const char *privateKeySeedNKey)
+int rcnet_nats_initialize(
+    RCNET_NATSClient *client,
+    const char *natsServerURL,
+    bool useTLS,
+    bool skipVerifyCertsServer,
+    const char *publicKeyNKey,
+    const char *privateKeySeedNKey
+)
 {
+    if (client == NULL ||
+        natsServerURL == NULL ||
+        publicKeyNKey == NULL ||
+        privateKeySeedNKey == NULL)
+    {
+        RCNET_log(RCNET_LOG_ERROR, "Invalid NATS initialization parameters");
+        return -1;
+    }
+
     natsStatus status;
     natsOptions *opts = NULL;
 
-    // Créer les options NATS
     status = natsOptions_Create(&opts);
-    if (status != NATS_OK) 
+    if (status != NATS_OK)
     {
         RCNET_log(RCNET_LOG_ERROR, "Failed to create NATS options: %s", natsStatus_GetText(status));
         return -1;
     }
 
-    // Set Ping interval to 20 seconds (20,000 milliseconds)
     status = natsOptions_SetPingInterval(opts, 20000);
-    if (status != NATS_OK) 
+    if (status != NATS_OK)
     {
         RCNET_log(RCNET_LOG_ERROR, "Failed to set Ping interval: %s", natsStatus_GetText(status));
         natsOptions_Destroy(opts);
         return -1;
     }
 
-    // Set the limit to 5
     status = natsOptions_SetMaxPingsOut(opts, 5);
-    if (status != NATS_OK) 
+    if (status != NATS_OK)
     {
         RCNET_log(RCNET_LOG_ERROR, "Failed to set Max Pings Out: %s", natsStatus_GetText(status));
         natsOptions_Destroy(opts);
         return -1;
     }
 
-    // Set the secure flag for activating SSL/TLS
-    natsOptions_SetSecure(opts, true);
-
-    // Load certificates and key if provided
-    if (certFile != NULL && keyFile != NULL) {
-        status = natsOptions_LoadCertificatesChain(opts, certFile, keyFile);
-        if (status != NATS_OK) {
-            RCNET_log(RCNET_LOG_ERROR, "Failed to load certificates: %s", natsStatus_GetText(status));
+    if (useTLS)
+    {
+        status = natsOptions_SetSecure(opts, true);
+        if (status != NATS_OK)
+        {
+            RCNET_log(RCNET_LOG_ERROR, "Failed to enable TLS: %s", natsStatus_GetText(status));
             natsOptions_Destroy(opts);
             return -1;
         }
-    }
 
-    // Load CA certificate if provided
-    if (caFile != NULL) {
-        status = natsOptions_LoadCATrustedCertificates(opts, caFile);
-        if (status != NATS_OK) {
-            RCNET_log(RCNET_LOG_ERROR, "Failed to load CA certificates: %s", natsStatus_GetText(status));
-            natsOptions_Destroy(opts);
-            return -1;
+        if (skipVerifyCertsServer)
+        {
+            status = natsOptions_SkipServerVerification(opts, true);
+            if (status != NATS_OK)
+            {
+                RCNET_log(RCNET_LOG_ERROR, "Failed to skip server verification: %s", natsStatus_GetText(status));
+                natsOptions_Destroy(opts);
+                return -1;
+            }
         }
     }
 
-    // Skip server verification if required
-    if (skipVerifyCertsServer) {
-        status = natsOptions_SkipServerVerification(opts, true);
-        if (status != NATS_OK) {
-            RCNET_log(RCNET_LOG_ERROR, "Failed to skip server verification: %s", natsStatus_GetText(status));
-            natsOptions_Destroy(opts);
-            return -1;
-        }
-    }
-
-    // Set the NKey authentication
     status = natsOptions_SetNKey(opts, publicKeyNKey, customSignatureHandler, (void*) privateKeySeedNKey);
-    if (status != NATS_OK) {
+    if (status != NATS_OK)
+    {
         RCNET_log(RCNET_LOG_ERROR, "Failed to set NKey options: %s", natsStatus_GetText(status));
         natsOptions_Destroy(opts);
         return -1;
     }
 
-    // Set the URL of the NATS server
-    natsOptions_SetURL(opts, natsServerURL);
+    status = natsOptions_SetURL(opts, natsServerURL);
+    if (status != NATS_OK)
+    {
+        RCNET_log(RCNET_LOG_ERROR, "Failed to set NATS URL: %s", natsStatus_GetText(status));
+        natsOptions_Destroy(opts);
+        return -1;
+    }
 
-    // Connect to the NATS server
+    client->connection = NULL;
+    client->subscriptions = NULL;
+    client->subscriptionCount = 0;
+    client->jetStreamContext = NULL;
+
     status = natsConnection_Connect(&(client->connection), opts);
-    if (status != NATS_OK) {
+    if (status != NATS_OK)
+    {
         RCNET_log(RCNET_LOG_ERROR, "Failed to connect to NATS server: %s", natsStatus_GetText(status));
         natsOptions_Destroy(opts);
         return -1;
-    } else {
-       RCNET_log(RCNET_LOG_INFO, "Connected to NATS server: %s", natsServerURL);
     }
 
-    // Create JetStream context
+    RCNET_log(RCNET_LOG_INFO, "Connected to NATS server: %s", natsServerURL);
+
     status = natsConnection_JetStream(&(client->jetStreamContext), client->connection, NULL);
-    if (status != NATS_OK) {
+    if (status != NATS_OK)
+    {
         RCNET_log(RCNET_LOG_ERROR, "Failed to create JetStream context: %s", natsStatus_GetText(status));
         natsConnection_Close(client->connection);
         natsConnection_Destroy(client->connection);
+        client->connection = NULL;
         natsOptions_Destroy(opts);
         return -1;
     }
 
-    // Initialiser les abonnements
-    client->subscriptions = NULL;
-    client->subscriptionCount = 0;
-
-    // Destroy the options
-    natsOptions_Destroy(opts);    
-
+    natsOptions_Destroy(opts);
+    
     return 0;
 }
 
 void rcnet_nats_cleanup(RCNET_NATSClient *client)
 {
-    if (client->subscriptions != NULL) {
-        for (size_t i = 0; i < client->subscriptionCount; i++) {
-            if (client->subscriptions[i] != NULL) {
+    if (client == NULL) 
+    {
+        return;
+    }
+
+    if (client->subscriptions != NULL) 
+    {
+        for (size_t i = 0; i < client->subscriptionCount; i++) 
+        {
+            if (client->subscriptions[i] != NULL) 
+            {
                 natsSubscription_Destroy(client->subscriptions[i]);
             }
         }
+
         free(client->subscriptions);
     }
 
-    if (client->jetStreamContext != NULL) {
+    if (client->jetStreamContext != NULL) 
+    {
         jsCtx_Destroy(client->jetStreamContext);
     }
 
-    if (client->connection != NULL) {
+    if (client->connection != NULL) 
+    {
         // Flush the connection to ensure all messages are sent
         natsStatus status = natsConnection_FlushTimeout(client->connection, 5000); // Timeout of 5 seconds
-        if (status != NATS_OK) {
+        if (status != NATS_OK) 
+        {
             RCNET_log(RCNET_LOG_ERROR, "Failed to flush connection: %s", natsStatus_GetText(status));
         }
 
         // Drain the connection to ensure all messages are sent
         status = natsConnection_Drain(client->connection);
-        if (status == NATS_OK) {
+        if (status == NATS_OK) 
+        {
             // Wait for the connection to be drained
             natsConnection_DrainTimeout(client->connection, 0);
-        } else {
+        } 
+        else 
+        {
             RCNET_log(RCNET_LOG_ERROR, "Failed to drain connection: %s", natsStatus_GetText(status));
         }
 
         natsConnection_Close(client->connection);
         natsConnection_Destroy(client->connection);
     }
+
+    // Cleanup client structure
+    client->connection = NULL;
+    client->jetStreamContext = NULL;
+    client->subscriptions = NULL;
+    client->subscriptionCount = 0;
 }
 
 int rcnet_nats_publish(RCNET_NATSClient *client, const char *subject, const void* data, int dataLength)
@@ -164,7 +193,8 @@ int rcnet_nats_publish(RCNET_NATSClient *client, const char *subject, const void
     natsStatus status = natsConnection_Publish(client->connection, subject, data, dataLength);
 
     // Check if the message was published successfully
-    if (status != NATS_OK) {
+    if (status != NATS_OK) 
+    {
         RCNET_log(RCNET_LOG_ERROR, "Failed to publish message: %s", natsStatus_GetText(status));
         return -1;
     }
@@ -309,7 +339,7 @@ int rcnet_nats_check_and_create_stream(RCNET_NATSClient *client, const char *str
         jetStreamConfig.MaxAge = (options != NULL) ? options->messageMaxAge : 0; // Age maximum des messages avant d'être supprimés
         jetStreamConfig.Discard = js_DiscardOld;                          // Supprimera les anciens messages pour revenir aux limites
         jetStreamConfig.Storage = js_FileStorage;                         // Stockage sur disque
-        jetStreamConfig.NoAck = false;                                    // Renvoyer un accusé de réception après la réception du message
+        jetStreamConfig.NoAck = (options != NULL) ? options->noAck : false;// Renvoyer un accusé de réception après la réception du message
 
         status = js_AddStream(&jetStreamInfo, client->jetStreamContext, &jetStreamConfig, NULL, &jetStreamErrorCode);
         if (status != NATS_OK)

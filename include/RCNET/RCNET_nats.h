@@ -2,9 +2,11 @@
 #define RCNET_NATS_H
 
 // Standard C/C++ Libraries
-#include <stdbool.h>
-#include <stdlib.h>
+#include <stdbool.h> // bool
+#include <stdlib.h>  // malloc, free
+#include <stdint.h>  // uint32_t, uint64_t
 
+// NATS C Client Library
 #include <nats.h>
 
 #ifdef __cplusplus
@@ -85,15 +87,20 @@ typedef struct {
  * 
  * @param {RCNET_NATSClient*} client - Pointeur vers la structure RCNET_NATSClient à initialiser.
  * @param {const char*} natsServerURL - URL du serveur NATS.
- * @param {const char*} certFile - Chemin vers le fichier de certificat (peut être NULL).
- * @param {const char*} keyFile - Chemin vers le fichier de clé (peut être NULL).
- * @param {const char*} caFile - Chemin vers le fichier CA (peut être NULL).
+ * @param {bool} useTLS - Indicateur pour utiliser TLS ou non.
  * @param {bool} skipVerifyCertsServer - Indicateur pour ignorer la vérification des certificats du serveur.
  * @param {const char*} publicKeyNKey - Clé publique NKey pour l'authentification.
  * @param {const char*} privateKeySeedNKey - Clé privée NKey pour l'authentification.
  * @return {int} 0 en cas de succès, -1 en cas d'erreur.
  */
-int rcnet_nats_initialize(RCNET_NATSClient *client, const char *natsServerURL, const char *certFile, const char *keyFile, const char *caFile, bool skipVerifyCertsServer, const char *publicKeyNKey, const char *privateKeySeedNKey);
+int rcnet_nats_initialize(
+    RCNET_NATSClient *client,
+    const char *natsServerURL,
+    bool useTLS,
+    bool skipVerifyCertsServer,
+    const char *publicKeyNKey,
+    const char *privateKeySeedNKey
+);
 
 /**
  * @brief Nettoie et libère les ressources associées à un client NATS.

@@ -81,6 +81,7 @@ static const char* g_natsServerURL = nullptr;
 static const char* g_natsPublicKeyNKey = nullptr;
 static const char* g_natsPrivateKeySeedNKey = nullptr;
 static bool g_natsSkipVerifyCertsServer = false;
+static bool g_natsUseTLS = false;
 
 // ============================================================================
 // 3) Paramètres runtime simulation / réseau
@@ -707,9 +708,7 @@ static void rcnet_engine_natsThreadMain(void)
         if (rcnet_nats_initialize(
                 &g_natsClient,
                 g_natsServerURL,
-                NULL,
-                NULL,
-                NULL,
+                g_natsUseTLS,
                 g_natsSkipVerifyCertsServer,
                 g_natsPublicKeyNKey,
                 g_natsPrivateKeySeedNKey) != 0)
@@ -1125,15 +1124,12 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, const RCNET_ServerConfig* 
     natsThreadSleepMs = config->natsThreadSleepMs;
 
     // Copie la configuration NATS.
-    g_natsEnabled =
-    config->natsConfig.enabled &&
-    config->natsConfig.natsServerURL != nullptr &&
-    config->natsConfig.publicKeyNKey != nullptr &&
-    config->natsConfig.privateKeySeedNKey != nullptr;
+    g_natsEnabled = config->natsConfig.enabled && config->natsConfig.natsServerURL != nullptr && config->natsConfig.publicKeyNKey != nullptr && config->natsConfig.privateKeySeedNKey != nullptr;
     g_natsServerURL = config->natsConfig.natsServerURL;
     g_natsPublicKeyNKey = config->natsConfig.publicKeyNKey;
     g_natsPrivateKeySeedNKey = config->natsConfig.privateKeySeedNKey;
     g_natsSkipVerifyCertsServer = config->natsConfig.skipVerifyCertsServer;
+    g_natsUseTLS = config->natsConfig.useTLS;
 
     // ------------------------------------------------------------------------
     // D) Reset de l'état d'exécution

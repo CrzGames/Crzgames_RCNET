@@ -32,11 +32,12 @@ extern "C" {
  */
 typedef struct RCNET_NATSConfig
 {
-    bool enabled; // Indique si la serveur dois utiliser NATS ou pas
+    bool enabled; // Indique si la serveur dois utiliser NATS ou non
     const char* natsServerURL;
+    bool useTLS;
+    bool skipVerifyCertsServer;
     const char* publicKeyNKey;
     const char* privateKeySeedNKey;
-    bool skipVerifyCertsServer;
 } RCNET_NATSConfig;
 
 /**
@@ -110,7 +111,7 @@ typedef struct RCNET_Callbacks
  * - 1 thread simulation
  * - 1 thread réseau
  * - 1 thread HTTP
- * - 1 thread NATS
+ * - 1 thread NATS (uniquement si la config NATS est activée)
  *
  * \param callbacks Pointeur vers les callbacks utilisateur.
  * \param config    Pointeur vers la configuration serveur.
