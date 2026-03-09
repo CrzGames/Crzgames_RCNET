@@ -127,6 +127,8 @@
 | **hiredis** | v1.3.0 | Base de donnée en mémoire | ⭐ Obligatoire |
 | **libwebsockets** | v4.5.4 | Socket web | ⭐ Obligatoire |
 | **libsodium** | v1.0.21 | Crypto | ⭐ Obligatoire |
+| **agones sdk client** | v1.56.0 |  | ⭐ Obligatoire |
+| **grpc (for agones sdk client)** | v1.76.0 |  | ⭐ Obligatoire |
 
 <br /><br />
 
