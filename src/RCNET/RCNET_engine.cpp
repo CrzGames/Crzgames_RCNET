@@ -828,6 +828,8 @@ static void rcnet_engine_simulationThreadMain(void)
         // Attend jusqu'à la prochaine échéance absolue de simulation.
         rcnet_sleep_until_ns(nextSimNs);
     }
+
+    RCNET_log(RCNET_LOG_INFO, "Thread simulation terminer.");
 }
 
 // ============================================================================
@@ -1088,7 +1090,7 @@ static void rcnet_engine_networkThreadMain(void)
     }
 
     // Log de fin du thread réseau.
-    RCNET_log(RCNET_LOG_INFO, "ENet server host détruit (thread réseau terminé).");
+    RCNET_log(RCNET_LOG_INFO, "Thread reseau terminer.");
 }
 
 // ============================================================================
