@@ -15,7 +15,7 @@ void rcnet_load(void)
     RCNET_log(RCNET_LOG_INFO, "Network incoming poll timeout: %u ms\n", rcnet_engine_getNetworkIncomingPollTimeoutMs());
     RCNET_log(RCNET_LOG_INFO, "HTTP thread sleep duration: %u ms\n", rcnet_engine_getHttpThreadSleepMs());
 
-    // Initialisation les clés de cryptographie KX du serveur
+    // Initialisation des clés de cryptographie KX du serveur
     NetworkState& networkState = GetNetworkState();
     if (!ServerCryptoKx_Initialize(networkState.cryptoKxState))
     {
