@@ -24,7 +24,7 @@ struct NetworkState
 
 
     // ------------------------------------------------------------------------
-    // Sessions - Acces multi-thread protege par sessionsMutex
+    // Sessions - ATTENTION: Thread SIMULATION et RÉSEAU (accès protégé par mutex)
     // ------------------------------------------------------------------------
 
     // Mapping de connectionId vers ClientSession (sessions actives pour les clients connectés)
