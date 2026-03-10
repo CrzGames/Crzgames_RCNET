@@ -1,86 +1,77 @@
 #pragma once
 
+#include <array>   // std::array
 #include <cstdint> // uint16_t, uint32_t, etc.
 #include <deque>   // std::deque
-#include <array>   // std::array
 #include <string>  // std::string
 
 #include <sodium.h> // crypto_kx_PUBLICKEYBYTES, crypto_kx_SESSIONKEYBYTES
 
+#include "auth/types.h"                        // AuthStatus
 #include "network/packets/client/unreliable.h" // ClientInputPacketUnreliable
-#include "auth/types.h" // AuthStatus
 
 // ============================================================================
-// Données autoritaires spécifiques à une entité contrôlée par un client.
+// Donnees autoritaires specifiques a une entite controlee par un client.
 // ============================================================================
-//
-// Cette structure indique quelle entité du monde est contrôlée par le client.
-// Exemple : un joueur peut contrôler un personnage dans le monde.
-// Si le joueur meurt ou est en spectateur, controlledEntityId peut être 0.
-//
 struct PlayerControl
 {
-    // Id de l’entité contrôlée par le client dans le monde du jeu
-    // 0 = aucune entité (ex: mort, spectateur, pas encore spawn)
+    // Id de l'entite controlee dans le monde.
+    // 0 = aucune entite (mort, spectateur, pas encore spawn, etc.).
     uint32_t controlledEntityId = 0;
 };
 
 // ============================================================================
-// Données autoritaires spécifiques à un client connecté.
+// Donnees autoritaires specifiques a un client connecte.
 // ============================================================================
-//
-// Une ClientSession représente l'état complet du joueur côté serveur.
-//
-// Elle contient :
-// - l'identité du joueur
-// - les inputs envoyés par le client
-// - l'état réseau de synchronisation
-// - quelle entité du monde il contrôle
-//
 struct ClientSession
 {
     // =======================================================================
     // Identification du client
     // =======================================================================
 
-    // Clé publique du client pour établir une session sécurisée via libsodium.
-    // Elle est reçue dans le packet CLIENT_SECURE_SESSION_HELLO_PACKET_RELIABLE.
-    // Elle est utilisée pour générer les clés de session (serverRxKey, serverTxKey) via crypto_kx_server_session_keys de libsodium.
+    // Cle publique envoyee par le client pendant secure session hello.
     std::array<uint8_t, crypto_kx_PUBLICKEYBYTES> clientPublicKey{};
+
+    // Cles derivees cote serveur:
+    // - serverRxKey: cle utilisee pour dechiffrer ce que le client envoie.
+    // - serverTxKey: cle utilisee pour chiffrer ce que le serveur envoie.
     std::array<uint8_t, crypto_kx_SESSIONKEYBYTES> serverRxKey{};
     std::array<uint8_t, crypto_kx_SESSIONKEYBYTES> serverTxKey{};
 
-    // Set à true après authentification validé par le serveur au près du backend / api d'authentification.
+    // Etat d'authentification.
     AuthStatus authStatus = AuthStatus::None;
 
-    // En cas de AuthStatus::Invalid, contient le message d'erreur (ex: token expiré, compte banni, etc.)
+    // Message d'erreur backend en cas de AuthStatus::Invalid.
     std::string authErrorMessage = "";
 
-    // Set à true à la connexion lors de l'événement ENET_EVENT_TYPE_CONNECT, 
+    // True apres l'evenement ENET_EVENT_TYPE_CONNECT.
     bool isTransportConnected = false;
 
-    // Set à true lorsque serveur à reçu un packet reliable de type CLIENT_SECURE_SESSION_HELLO_PACKET_RELIABLE et 
-    // que le serveur à envoyer un packet reliable de type SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE pour établir la session sécurisée avec le client.
+    // True quand l'etape secure-session est validee cote serveur
+    // (cles de session derivees et reponse SUCCESS preparee).
+    //
+    // Ce flag est utilise par les guards de channels (AUTH/GAME)
+    // pour autoriser le flux applicatif apres secure-session.
+    //
+    // Important: ce flag ne signifie pas que le chiffrement reseau est deja actif.
+    // L'activation effective du chiffrement est portee par isPacketEncryptionEnabled.
     bool isSecureSessionEstablished = false;
 
-    // Devient vrai lorsque le serveur reçoit un packet reliable
-    // de type CLIENT_READY_FOR_MATCH pour cette session.
-    // À partir de ce moment, le serveur peut considérer que le client
-    // a terminé son initialisation locale et est prêt à recevoir
-    // les informations de démarrage effectif du match.
+    // Devient vrai uniquement apres ACK de
+    // SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE.
+    // Tant que ce flag est false, les callbacks ENet encrypt/decrypt restent en passthrough.
+    bool isPacketEncryptionEnabled = false;
+
+    // True quand le serveur recoit CLIENT_READY_FOR_MATCH.
     bool isReadyForMatch = false;
 
-    // Identifiant unique du compte joueur dans la base de données.
-    // Il est généralement obtenu après le check du token d'authentification auprès du backend d'authentification.
+    // Identifiant du compte joueur en base.
     uint64_t accountIdDatabase = 0;
 
-    // Nom d'utilisateur du compte joueur.
-    // Il est généralement obtenu après le check du token d'authentification auprès du backend d'authentification.
+    // Username du compte joueur en base.
     std::string accountUsernameDatabase = "";
 
-    // Identifiant unique de la connexion réseau active.
-    // Généré par le serveur lors du CONNECT.
-    // Il change si le joueur se reconnecte.
+    // Identifiant unique de la connexion active.
     uint32_t connectionId = 0;
 
 
@@ -88,23 +79,13 @@ struct ClientSession
     // INPUTS (client -> serveur)
     // =======================================================================
 
-    // Dernier input reçu depuis le réseau.
-    // Sert principalement à appliquer un état si aucun nouvel input n'arrive.
+    // Dernier input recu depuis le reseau.
     ClientInputPacketUnreliable latestReceivedInputPacket{};
 
-    // Dernier inputSequenceNumber que le serveur a déjà appliqué
-    // dans la simulation.
-    //
-    // Cela permet de :
-    // - ignorer les duplications réseau
-    // - garantir que les inputs sont traités dans l'ordre
+    // Dernier inputSequenceNumber deja applique en simulation.
     uint32_t serverLastProcessedInputSequenceNumber = 0;
 
-    // File d'attente des inputs reçus mais pas encore traités
-    // par la simulation serveur.
-    //
-    // Les inputs arrivent depuis le thread réseau puis sont
-    // consommés dans le thread de simulation.
+    // Inputs recus mais pas encore traites par la simulation.
     std::deque<ClientInputPacketUnreliable> pendingInputPacketsQueue;
 
 
@@ -112,59 +93,20 @@ struct ClientSession
     // Gameplay
     // =======================================================================
 
-    // Quelle entité du monde ce client contrôle actuellement.
+    // Entite du monde actuellement controlee par ce client.
     PlayerControl control;
 
 
     // =======================================================================
-    // Synchronisation réseau (serveur <-> client)
+    // Synchronisation reseau (serveur <-> client)
     // =======================================================================
-    //
-    // Ces champs servent à suivre ce que le client a reçu
-    // et ce que le serveur lui a envoyé.
-    //
-    // Ils sont utilisés pour :
-    // - delta compression des snapshots
-    // - prediction client
-    // - reconciliation
-    // - monitoring réseau
 
-
-    // Prochain snapshotId que le serveur générera pour ce client.
-    //
-    // Chaque snapshot envoyé au client possède un identifiant
-    // strictement croissant (snapshotId).
-    //
-    // Exemple :
-    // snapshotId = 1
-    // snapshotId = 2
-    // snapshotId = 3
-    //
-    // Cela permet au client de détecter les pertes et d'envoyer un ACK.
+    // Prochain snapshotId genere par le serveur pour ce client.
     uint32_t serverNextSnapshotId = 1;
 
-
-    // Dernier snapshot envoyé par le serveur à ce client.
-    //
-    // Ce snapshot peut ne pas encore être confirmé par le client.
-    //
-    // Exemple :
-    // serveur envoie snapshotId = 120
-    // serverLastSentSnapshotId = 120
+    // Dernier snapshot effectivement envoye a ce client.
     uint32_t serverLastSentSnapshotId = 0;
 
-
-    // Dernier snapshot confirmé par le client (ACK).
-    //
-    // Le client envoie périodiquement un message ACK indiquant
-    // le dernier snapshot correctement reçu.
-    //
-    // Exemple :
-    // client ACK snapshotId = 118
-    // clientLastAckedSnapshotId = 118
-    //
-    // Cela permet au serveur :
-    // - de calculer un delta snapshot
-    // - de libérer les anciens snapshots en mémoire
+    // Dernier snapshot confirme (ACK) par ce client.
     uint32_t clientLastAckedSnapshotId = 0;
 };

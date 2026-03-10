@@ -31,6 +31,9 @@ void ServerNetworkIncoming_Event_HandleDisconnect(
     // Supprime l'entrée correspondante dans la map connectionIdToEnetPeer.
     networkState.connectionIdToEnetPeer.erase(connectionId);
 
+    // Nettoie l'état de chiffrement réseau associé à cette connexion.
+    networkState.connectionIdToEncryptionEnabled.erase(connectionId);
+
     // Réinitialise les données du peer à nullptr pour éviter toute utilisation ultérieure.
     event->peer->data = nullptr;
 

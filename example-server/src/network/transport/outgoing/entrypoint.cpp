@@ -1,6 +1,7 @@
 #include "network/transport/outgoing/entrypoint.h"
 
 #include "core/context.h"
+#include "network/transport/encryption/enet_host_encryptor.h"
 #include "network/transport/outgoing/message_preparation.h"
 #include "network/transport/outgoing/queue_draining.h"
 #include "network/transport/outgoing/process/simulation_dispatcher.h"
@@ -14,6 +15,10 @@ void ServerNetworkOutgoing_DrainSimulationMessages_And_RunOutgoingNetworkLogic(E
     {
         return;
     }
+
+    // Installez le chiffrement hôte une seule fois, 
+    // il décidera pour chaque pair si le trafic est chiffré.
+    ServerNetworkEncryption_EnsureHostEncryptorInstalled(host);
 
     // Récupérer une référence vers la queue simulation -> réseau sortant.
     SimulationToNetworkOUTQueue& simToNetQueue = GetSimulationToNetworkOUTQueue();

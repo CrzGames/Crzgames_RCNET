@@ -39,7 +39,11 @@ void ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleReliableMessages(
         }
         else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE)
         {
-            ServerNetworkOutgoing_SendSecureSessionHelloResponsePacketReliable(peer, msg.serializedPacket, msg.disconnectAfterAck);
+            ServerNetworkOutgoing_SendSecureSessionHelloResponsePacketReliable(
+                peer,
+                msg.serializedPacket,
+                msg.disconnectAfterAck,
+                msg.enableEncryptionAfterAck);
         }
         else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_AUTH_RESPONSE_PACKET_RELIABLE)
         {

@@ -106,6 +106,10 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloM
     // Si le calcul des clés de session a échoué, on veut déconnecter le client après lui avoir envoyé la réponse d'échec de session sécurisée.
     outMsg.disconnectAfterAck = (ok == false);
 
+    // Activer le chiffrement réseau seulement après ACK de la réponse
+    // de secure session en succès.
+    outMsg.enableEncryptionAfterAck = ok;
+
     // Sérialiser le packet prêt à être envoyé.
     outMsg.serializedPacket = serializeServerSecureSessionHelloResponsePacketReliable(secureSessionHelloResponsePacket);
 

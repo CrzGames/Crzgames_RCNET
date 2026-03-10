@@ -22,6 +22,9 @@ struct NetworkState
     // --- mapping de connectionId vers ENetPeer* pour envoyer des messages à un client spécifique ---
     std::unordered_map<uint32_t, ENetPeer*> connectionIdToEnetPeer; // key = connectionId, value = ENetPeer*
 
+    // --- mapping de connectionId vers état chiffrement réseau (false tant que secure session non confirmée par ACK) ---
+    std::unordered_map<uint32_t, bool> connectionIdToEncryptionEnabled; // key = connectionId, value = encryption enabled
+
 
     // ------------------------------------------------------------------------
     // Sessions - ATTENTION: Thread SIMULATION et RÉSEAU (accès protégé par mutex)

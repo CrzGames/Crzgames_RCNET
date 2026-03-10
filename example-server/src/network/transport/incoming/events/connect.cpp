@@ -28,6 +28,10 @@ void ServerNetworkIncoming_Event_HandleConnect(
     // en utilisant l'identifiant de connexion comme clé.
     networkState.connectionIdToEnetPeer[connectionId] = event->peer;
 
+    // Par défaut, le chiffrement réseau est désactivé pour cette connexion
+    // jusqu'à confirmation de l'ACK du secure session hello response.
+    networkState.connectionIdToEncryptionEnabled[connectionId] = false;
+
     // Crée un message destiné au thread simulation.
     NetworkINToSimulationMessage message{};
 

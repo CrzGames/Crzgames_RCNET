@@ -31,6 +31,10 @@ struct SimulationToNetworkOUTMessage
     // après l'envoi de ce message dès que le client aura accusé de réception du packet correspondant.
     bool disconnectAfterAck = false;
 
+    // Si true, le serveur active le chiffrement réseau pour ce client
+    // dès que ce message a été accusé de réception.
+    bool enableEncryptionAfterAck = false;
+
     // payload brut à envoyer (contenant le packet sérialisé correspondant au type de message)
     std::vector<uint8_t> serializedPacket;
 };
