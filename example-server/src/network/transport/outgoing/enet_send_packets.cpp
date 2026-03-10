@@ -74,6 +74,13 @@ static bool ServerNetworkOutgoing_SendPacket(
     // Vérification du résultat de l'envoi avant de retourner.
     if (sendResult < 0)
     {
+        // Fallback : si ce packet devait aboutir a une deconnexion post-ACK,
+        // demander quand meme la deconnexion meme si l'envoi a echoue.
+        if (disconnectAfterAck)
+        {
+            enet_peer_disconnect_later(peer, 0);
+        }
+
         // En cas d'échec de l'envoi, il faut détruire le packet manuellement 
         // pour éviter les fuites de mémoire, car ENet ne l'a pas pris en charge.
         enet_packet_destroy(enetPacket);
