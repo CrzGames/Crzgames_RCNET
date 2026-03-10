@@ -1,6 +1,6 @@
 #include "services/http/process/simulation_dispatcher.h"
 
-#include "services/http/process/simulation/auth_validatetoken_request_message.h"
+#include "services/http/process/simulation/auth_validatetokenrequest_message.h"
 
 #include <RCNET/RCNET.h>
 

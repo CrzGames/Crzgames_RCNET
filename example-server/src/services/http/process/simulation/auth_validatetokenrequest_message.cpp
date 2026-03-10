@@ -2,7 +2,7 @@
 
 #include "services/http/types/auth/responses.h"
 #include "core/context.h"
-#include "services/http/requests/auth_validatetoken.h"
+#include "services/http/requests/auth_validatetokenrequest.h"
 
 void ServerHttp_ProcessSimulationDispatcher_HandleAuthValidateTokenRequestMessage(const SimulationToHttpMessage& message)
 {
