@@ -25,6 +25,17 @@ void rcnet_load(void)
         RCNET_log(RCNET_LOG_ERROR, "Failed to initialize server crypto KX state");
     }
 
+    // Initialise le client HTTP global utilisé par le thread HTTP.
+    // Si l'initialisation échoue, on demande l'arrêt du moteur.
+    if (!ServerHttp_InitializeClient())
+    {
+        // Demande d'arrêt propre du moteur.
+        rcnet_engine_eventQuit();
+
+        // Log explicite de l'erreur pour diagnostic.
+        RCNET_log(RCNET_LOG_ERROR, "Failed to initialize HTTP client");
+    }
+
     // À ce stade, l'initialisation applicative est terminée.
     // Le serveur peut commencer à accepter et traiter son activité normale.
     RCNET_log(RCNET_LOG_INFO, "Server is ready");
