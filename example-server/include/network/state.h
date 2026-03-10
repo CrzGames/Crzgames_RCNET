@@ -33,6 +33,11 @@ struct NetworkState
     // Mutex de protection pour tous les acces a sessions
     mutable std::mutex sessionsMutex;
 
-    // Données de chiffrement pour l'établissement de session sécurisée via libsodium (ex: échange de clés, etc.)
+
+    // ------------------------------------------------------------------------
+    // Crypto - ATTENTION: Thread Simulation UNIQUEMENT
+    // ------------------------------------------------------------------------
+
+    // Etat crypto global du serveur pour le protocole de session sécurisée (clé publique/privée, etc.)
     ServerCryptoKxState cryptoKxState;
 };
