@@ -26,7 +26,7 @@ void ServerNetworkIncoming_Event_HandleDisconnect(
     }
 
     // Récupère l'identifiant de connexion à partir des données du peer.
-    uint32_t connectionId = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(event->peer->data));
+    const uint32_t connectionId = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(event->peer->data));
 
     // Supprime l'entrée correspondante dans la map connectionIdToEnetPeer.
     networkState.connectionIdToEnetPeer.erase(connectionId);

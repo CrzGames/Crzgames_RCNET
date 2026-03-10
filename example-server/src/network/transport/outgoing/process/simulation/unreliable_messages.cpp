@@ -74,17 +74,17 @@ static void ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleSnapshotFull
 
 void ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleUnreliableMessages(
     NetworkState& networkState,
-    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastSnapshotFullUnreliablePerConnectionId,
-    std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastClockSyncUnreliablePerConnectionId)
+    const std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastSnapshotFullUnreliablePerConnectionId,
+    const std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastClockSyncUnreliablePerConnectionId)
 {
     // Parcourir tous les messages unreliable de type snapshot full coalescés par connectionId.
-    for (std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>::iterator it =
+    for (std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>::const_iterator it =
             lastSnapshotFullUnreliablePerConnectionId.begin();
          it != lastSnapshotFullUnreliablePerConnectionId.end();
          ++it)
     {
         // Référence directe vers le message courant.
-        SimulationToNetworkOUTMessage& msg = it->second;
+        const SimulationToNetworkOUTMessage& msg = it->second;
 
         // Résoudre le peer ENet correspondant à la connexion cible.
         ENetPeer* peer = ServerNetworkOutgoing_FindPeerByConnectionId(
@@ -109,13 +109,13 @@ void ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleUnreliableMessages(
 
 
     // Parcourir tous les messages unreliable de type clock sync coalescés par connectionId.
-    for (std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>::iterator it =
+    for (std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>::const_iterator it =
             lastClockSyncUnreliablePerConnectionId.begin();
          it != lastClockSyncUnreliablePerConnectionId.end();
          ++it)
     {
         // Référence directe vers le message courant.
-        SimulationToNetworkOUTMessage& msg = it->second;
+        const SimulationToNetworkOUTMessage& msg = it->second;
 
         // Résoudre le peer ENet correspondant à la connexion cible.
         ENetPeer* peer = ServerNetworkOutgoing_FindPeerByConnectionId(

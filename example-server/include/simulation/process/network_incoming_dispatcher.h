@@ -25,4 +25,4 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher(
     NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,
     SimulationToHttpQueue& simToHttpQueue,
-    std::deque<NetworkINToSimulationMessage>& messages);
+    const std::deque<NetworkINToSimulationMessage>& messages);

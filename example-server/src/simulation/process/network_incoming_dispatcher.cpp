@@ -13,16 +13,16 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher(
     NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,
     SimulationToHttpQueue& simToHttpQueue,
-    std::deque<NetworkINToSimulationMessage>& messages)
+    const std::deque<NetworkINToSimulationMessage>& messages)
 {
     // Parcourir tous les messages réseau entrants
     // qui ont été drainés pendant ce tick.
-    for (std::deque<NetworkINToSimulationMessage>::iterator it = messages.begin();
+    for (std::deque<NetworkINToSimulationMessage>::const_iterator it = messages.begin();
          it != messages.end();
          ++it)
     {
         // Référence directe vers le message courant.
-        NetworkINToSimulationMessage& msg = *it;
+        const NetworkINToSimulationMessage& msg = *it;
 
         // Dispatch du traitement selon le type de message.
         if (msg.type == NetworkINToSimulationMessageType::CLIENT_EVENT_CONNECT)

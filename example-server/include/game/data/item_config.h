@@ -39,8 +39,10 @@ inline const ItemConfig itemConfigs[] =
 
 inline const ItemConfig& GetItemConfigFromId(uint8_t id)
 {
-    if (id >= static_cast<uint8_t>(ItemType::Count))
-        id = static_cast<uint8_t>(ItemType::None);
+    const uint8_t normalizedId =
+        (id < static_cast<uint8_t>(ItemType::Count))
+            ? id
+            : static_cast<uint8_t>(ItemType::None);
 
-    return itemConfigs[id];
+    return itemConfigs[normalizedId];
 }

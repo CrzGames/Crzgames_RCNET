@@ -19,7 +19,7 @@ void ServerNetworkIncoming_Event_HandleConnect(
     }
 
     // Génère un nouvel identifiant de connexion unique en utilisant le compteur nextConnectionId du NetworkState.
-    uint32_t connectionId = networkState.nextConnectionId++;
+    const uint32_t connectionId = networkState.nextConnectionId++;
 
     // Associe l'identifiant de connexion généré aux données du peer en utilisant un cast pour stocker l'ID dans un pointeur void*.
     event->peer->data = reinterpret_cast<void*>(static_cast<uintptr_t>(connectionId));

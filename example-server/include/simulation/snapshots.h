@@ -15,5 +15,5 @@
  */
 void ServerSimulation_CreateFullSnapshotsForAllSessionsAndEnqueueForNetworkOutgoing(
     SimulationToNetworkOUTQueue& simToNetQueue,
-    NetworkState& networkState,
+    const NetworkState& networkState,
     uint64_t currentTick);

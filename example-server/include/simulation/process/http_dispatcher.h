@@ -21,4 +21,4 @@
 void ServerSimulation_ProcessHttpDispatcher(
     NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,
-    std::deque<HttpToSimulationMessage>& httpMessages);
+    const std::deque<HttpToSimulationMessage>& httpMessages);

@@ -13,11 +13,11 @@ static bool ServerNetworkIncoming_GetSessionFlags(
     bool& isSecureSessionEstablished,
     AuthStatus& authStatus)
 {
-    NetworkState& networkState = GetNetworkState();
+    const NetworkState& networkState = GetNetworkState();
 
     std::lock_guard<std::mutex> lock(networkState.sessionsMutex);
 
-    std::unordered_map<uint32_t, ClientSession>::iterator it =
+    std::unordered_map<uint32_t, ClientSession>::const_iterator it =
         networkState.sessions.find(connectionId);
     if (it == networkState.sessions.end())
     {

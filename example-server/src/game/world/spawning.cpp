@@ -5,7 +5,7 @@ uint32_t ServerWorld_SpawnPlayer(
     PlayerType type)
 {
     // Allouer un nouvel identifiant d'entité unique.
-    uint32_t entityId = gameState.nextEntityId++;
+    const uint32_t entityId = gameState.nextEntityId++;
 
     // Créer l'entité joueur.
     EntityState entity{};

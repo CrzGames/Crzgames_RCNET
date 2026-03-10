@@ -13,12 +13,12 @@ AuthTokenVerificationHTTPResponse ServerHttp_Auth_ValidateTokenRequest(const Aut
     httplib::Client& cli = GetHttpClient();
 
     // Construit le header Authorization standard avec le bearer token.
-    httplib::Headers headers = {
+    const httplib::Headers headers = {
         { "Authorization", "Bearer " + request.authToken }
     };
 
     // Envoie la requête HTTP au backend d'authentification.
-    auto result = cli.Post(
+    const auto result = cli.Post(
         "/auth/validate-token",
         headers,
         std::string{},

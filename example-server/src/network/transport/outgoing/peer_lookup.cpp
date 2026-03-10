@@ -5,11 +5,11 @@
 #include <RCNET/RCNET.h>
 
 ENetPeer* ServerNetworkOutgoing_FindPeerByConnectionId(
-    NetworkState& networkState,
+    const NetworkState& networkState,
     uint32_t connectionId)
 {
     // Rechercher le peer ENet correspondant à cette connectionId.
-    std::unordered_map<uint32_t, ENetPeer*>::iterator it =
+    std::unordered_map<uint32_t, ENetPeer*>::const_iterator it =
         networkState.connectionIdToEnetPeer.find(connectionId);
 
     // Si aucune entrée n'existe pour cette connectionId,

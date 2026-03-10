@@ -9,7 +9,7 @@ void ServerNetworkIncoming_Event_HandleReceive(
     NetworkINToSimulationQueue& netToSimQueue)
 {
     // Récupère l’identifiant de connexion validé ou zéro si la validation a échoué.
-    uint32_t connectionId = ServerNetworkIncoming_GetValidatedConnectionIdOrZero(event, networkState);
+    const uint32_t connectionId = ServerNetworkIncoming_GetValidatedConnectionIdOrZero(event, networkState);
 
     // Si l’ID est invalide, on ignore le packet.
     if (connectionId == 0)

@@ -35,6 +35,6 @@ bool ServerSimulation_AreAllSessionsReadyForMatch(const NetworkState& networkSta
  */
 void ServerSimulation_CheckMatchFlow(
     GameState& gameState,
-    NetworkState& networkState,
+    const NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,
     uint64_t currentTick);

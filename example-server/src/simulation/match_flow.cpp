@@ -42,7 +42,7 @@ bool ServerSimulation_AreAllSessionsReadyForMatch(const NetworkState& networkSta
 
 void ServerSimulation_CheckMatchFlow(
     GameState& gameState,
-    NetworkState& networkState,
+    const NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,
     uint64_t currentTick)
 {
@@ -62,12 +62,12 @@ void ServerSimulation_CheckMatchFlow(
         std::lock_guard<std::mutex> lock(networkState.sessionsMutex);
 
         // Parcourir toutes les sessions connectées.
-        for (std::unordered_map<uint32_t, ClientSession>::iterator it = networkState.sessions.begin();
+        for (std::unordered_map<uint32_t, ClientSession>::const_iterator it = networkState.sessions.begin();
              it != networkState.sessions.end();
              ++it)
         {
             // Référence vers la session courante.
-            ClientSession& session = it->second;
+            const ClientSession& session = it->second;
 
             // Construire le packet MATCH_INIT.
             ServerMatchInitPacketReliable matchInitPacket{};
@@ -111,12 +111,12 @@ void ServerSimulation_CheckMatchFlow(
         std::lock_guard<std::mutex> lock(networkState.sessionsMutex);
 
         // Parcourir toutes les sessions connectées.
-        for (std::unordered_map<uint32_t, ClientSession>::iterator it = networkState.sessions.begin();
+        for (std::unordered_map<uint32_t, ClientSession>::const_iterator it = networkState.sessions.begin();
              it != networkState.sessions.end();
              ++it)
         {
             // Référence vers la session courante.
-            ClientSession& session = it->second;
+            const ClientSession& session = it->second;
 
             // Construire le packet d'init monde statique.
             ServerWorldStaticStateInitPacketReliable worldStaticStateInitPacket{};
@@ -158,12 +158,12 @@ void ServerSimulation_CheckMatchFlow(
         std::lock_guard<std::mutex> lock(networkState.sessionsMutex);
 
         // Parcourir toutes les sessions connectées.
-        for (std::unordered_map<uint32_t, ClientSession>::iterator it = networkState.sessions.begin();
+        for (std::unordered_map<uint32_t, ClientSession>::const_iterator it = networkState.sessions.begin();
              it != networkState.sessions.end();
              ++it)
         {
             // Référence vers la session courante.
-            ClientSession& session = it->second;
+            const ClientSession& session = it->second;
 
             // Construire le packet MATCH_START.
             ServerMatchStartPacketReliable matchStartPacket{};

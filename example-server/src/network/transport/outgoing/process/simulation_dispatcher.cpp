@@ -5,7 +5,7 @@
 
 void ServerNetworkOutgoing_ProcessSimulationDispatcher(
     NetworkState& networkState,
-    ServerNetworkOutgoingPreparedMessages& preparedMessages)
+    const ServerNetworkOutgoingPreparedMessages& preparedMessages)
 {
     // Traiter d'abord les messages reliable.
     ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleReliableMessages(

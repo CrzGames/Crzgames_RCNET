@@ -45,8 +45,10 @@ inline const PlayerConfig playerConfigs[] =
 // Fonction d’accès rapide à la config d’un PlayerType
 inline const PlayerConfig& GetPlayerConfigFromId(uint8_t id)
 {
-    if (id >= static_cast<uint8_t>(PlayerType::Count))
-        id = static_cast<uint8_t>(PlayerType::None);
+    const uint8_t normalizedId =
+        (id < static_cast<uint8_t>(PlayerType::Count))
+            ? id
+            : static_cast<uint8_t>(PlayerType::None);
 
-    return playerConfigs[id];
+    return playerConfigs[normalizedId];
 }

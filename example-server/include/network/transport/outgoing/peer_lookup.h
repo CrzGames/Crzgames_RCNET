@@ -19,5 +19,5 @@
  * @return Le `ENetPeer*` correspondant si trouvé et valide, sinon `nullptr`.
  */
 ENetPeer* ServerNetworkOutgoing_FindPeerByConnectionId(
-    NetworkState& networkState,
+    const NetworkState& networkState,
     uint32_t connectionId);

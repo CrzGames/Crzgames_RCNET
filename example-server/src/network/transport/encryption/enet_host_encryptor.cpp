@@ -31,7 +31,7 @@ namespace
         // Aucun etat mutable pour l'instant.
     };
 
-    static bool ServerNetworkEncryption_TryGetConnectionIdFromPeer(ENetPeer* peer, uint32_t& outConnectionId)
+    static bool ServerNetworkEncryption_TryGetConnectionIdFromPeer(const ENetPeer* peer, uint32_t& outConnectionId)
     {
         if (peer == nullptr || peer->data == nullptr)
         {
@@ -49,7 +49,7 @@ namespace
     }
 
     static bool ServerNetworkEncryption_TryLoadSessionKeyIfEnabled(
-        NetworkState& networkState,
+        const NetworkState& networkState,
         uint32_t connectionId,
         bool forOutgoingEncryption,
         std::array<uint8_t, crypto_kx_SESSIONKEYBYTES>& outKey)
@@ -151,7 +151,7 @@ namespace
                 outLimit);
         }
 
-        NetworkState& networkState = GetNetworkState();
+        const NetworkState& networkState = GetNetworkState();
 
         std::array<uint8_t, crypto_kx_SESSIONKEYBYTES> txKey{};
         if (!ServerNetworkEncryption_TryLoadSessionKeyIfEnabled(networkState, connectionId, true, txKey))
@@ -229,7 +229,7 @@ namespace
             return ServerNetworkEncryption_CopyInDataToOutData(inData, inLimit, outData, outLimit);
         }
 
-        NetworkState& networkState = GetNetworkState();
+        const NetworkState& networkState = GetNetworkState();
 
         std::array<uint8_t, crypto_kx_SESSIONKEYBYTES> rxKey{};
         if (!ServerNetworkEncryption_TryLoadSessionKeyIfEnabled(networkState, connectionId, false, rxKey))

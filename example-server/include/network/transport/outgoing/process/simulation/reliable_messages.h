@@ -16,5 +16,5 @@
  * @param reliableMessages Messages reliable à envoyer.
  */
 void ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleReliableMessages(
-    NetworkState& networkState,
+    const NetworkState& networkState,
     const std::deque<SimulationToNetworkOUTMessage>& reliableMessages);

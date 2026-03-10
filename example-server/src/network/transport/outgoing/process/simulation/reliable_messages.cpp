@@ -6,7 +6,7 @@
 #include <RCNET/RCNET.h>
 
 void ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleReliableMessages(
-    NetworkState& networkState,
+    const NetworkState& networkState,
     const std::deque<SimulationToNetworkOUTMessage>& reliableMessages)
 {
     // Parcourir tous les messages reliable à envoyer.

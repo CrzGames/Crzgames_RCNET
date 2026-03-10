@@ -11,7 +11,7 @@
 
 void ServerSimulation_CreateFullSnapshotAndEnqueue(
     SimulationToNetworkOUTQueue& simToNetQueue,
-    ClientSession& session,
+    const ClientSession& session,
     uint64_t currentTick)
 {
     // Construire un packet snapshot full.
@@ -47,18 +47,18 @@ void ServerSimulation_CreateFullSnapshotAndEnqueue(
 
 void ServerSimulation_CreateFullSnapshotsForAllSessionsAndEnqueueForNetworkOutgoing(
     SimulationToNetworkOUTQueue& simToNetQueue,
-    NetworkState& networkState,
+    const NetworkState& networkState,
     uint64_t currentTick)
 {
     std::lock_guard<std::mutex> lock(networkState.sessionsMutex);
 
     // Parcourir toutes les sessions connectées.
-    for (std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.begin();
+    for (std::unordered_map<uint32_t, ClientSession>::const_iterator sit = networkState.sessions.begin();
          sit != networkState.sessions.end();
          ++sit)
     {
         // Référence directe vers la session courante.
-        ClientSession& session = sit->second;
+        const ClientSession& session = sit->second;
 
         // Construire puis enqueuer un snapshot full pour cette session.
         ServerSimulation_CreateFullSnapshotAndEnqueue(

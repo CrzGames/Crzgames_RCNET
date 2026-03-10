@@ -41,8 +41,10 @@ inline const ProjectileConfig projectileConfigs[] =
 
 inline const ProjectileConfig& GetProjectileConfigFromId(uint8_t id)
 {
-    if (id >= static_cast<uint8_t>(ProjectileType::Count))
-        id = static_cast<uint8_t>(ProjectileType::None);
+    const uint8_t normalizedId =
+        (id < static_cast<uint8_t>(ProjectileType::Count))
+            ? id
+            : static_cast<uint8_t>(ProjectileType::None);
 
-    return projectileConfigs[id];
+    return projectileConfigs[normalizedId];
 }
