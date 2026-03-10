@@ -2,6 +2,7 @@
 
 #include "game/state.h"
 #include "network/state.h"
+#include "services/http/httplib_wrapper.h"
 #include "core/threading/queues/http_to_simulation.h"
 #include "core/threading/queues/network_incoming_to_simulation.h"
 #include "core/threading/queues/simulation_to_http.h"
@@ -25,5 +26,5 @@ SimulationToHttpQueue& GetSimulationToHttpQueue();
 // Accès global à la queue de communication du thread HTTP vers le thread simulation
 HttpToSimulationQueue& GetHttpToSimulationQueue();
 
-// Accès global à l'état du client HTTP utilisé par le thread HTTP
-HttpClientState& GetHttpClientState();
+// Accès global au client HTTP utilisé par le thread HTTP
+httplib::Client& GetHttpClient();

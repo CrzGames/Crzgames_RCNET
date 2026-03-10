@@ -1,0 +1,27 @@
+#include "services/http/client.h"
+
+#include "network/server_config.h"
+
+std::unique_ptr<httplib::Client> g_httpClient = nullptr;
+
+bool ServerHttp_InitializeClient(void)
+{
+    g_httpClient = std::make_unique<httplib::Client>(ServerConfig::baseUrlApi.data());
+
+    g_httpClient->set_connection_timeout(0, 300000);
+    g_httpClient->set_read_timeout(5, 0);
+    g_httpClient->set_write_timeout(5, 0);
+
+#if SERVER_ENV_DEV
+        g_httpClient->enable_server_certificate_verification(false);
+#else
+        g_httpClient->enable_server_certificate_verification(true);
+#endif
+
+    return true;
+}
+
+void ServerHttp_ShutdownClient(void)
+{
+    g_httpClient.reset();
+}
