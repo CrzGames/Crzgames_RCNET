@@ -22,6 +22,7 @@ int main(int argc, char* argv[])
     myServerCallbacks.rcnet_simulation_update = rcnet_simulation_update;
     myServerCallbacks.rcnet_http_update = rcnet_http_update;
     myServerCallbacks.rcnet_nats_update = rcnet_nats_update;
+    myServerCallbacks.rcnet_wake_blocking_threads = rcnet_wake_blocking_threads;
 
     // Construire la config serveur
     RCNET_ServerConfig myServerConfig{};
@@ -31,10 +32,7 @@ int main(int argc, char* argv[])
     myServerConfig.simulationTickHz = ServerConfig::simulationTickRateHz;
     myServerConfig.networkOutgoingTickHz = ServerConfig::networkOutgoingTickRateHz;
     myServerConfig.networkIncomingPollTimeoutMs = ServerConfig::networkIncomingPollTimeoutMs;
-    myServerConfig.httpThreadSleepMs = ServerConfig::httpThreadSleepMs;
-    myServerConfig.natsThreadSleepMs = ServerConfig::natsThreadSleepMs;
     // Configuration NATS
-    myServerConfig.natsConfig.enabled = ServerConfig::natsEnabled;
     myServerConfig.natsConfig.natsServerURL = ServerConfig::natsServerURL;
     myServerConfig.natsConfig.useTLS = ServerConfig::natsUseTLS;
     myServerConfig.natsConfig.skipVerifyCertsServer = ServerConfig::natsSkipVerifyCertsServer;

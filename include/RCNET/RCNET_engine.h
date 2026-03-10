@@ -32,7 +32,6 @@ extern "C" {
  */
 typedef struct RCNET_NATSConfig
 {
-    bool enabled; // Indique si la serveur dois utiliser NATS ou non
     const char* natsServerURL;
     bool useTLS;
     bool skipVerifyCertsServer;
@@ -50,8 +49,6 @@ typedef struct RCNET_NATSConfig
  * - networkIncomingPollTimeoutMs : durée max de poll réseau entrant en ms
  * - networkOutgoingTickHz  : fréquence des envois réseau sortants
  * - simulationTickHz       : fréquence de simulation serveur
- * - httpThreadSleepMs      : durée de sommeil appliquée entre deux itérations du thread HTTP.
- * - natsThreadSleepMs      : durée de sommeil appliquée entre deux itérations du thread NATS.
  */
 typedef struct RCNET_ServerConfig
 {
@@ -61,8 +58,6 @@ typedef struct RCNET_ServerConfig
     uint32_t networkIncomingPollTimeoutMs;
     uint32_t networkOutgoingTickHz;
     uint32_t simulationTickHz;
-    uint32_t httpThreadSleepMs;
-    uint32_t natsThreadSleepMs;
     RCNET_NATSConfig natsConfig;
 } RCNET_ServerConfig;
 
@@ -81,6 +76,7 @@ typedef struct RCNET_ServerConfig
  * - rcnet_network_outgoing_update  : envoi des données réseau sortantes
  * - rcnet_http_update              : logique de traitement HTTP (ex: pour l'API du jeu, etc.)
  * - rcnet_nats_update              : logique de traitement NATS (ex: pour la communication inter-serveurs, etc.)
+ * - rcnet_wake_blocking_threads    : callback pour réveiller les threads bloqués (ex: en cas de shutdown)
  *
  * IMPORTANT :
  * - rcnet_simulation_update() tourne dans le thread simulation
@@ -98,6 +94,7 @@ typedef struct RCNET_Callbacks
     void (*rcnet_network_outgoing_update)(ENetHost* host);
     void (*rcnet_http_update)(void);
     void (*rcnet_nats_update)(RCNET_NATSContext* natsContext);
+    void (*rcnet_wake_blocking_threads)(void);
 } RCNET_Callbacks;
 
 // ============================================================================
@@ -161,16 +158,6 @@ uint32_t rcnet_engine_getNetworkOutgoingTickRateHz(void);
  * sortante approche.
  */
 uint32_t rcnet_engine_getNetworkIncomingPollTimeoutMs(void);
-
-/**
- * \brief Retourne la durée de sommeil du thread HTTP entre deux itérations.
- */
-uint32_t rcnet_engine_getHttpThreadSleepMs(void);
-
-/**
- * \brief Retourne la durée de sommeil du thread NATS entre deux itérations.
- */
-uint32_t rcnet_engine_getNatsThreadSleepMs(void);
 
 // ============================================================================
 // Helpers utilitaires

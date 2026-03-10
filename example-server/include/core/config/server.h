@@ -33,12 +33,6 @@ struct ServerConfig
     // Durée de poll réseau entrant en ms (ex: 1)
     static constexpr uint32_t networkIncomingPollTimeoutMs = 1;
 
-    // Durée de sommeil entre chaque tick du thread HTTP en ms (ex: 5)
-    static constexpr uint32_t httpThreadSleepMs = 5;
-
-    // Durée de sommeil entre chaque tick du thread NATS en ms (ex: 1)
-    static constexpr uint32_t natsThreadSleepMs = 1;
-
     // --------------------------------------------------------------------------
     // API externe (pour les appels HTTP vers l'API du jeu, ex: pour checker les tokens d'authentification, etc.)
     // --------------------------------------------------------------------------
@@ -56,9 +50,6 @@ struct ServerConfig
     // ------------------------------------------------------------------------
     // Configuration NATS
     // ------------------------------------------------------------------------
-
-    // Indique si le serveur doit utiliser NATS ou pas
-    static constexpr bool natsEnabled = true;
 
     // Bypass la vérification des certificats TLS du serveur NATS (uniquement si `natsUseTLS` est à `true`)
     static constexpr bool natsSkipVerifyCertsServer = true;

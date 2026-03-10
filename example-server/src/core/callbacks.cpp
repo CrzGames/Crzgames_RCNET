@@ -24,6 +24,9 @@ void rcnet_load(void)
 
         // Log explicite de l'erreur pour diagnostic.
         RCNET_log(RCNET_LOG_ERROR, "Failed to initialize server crypto KX state");
+
+        // Sort de la fonction de callback pour éviter de continuer l'initialisation du serveur dans un état potentiellement instable.
+        return;
     }
 
     // Initialise le client HTTP global utilisé par le thread HTTP.
@@ -35,6 +38,9 @@ void rcnet_load(void)
 
         // Log explicite de l'erreur pour diagnostic.
         RCNET_log(RCNET_LOG_ERROR, "Failed to initialize HTTP client");
+
+        // Sort de la fonction de callback pour éviter de continuer l'initialisation du serveur dans un état potentiellement instable.
+        return;
     }
 
     // À ce stade, l'initialisation applicative est terminée.
@@ -88,4 +94,10 @@ void rcnet_nats_update(RCNET_NATSContext* natsContext)
     // Point d'entrée prévu pour le traitement NATS.
     // Actuellement vide.
     (void)natsContext;
+}
+
+void rcnet_wake_blocking_threads(void)
+{
+    GetSimulationToHttpQueue().stop();
+    //GetSimulationToNatsQueue().stop();
 }

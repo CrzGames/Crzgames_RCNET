@@ -47,12 +47,6 @@ static std::atomic<uint32_t> g_networkIncomingPollTimeoutMs{1};
 // Fréquence réseau sortante effectivement utilisée.
 static std::atomic<uint32_t> g_networkOutgoingTickRateHz{32};
 
-// Durée de sommeil du thread HTTP entre deux itérations.
-static std::atomic<uint32_t> g_httpThreadSleepMs{1};
-
-// Durée de sommeil du thread NATS entre deux itérations.
-static std::atomic<uint32_t> g_natsThreadSleepMs{1};
-
 // ============================================================================
 // 2) État global interne moteur
 // ============================================================================
@@ -93,12 +87,6 @@ static int simulationTickRateHz = 128;
 
 // Durée d'attente max côté réception réseau, en millisecondes.
 static uint32_t networkIncomingPollTimeoutMs = 1;
-
-// Durée de sommeil du thread HTTP entre deux itérations.
-static uint32_t httpThreadSleepMs = 1;
-
-// Durée de sommeil du thread NATS entre deux itérations.
-static uint32_t natsThreadSleepMs = 1;
 
 // Fréquence réseau sortante en Hz.
 // Exemple : 32 signifie 32 ticks d'envoi par seconde.
@@ -164,15 +152,7 @@ static constexpr uint64_t kMaxIncomingWorkBudgetNs = 500'000ull; // 500 µs
 // ============================================================================
 
 // Structure globale qui contient les callbacks utilisateur retenus par le moteur.
-static RCNET_Callbacks callbacksServerEngine = {
-    nullptr, // rcnet_load
-    nullptr, // rcnet_unload
-    nullptr, // rcnet_simulation_update
-    nullptr, // rcnet_network_incoming_update
-    nullptr, // rcnet_network_outgoing_update
-    nullptr,  // rcnet_http_update
-    nullptr  // rcnet_nats_update
-};
+static RCNET_Callbacks callbacksServerEngine = {};
 
 // ============================================================================
 // 8) Helpers temps
@@ -377,6 +357,10 @@ static void rcnet_engine_setCallbacks(RCNET_Callbacks* callbacksUser)
     // Si le callback NATS existe, on l'enregistre.
     if (callbacksUser->rcnet_nats_update)
         callbacksServerEngine.rcnet_nats_update = callbacksUser->rcnet_nats_update;
+
+    // Si le callback de réveil des threads bloqués existe, on l'enregistre.
+    if (callbacksUser->rcnet_wake_blocking_threads)
+        callbacksServerEngine.rcnet_wake_blocking_threads = callbacksUser->rcnet_wake_blocking_threads;
 }
 
 // ============================================================================
@@ -430,18 +414,10 @@ static bool rcnet_engine_init(void)
     // Expose le timeout de poll réseau entrant utilisé.
     g_networkIncomingPollTimeoutMs.store(networkIncomingPollTimeoutMs, std::memory_order_relaxed);
 
-    // Expose la durée de sommeil du thread HTTP entre deux itérations.
-    g_httpThreadSleepMs.store(httpThreadSleepMs, std::memory_order_relaxed);
-
-    // Expose la durée de sommeil du thread NATS entre deux itérations.
-    g_natsThreadSleepMs.store(natsThreadSleepMs, std::memory_order_relaxed);
-
     // Log de la configuration effective du moteur
     RCNET_log(RCNET_LOG_INFO, "Simulation tick rate: %u Hz", rcnet_engine_getSimulationTickRateHz());
     RCNET_log(RCNET_LOG_INFO, "Network outgoing tick rate: %u Hz", rcnet_engine_getNetworkOutgoingTickRateHz());
     RCNET_log(RCNET_LOG_INFO, "Network incoming poll timeout: %u ms", rcnet_engine_getNetworkIncomingPollTimeoutMs());
-    RCNET_log(RCNET_LOG_INFO, "HTTP thread sleep duration: %u ms", rcnet_engine_getHttpThreadSleepMs());
-    RCNET_log(RCNET_LOG_INFO, "NATS thread sleep duration: %u ms", rcnet_engine_getNatsThreadSleepMs());
 
     // Init OK.
     return true;
@@ -580,18 +556,6 @@ uint32_t rcnet_engine_getNetworkOutgoingTickRateHz(void)
     return g_networkOutgoingTickRateHz.load(std::memory_order_relaxed);
 }
 
-uint32_t rcnet_engine_getHttpThreadSleepMs(void)
-{
-    // Retourne la durée de sommeil du thread HTTP entre deux itérations.
-    return g_httpThreadSleepMs.load(std::memory_order_relaxed);
-}
-
-uint32_t rcnet_engine_getNatsThreadSleepMs(void)
-{
-    // Retourne la durée de sommeil du thread NATS entre deux itérations.
-    return g_natsThreadSleepMs.load(std::memory_order_relaxed);
-}
-
 // ============================================================================
 // 14) Helpers publics déplacés du header vers le cpp
 // ============================================================================
@@ -670,6 +634,11 @@ void rcnet_engine_eventQuit(void)
 {
     // Demande l'arrêt global de manière thread-safe.
     serverIsRunning.store(false, std::memory_order_relaxed);
+
+    if (callbacksServerEngine.rcnet_wake_blocking_threads != nullptr)
+    {
+        callbacksServerEngine.rcnet_wake_blocking_threads();
+    }
 }
 
 // ============================================================================
@@ -689,11 +658,6 @@ static void rcnet_engine_httpThreadMain(void)
     {
         // Exécute un tick HTTP.
         rcnet_engine_httpUpdate();
-
-        // Petite pause pour éviter de monopoliser le CPU.
-        std::this_thread::sleep_for(
-            std::chrono::milliseconds(g_httpThreadSleepMs.load(std::memory_order_relaxed))
-        );
     }
 
     // Log de fin du thread HTTP.
@@ -743,11 +707,6 @@ static void rcnet_engine_natsThreadMain(void)
             // Exécute un tick NATS.
             rcnet_engine_natsUpdate(&g_natsClient);
         }
-
-        // Petite pause pour éviter de monopoliser le CPU.
-        std::this_thread::sleep_for(
-            std::chrono::milliseconds(g_natsThreadSleepMs.load(std::memory_order_relaxed))
-        );
     }
 
     if (natsReady)
@@ -1137,14 +1096,12 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, const RCNET_ServerConfig* 
     // Copie la durée maximale de poll réseau entrant.
     networkIncomingPollTimeoutMs = config->networkIncomingPollTimeoutMs;
 
-    // Copie la durée de sommeil du thread HTTP entre deux itérations.
-    httpThreadSleepMs = config->httpThreadSleepMs;
-
-    // Copie la durée de sommeil du thread NATS entre deux itérations.
-    natsThreadSleepMs = config->natsThreadSleepMs;
-
     // Copie la configuration NATS.
-    g_natsEnabled = config->natsConfig.enabled && config->natsConfig.natsServerURL != nullptr && config->natsConfig.publicKeyNKey != nullptr && config->natsConfig.privateKeySeedNKey != nullptr;
+    g_natsEnabled =
+        (callbacksServerEngine.rcnet_nats_update != nullptr) &&
+        (config->natsConfig.natsServerURL != nullptr) &&
+        (config->natsConfig.publicKeyNKey != nullptr) &&
+        (config->natsConfig.privateKeySeedNKey != nullptr);
     g_natsServerURL = config->natsConfig.natsServerURL;
     g_natsPublicKeyNKey = config->natsConfig.publicKeyNKey;
     g_natsPrivateKeySeedNKey = config->natsConfig.privateKeySeedNKey;
@@ -1173,7 +1130,7 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, const RCNET_ServerConfig* 
     // Reset l'identifiant NATS interne.
     natsTickId = 0;
 
-    // 
+    // Reset le context NATS global.
     g_natsClient.connection = nullptr;
     g_natsClient.subscriptions = nullptr;
     g_natsClient.subscriptionCount = 0;
@@ -1203,6 +1160,16 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, const RCNET_ServerConfig* 
     if (callbacksServerEngine.rcnet_load != nullptr)
         callbacksServerEngine.rcnet_load();
 
+    // Check si le callback load a demandé un arrêt immédiat.
+    if (!serverIsRunning.load(std::memory_order_relaxed))
+    {
+        if (callbacksServerEngine.rcnet_unload != nullptr)
+            callbacksServerEngine.rcnet_unload();
+
+        rcnet_engine_quit();
+        return false;
+    }
+
     // ------------------------------------------------------------------------
     // G) Lancement des threads
     // ------------------------------------------------------------------------
@@ -1214,7 +1181,12 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, const RCNET_ServerConfig* 
     std::thread netThread(rcnet_engine_networkThreadMain);
 
     // Lance le thread HTTP.
-    std::thread httpThread(rcnet_engine_httpThreadMain);
+    std::thread httpThread;
+    bool hasHttpThread = (callbacksServerEngine.rcnet_http_update != nullptr);
+    if (hasHttpThread)
+    {
+        httpThread = std::thread(rcnet_engine_httpThreadMain);
+    }
 
     // Lance le thread NATS si activé.
     std::thread natsThread;
@@ -1234,7 +1206,10 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, const RCNET_ServerConfig* 
     netThread.join();
 
     // Attend la fin du thread HTTP.
-    httpThread.join();
+    if (hasHttpThread)
+    {
+        httpThread.join();
+    }
 
     // Attend la fin du thread NATS si activé.
     if (g_natsEnabled)
