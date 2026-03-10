@@ -5,12 +5,15 @@
 #include "network/serialization/serialize_packets_server.h"
 #include "core/config/server.h"
 
+#include <mutex>         // std::lock_guard
 #include <unordered_map> // std::unordered_map
 
 #include <RCNET/RCNET.h>
 
 bool ServerSimulation_AreAllSessionsReadyForMatch(const NetworkState& networkState)
 {
+    std::lock_guard<std::mutex> lock(networkState.sessionsMutex);
+
     // Vérifier d'abord qu'il y a assez de sessions connectées.
     if (networkState.sessions.size() < ServerConfig::maxClientsConnected)
     {
@@ -45,14 +48,19 @@ void ServerSimulation_CheckMatchFlow(
 {
     // Tant qu'il n'y a pas assez de joueurs connectés,
     // on ne lance aucune étape du flow.
-    if (networkState.sessions.size() < ServerConfig::maxClientsConnected)
     {
-        return;
+        std::lock_guard<std::mutex> lock(networkState.sessionsMutex);
+        if (networkState.sessions.size() < ServerConfig::maxClientsConnected)
+        {
+            return;
+        }
     }
 
     // Envoyer MATCH_INIT une seule fois à tous les clients.
     if (!gameState.matchInitSent)
     {
+        std::lock_guard<std::mutex> lock(networkState.sessionsMutex);
+
         // Parcourir toutes les sessions connectées.
         for (std::unordered_map<uint32_t, ClientSession>::iterator it = networkState.sessions.begin();
              it != networkState.sessions.end();
@@ -100,6 +108,8 @@ void ServerSimulation_CheckMatchFlow(
     // Envoyer WORLD_STATIC_STATE_INIT une seule fois à tous les clients.
     if (!gameState.worldStaticStateInitSent)
     {
+        std::lock_guard<std::mutex> lock(networkState.sessionsMutex);
+
         // Parcourir toutes les sessions connectées.
         for (std::unordered_map<uint32_t, ClientSession>::iterator it = networkState.sessions.begin();
              it != networkState.sessions.end();
@@ -144,6 +154,8 @@ void ServerSimulation_CheckMatchFlow(
 
         // Calculer le tick de démarrage réel du match.
         gameState.matchStartTick = currentTick + countdownTicks;
+
+        std::lock_guard<std::mutex> lock(networkState.sessionsMutex);
 
         // Parcourir toutes les sessions connectées.
         for (std::unordered_map<uint32_t, ClientSession>::iterator it = networkState.sessions.begin();

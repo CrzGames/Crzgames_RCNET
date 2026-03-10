@@ -7,6 +7,7 @@
 #include "network/transport/outgoing/enet_send_packets.h"
 #include "network/transport/outgoing/peer_lookup.h"
 
+#include <mutex>         // std::lock_guard
 #include <unordered_map> // std::unordered_map
 #include <vector>        // std::vector
 
@@ -23,19 +24,6 @@ static void ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleSnapshotFull
         return;
     }
 
-    // Rechercher la session cible pour patcher l'identifiant de snapshot.
-    std::unordered_map<uint32_t, ClientSession>::iterator sit =
-        networkState.sessions.find(msg.connectionId);
-
-    // Si la session n'existe pas, on ne peut pas poursuivre.
-    if (sit == networkState.sessions.end())
-    {
-        return;
-    }
-
-    // Référence directe vers la session cible.
-    ClientSession& session = sit->second;
-
     // Désérialiser le snapshot construit par la simulation.
     ServerSnapshotFullPacketUnreliable snapshotFullPacket{};
     if (!deserializeServerSnapshotFullPacketUnreliable(
@@ -49,14 +37,32 @@ static void ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleSnapshotFull
         return;
     }
 
-    // Allouer un nouvel identifiant de snapshot au moment réel de l'envoi.
-    const uint32_t snapshotId = session.serverNextSnapshotId++;
+    uint32_t snapshotId = 0;
+    {
+        std::lock_guard<std::mutex> lock(networkState.sessionsMutex);
+
+        // Rechercher la session cible pour patcher l'identifiant de snapshot.
+        std::unordered_map<uint32_t, ClientSession>::iterator sit =
+            networkState.sessions.find(msg.connectionId);
+
+        // Si la session n'existe pas, on ne peut pas poursuivre.
+        if (sit == networkState.sessions.end())
+        {
+            return;
+        }
+
+        // Référence directe vers la session cible.
+        ClientSession& session = sit->second;
+
+        // Allouer un nouvel identifiant de snapshot au moment réel de l'envoi.
+        snapshotId = session.serverNextSnapshotId++;
+
+        // Mémoriser le dernier snapshot effectivement envoyé à ce client.
+        session.serverLastSentSnapshotId = snapshotId;
+    }
 
     // Écrire cet identifiant dans le packet.
     snapshotFullPacket.snapshotId = snapshotId;
-
-    // Mémoriser le dernier snapshot effectivement envoyé à ce client.
-    session.serverLastSentSnapshotId = snapshotId;
 
     // Résérialiser le packet patché.
     std::vector<uint8_t> patchedPacket =

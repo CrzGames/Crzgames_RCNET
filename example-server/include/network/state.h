@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>       // uint16_t, uint32_t, etc.
+#include <mutex>         // std::mutex
 #include <unordered_map> // std::unordered_map
 #include <string>        // std::string
 
@@ -23,11 +24,14 @@ struct NetworkState
 
 
     // ------------------------------------------------------------------------
-    // Sessions - ATTENTION: Thread SIMULATION UNIQUEMENT
+    // Sessions - Acces multi-thread protege par sessionsMutex
     // ------------------------------------------------------------------------
 
     // Mapping de connectionId vers ClientSession (sessions actives pour les clients connectés)
     std::unordered_map<uint32_t, ClientSession> sessions; // key = connectionId, value = ClientSession
+
+    // Mutex de protection pour tous les acces a sessions
+    mutable std::mutex sessionsMutex;
 
     // Données de chiffrement pour l'établissement de session sécurisée via libsodium (ex: échange de clés, etc.)
     ServerCryptoKxState cryptoKxState;

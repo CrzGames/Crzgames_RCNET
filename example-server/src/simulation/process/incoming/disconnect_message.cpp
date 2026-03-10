@@ -1,5 +1,6 @@
 #include "simulation/process/incoming/disconnect_message.h"
 
+#include <mutex>         // std::lock_guard
 #include <unordered_map> // std::unordered_map
 
 #include <RCNET/RCNET.h>
@@ -8,23 +9,28 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleDisconnectMessage(
     NetworkState& networkState,
     const NetworkINToSimulationMessage& msg)
 {
-    // Rechercher la session correspondant à cette connexion.
-    std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
-
-    // Si aucune session n'existe, on ignore simplement le message.
-    if (sit == networkState.sessions.end())
     {
-        // Log d'avertissement pour signaler une déconnexion inconnue.
-        RCNET_log(RCNET_LOG_WARN,
-                  "[SERVER] [SIMULATION] [DISCONNECT] - Received disconnect for unknown connectionId=%u (ignoring)\n",
-                  msg.connectionId);
+        std::lock_guard<std::mutex> lock(networkState.sessionsMutex);
 
-        // Abandon du traitement.
-        return;
+        // Rechercher la session correspondant à cette connexion.
+        std::unordered_map<uint32_t, ClientSession>::iterator sit =
+            networkState.sessions.find(msg.connectionId);
+
+        // Si aucune session n'existe, on ignore simplement le message.
+        if (sit == networkState.sessions.end())
+        {
+            // Log d'avertissement pour signaler une déconnexion inconnue.
+            RCNET_log(RCNET_LOG_WARN,
+                      "[SERVER] [SIMULATION] [DISCONNECT] - Received disconnect for unknown connectionId=%u (ignoring)\n",
+                      msg.connectionId);
+
+            // Abandon du traitement.
+            return;
+        }
+
+        // Supprimer la session du tableau des sessions actives.
+        networkState.sessions.erase(sit);
     }
-
-    // Supprimer la session du tableau des sessions actives.
-    networkState.sessions.erase(sit);
 
     // TODO :
     // - nettoyer les ressources gameplay liées à cette session

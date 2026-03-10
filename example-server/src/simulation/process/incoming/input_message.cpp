@@ -1,5 +1,6 @@
 #include "simulation/process/incoming/input_message.h"
 
+#include <mutex>         // std::lock_guard
 #include <unordered_map> // std::unordered_map
 
 #include <RCNET/RCNET.h>
@@ -8,8 +9,11 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleInputMessage(
     NetworkState& networkState,
     const NetworkINToSimulationMessage& msg)
 {
+    std::lock_guard<std::mutex> lock(networkState.sessionsMutex);
+
     // Rechercher la session correspondant à cette connexion.
-    std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
+    std::unordered_map<uint32_t, ClientSession>::iterator sit =
+        networkState.sessions.find(msg.connectionId);
 
     // Si la session n'existe pas, on ignore l'input reçu.
     if (sit == networkState.sessions.end())

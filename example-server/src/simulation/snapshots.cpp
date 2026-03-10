@@ -4,6 +4,7 @@
 #include "network/packets/server/unreliable.h"
 #include "network/serialization/serialize_packets_server.h"
 
+#include <mutex>         // std::lock_guard
 #include <unordered_map> // std::unordered_map
 
 #include <RCNET/RCNET.h> // rcnet_engine_getSimulationTickRateHz, rcnet_engine_getNetworkOutgoingTickRateHz, rcnet_engine_getCurrentServerTimeNsMonotonic
@@ -49,6 +50,8 @@ void ServerSimulation_CreateFullSnapshotsForAllSessionsAndEnqueueForNetworkOutgo
     NetworkState& networkState,
     uint64_t currentTick)
 {
+    std::lock_guard<std::mutex> lock(networkState.sessionsMutex);
+
     // Parcourir toutes les sessions connectées.
     for (std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.begin();
          sit != networkState.sessions.end();
