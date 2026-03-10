@@ -3,9 +3,10 @@
 #include <mutex>   // std::mutex
 #include <deque>   // std::deque
 #include <cstdint> // uint16_t, uint32_t, etc.
+#include <condition_variable> // std::condition_variable, std::unique_lock
 
 #include "auth/types.h"
-#include "auth/http_requests.h"
+#include "services/http/types/auth/requests.h"
 
 // ======================================================================================
 // Messages de la simulation vers le thread HTTP (Simulation -> HTTP)
@@ -30,17 +31,50 @@ struct SimulationToHttpMessage
 struct SimulationToHttpQueue
 {
     std::mutex mtx;
+    std::condition_variable cv;
     std::deque<SimulationToHttpMessage> q;
+    bool stopped = false;
 
     void push(const SimulationToHttpMessage& m)
     {
-        std::lock_guard<std::mutex> lock(mtx);
-        q.push_back(m);
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            q.push_back(m);
+        }
+        cv.notify_one();
     }
 
-    void drain(std::deque<SimulationToHttpMessage>& out)
+    bool waitAndPop(SimulationToHttpMessage& out)
+    {
+        std::unique_lock<std::mutex> lock(mtx);
+
+        cv.wait(lock, [this] {
+            return stopped || !q.empty();
+        });
+
+        if (stopped && q.empty())
+        {
+            return false;
+        }
+
+        out = std::move(q.front());
+        q.pop_front();
+        return true;
+    }
+
+    void stop(void)
+    {
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            stopped = true;
+        }
+        cv.notify_all();
+    }
+
+    void reset(void)
     {
         std::lock_guard<std::mutex> lock(mtx);
-        out.swap(q);
+        stopped = false;
+        q.clear();
     }
 };

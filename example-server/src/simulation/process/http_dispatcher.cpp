@@ -1,6 +1,8 @@
 #include "simulation/process/http_dispatcher.h"
 
-#include "simulation/process/http/auth_validate_token_response_message.h"
+#include "simulation/process/http/auth_validate_token_message.h"
+
+#include <RCNET/RCNET.h>
 
 void ServerSimulation_ProcessHttpDispatcher(
     NetworkState& networkState,
@@ -24,6 +26,10 @@ void ServerSimulation_ProcessHttpDispatcher(
                 networkState,
                 simToNetQueue,
                 msg);
+        }
+        else
+        {
+            RCNET_log(RCNET_LOG_ERROR, "Received unknown HttpToSimulationMessageType: %d\n", static_cast<uint8_t>(msg.type));
         }
     }
 }

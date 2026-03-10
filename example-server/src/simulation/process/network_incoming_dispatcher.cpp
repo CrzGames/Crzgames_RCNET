@@ -7,6 +7,8 @@
 #include "simulation/process/incoming/auth_message.h"
 #include "simulation/process/incoming/ready_for_match_message.h"
 
+#include <RCNET/RCNET.h>
+
 void ServerSimulation_ProcessNetworkIncomingDispatcher(
     NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,
@@ -66,6 +68,10 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher(
             ServerSimulation_ProcessNetworkIncomingDispatcher_HandleReadyForMatchMessage(
                 networkState,
                 msg);
+        }
+        else
+        {
+            RCNET_log(RCNET_LOG_ERROR, "Received unknown NetworkINToSimulationMessageType: %d\n", static_cast<uint8_t>(msg.type));
         }
     }
 }

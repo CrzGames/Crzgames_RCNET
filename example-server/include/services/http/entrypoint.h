@@ -1,3 +1,3 @@
 #pragma once
 
-void ServerHttp_Run();
+void ServerHttp_ProcessSimulationMessage(void);

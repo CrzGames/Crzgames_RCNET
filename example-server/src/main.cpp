@@ -24,30 +24,30 @@ int main(int argc, char* argv[])
     myServerCallbacks.rcnet_nats_update = rcnet_nats_update;
 
     // Construire la config serveur
-    RCNET_ServerConfig config{};
-    config.port = ServerConfig::serverPort;
-    config.maxClients = ServerConfig::maxClientsConnected;
-    config.channelCount = ServerConfig::channelCount;
-    config.simulationTickHz = ServerConfig::simulationTickRateHz;
-    config.networkOutgoingTickHz = ServerConfig::networkOutgoingTickRateHz;
-    config.networkIncomingPollTimeoutMs = ServerConfig::networkIncomingPollTimeoutMs;
-    config.httpThreadSleepMs = ServerConfig::httpThreadSleepMs;
-    config.natsThreadSleepMs = ServerConfig::natsThreadSleepMs;
+    RCNET_ServerConfig myServerConfig{};
+    myServerConfig.port = ServerConfig::serverPort;
+    myServerConfig.maxClients = ServerConfig::maxClientsConnected;
+    myServerConfig.channelCount = ServerConfig::channelCount;
+    myServerConfig.simulationTickHz = ServerConfig::simulationTickRateHz;
+    myServerConfig.networkOutgoingTickHz = ServerConfig::networkOutgoingTickRateHz;
+    myServerConfig.networkIncomingPollTimeoutMs = ServerConfig::networkIncomingPollTimeoutMs;
+    myServerConfig.httpThreadSleepMs = ServerConfig::httpThreadSleepMs;
+    myServerConfig.natsThreadSleepMs = ServerConfig::natsThreadSleepMs;
     // Configuration NATS
-    config.natsConfig.enabled = ServerConfig::natsEnabled;
-    config.natsConfig.natsServerURL = ServerConfig::natsServerURL;
-    config.natsConfig.useTLS = ServerConfig::natsUseTLS;
-    config.natsConfig.skipVerifyCertsServer = ServerConfig::natsSkipVerifyCertsServer;
+    myServerConfig.natsConfig.enabled = ServerConfig::natsEnabled;
+    myServerConfig.natsConfig.natsServerURL = ServerConfig::natsServerURL;
+    myServerConfig.natsConfig.useTLS = ServerConfig::natsUseTLS;
+    myServerConfig.natsConfig.skipVerifyCertsServer = ServerConfig::natsSkipVerifyCertsServer;
 #if SERVER_ENV_DEV
-    config.natsConfig.publicKeyNKey = ServerConfig::natsPublicKeyNKey;
-    config.natsConfig.privateKeySeedNKey = ServerConfig::natsPrivateKeySeedNKey;
+    myServerConfig.natsConfig.publicKeyNKey = ServerConfig::natsPublicKeyNKey;
+    myServerConfig.natsConfig.privateKeySeedNKey = ServerConfig::natsPrivateKeySeedNKey;
 #else
-    config.natsConfig.publicKeyNKey = std::getenv("NATS_NKEY_PUBLIC");
-    config.natsConfig.privateKeySeedNKey = std::getenv("NATS_NKEY_PRIVATE");
+    myServerConfig.natsConfig.publicKeyNKey = std::getenv("NATS_NKEY_PUBLIC");
+    myServerConfig.natsConfig.privateKeySeedNKey = std::getenv("NATS_NKEY_PRIVATE");
 #endif
 
     // Lancer le moteur avec nos callbacks et les tick rates désirés
-    if(!rcnet_engine_run(&myServerCallbacks, &config))
+    if(!rcnet_engine_run(&myServerCallbacks, &myServerConfig))
     {
         RCNET_log(RCNET_LOG_ERROR, "Failed to start the engine\n");
         return 1;

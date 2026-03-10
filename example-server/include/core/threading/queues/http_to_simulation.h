@@ -5,7 +5,7 @@
 #include <cstdint> // uint16_t, uint32_t, etc.
 
 #include "auth/types.h"
-#include "auth/http_responses.h"
+#include "services/http/types/auth/responses.h"
 
 // ======================================================================================
 // Messages du thread HTTP vers la simulation (HTTP -> Simulation)

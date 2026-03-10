@@ -4,6 +4,7 @@
 #include "network/transport/incoming/entrypoint.h"
 #include "network/transport/outgoing/entrypoint.h"
 #include "simulation/entrypoint.h"
+#include "services/http/entrypoint.h"
 #include "crypto/kx.h"
 
 #include <RCNET/RCNET.h>
@@ -45,7 +46,7 @@ void rcnet_simulation_update(uint64_t currentTick, uint64_t serverTimeNs, uint64
 
 void rcnet_http_update(void)
 {
-
+    ServerHttp_ProcessSimulationMessage();
 }
 
 void rcnet_nats_update(RCNET_NATSContext* natsContext)

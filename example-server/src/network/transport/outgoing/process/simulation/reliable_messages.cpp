@@ -3,6 +3,8 @@
 #include "network/transport/outgoing/enet_send_packets.h"
 #include "network/transport/outgoing/peer_lookup.h"
 
+#include <RCNET/RCNET.h>
+
 void ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleReliableMessages(
     NetworkState& networkState,
     const std::deque<SimulationToNetworkOUTMessage>& reliableMessages)
@@ -46,6 +48,10 @@ void ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleReliableMessages(
         else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_START_PACKET_RELIABLE)
         {
             ServerNetworkOutgoing_SendMatchStartPacketReliable(peer, msg.serializedPacket);
+        }
+        else
+        {
+            RCNET_log(RCNET_LOG_ERROR, "Received unknown SimulationToNetworkOUTMessageType: %d\n", static_cast<uint8_t>(msg.type));
         }
     }
 }
