@@ -1,7 +1,8 @@
 #include "network/transport/outgoing/entrypoint.h"
 
 #include "core/context.h"
-#include "network/transport/encryption/enet_host_encryptor.h"
+#include "network/transport/compression/enet_host_lz4_compressor.h"
+#include "network/transport/encryption/enet_host_xchacha20poly1305_encryptor.h"
 #include "network/transport/outgoing/message_preparation.h"
 #include "network/transport/outgoing/queue_draining.h"
 #include "network/transport/outgoing/process/simulation_dispatcher.h"
@@ -16,8 +17,14 @@ void ServerNetworkOutgoing_DrainSimulationMessages_And_RunOutgoingNetworkLogic(E
         return;
     }
 
-    // Installez le chiffrement hôte une seule fois, 
-    // il décidera pour chaque pair si le trafic est chiffré.
+    // Installer le compresseur LZ4 au niveau host.
+    // Cette fonction est idempotente : si déjà installé, elle ne fait rien.
+    // La compression et la décompression seront appliquées par ENet sur le trafic UDP du host.
+    ServerNetworkCompression_EnsureHostLz4CompressorInstalled(host);
+
+    // Installer l'encryptor XChaCha20-Poly1305 au niveau host.
+    // Cette fonction est idempotente : si déjà installé, elle ne fait rien.
+    // Les callbacks décideront ensuite peer par peer si les paquets applicatifs doivent être chiffrés.
     ServerNetworkEncryption_EnsureHostEncryptorInstalled(host);
 
     // Récupérer une référence vers la queue simulation -> réseau sortant.
