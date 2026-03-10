@@ -1,4 +1,4 @@
-#include "services/http/process/simulation/auth_validatetoken_request_message.h"
+#include "services/http/process/simulation/auth_validatetokenrequest_message.h"
 
 #include "services/http/types/auth/responses.h"
 #include "core/context.h"
