@@ -1,6 +1,6 @@
 #include "services/http/client.h"
 
-#include "network/server_config.h"
+#include "core/config/server.h"
 
 std::unique_ptr<httplib::Client> g_httpClient = nullptr;
 

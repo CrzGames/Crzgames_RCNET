@@ -6,7 +6,7 @@
 
 #include <rcenet/RCENET_enet.h> // ENetPeer
 
-#include "network/client_session.h" // ClientSession
+#include "simulation/session/client.h" // ClientSession
 #include "crypto/kx.h"         // ServerCryptoKxState
 
 struct NetworkState

@@ -6,6 +6,7 @@
 #include "simulation/entrypoint.h"
 #include "services/http/entrypoint.h"
 #include "crypto/kx.h"
+#include "services/http/client.h"
 
 #include <RCNET/RCNET.h>
 

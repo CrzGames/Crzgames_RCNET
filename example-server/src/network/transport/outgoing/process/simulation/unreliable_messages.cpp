@@ -1,6 +1,6 @@
 #include "network/transport/outgoing/process/simulation/unreliable_messages.h"
 
-#include "network/client_session.h"
+#include "simulation/session/client.h" // ClientSession
 #include "network/packets/server/unreliable.h"
 #include "network/serialization/deserialize_packets_server.h"
 #include "network/serialization/serialize_packets_server.h"

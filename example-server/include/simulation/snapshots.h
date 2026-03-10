@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "network/client_session.h"
+#include "simulation/session/client.h"
 #include "network/state.h"
 #include "core/threading/queues/simulation_to_network_outgoing.h"
 

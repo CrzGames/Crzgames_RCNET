@@ -1,7 +1,7 @@
 #include "network/transport/incoming/guards_channels.h"
 
 #include "core/context.h"
-#include "network/client_session.h"
+#include "simulation/session/client.h"
 #include "network/state.h"
 
 #include <unordered_map> // std::unordered_map

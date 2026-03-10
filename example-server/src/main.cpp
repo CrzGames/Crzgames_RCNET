@@ -1,5 +1,5 @@
 #include "core/callbacks.h"
-#include "network/server_config.h"
+#include "core/config/server.h"
 
 #include <cstdlib> // std::getenv
 
