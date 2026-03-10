@@ -1,99 +1,117 @@
-#include "simulation/process/http/auth_validate_token_message.h"
+#include "services/http/requests/auth_validatetoken.h"
 
-#include "auth/types.h"
-#include "network/packets/server/reliable.h"
-#include "network/serialization/serialize_packets_server.h"
+#include "core/context.h"
 
-#include <unordered_map> // std::unordered_map
+#include <cJSON.h>
 
-#include <RCNET/RCNET.h>
-
-void ServerSimulation_ProcessHttpDispatcher_HandleAuthValidateTokenResponseMessage(
-    NetworkState& networkState,
-    SimulationToNetworkOUTQueue& simToNetQueue,
-    const HttpToSimulationMessage& httpMessage)
+AuthTokenVerificationHTTPResponse ServerHttp_Auth_ValidateTokenRequest(const AuthTokenVerificationHTTPRequest& request)
 {
-    // Rechercher la session associée à cette réponse HTTP.
-    std::unordered_map<uint32_t, ClientSession>::iterator sit =
-        networkState.sessions.find(httpMessage.connectionId);
+    // Réponse finale renvoyée au thread HTTP appelant.
+    AuthTokenVerificationHTTPResponse response{};
 
-    // Si la session n'existe pas, on ne peut pas rattacher la réponse.
-    if (sit == networkState.sessions.end())
+    // Récupère le client HTTP global.
+    httplib::Client& cli = GetHttpClient();
+
+    // =========================================================================
+    // 1) Construire le JSON de requête
+    // =========================================================================
+    cJSON* requestRoot = cJSON_CreateObject();
+    if (requestRoot == nullptr)
     {
-        // Log d'avertissement indiquant une réponse orpheline.
-        RCNET_log(RCNET_LOG_WARN,
-                  "[SERVER] [SIMULATION] [AUTH] - Received auth validation response for unknown connectionId=%u\n",
-                  httpMessage.connectionId);
-
-        // Abandon du traitement.
-        return;
+        response.isValid = false;
+        response.errorMessage = "Failed to create JSON request object";
+        return response;
     }
 
-    // Référence directe vers la session concernée.
-    ClientSession& session = sit->second;
-
-    // Préparer le packet de réponse serveur -> client.
-    ServerAuthResponsePacketReliable authResponsePacket{};
-
-    // Renseigner le type réseau du packet.
-    authResponsePacket.header.type =
-        ServerReliablePacketType::SERVER_AUTH_RESPONSE_PACKET_RELIABLE;
-
-    // Vérifier si le backend a validé le token.
-    if (httpMessage.authTokenVerificationResponse.isValid)
+    if (cJSON_AddStringToObject(requestRoot, "authToken", request.authToken.c_str()) == nullptr)
     {
-        // Marquer la session comme authentifiée.
-        session.authStatus = AuthStatus::Valid;
-
-        // Sauvegarder l'identifiant de compte de base de données.
-        session.accountIdDatabase = httpMessage.authTokenVerificationResponse.accountIdDatabase;
-
-        // Sauvegarder le username de base de données.
-        session.accountUsernameDatabase = httpMessage.authTokenVerificationResponse.accountUsernameDatabase;
-
-        // Nettoyer un éventuel message d'erreur précédent.
-        session.authErrorMessage.clear();
-
-        // Indiquer le succès dans le packet de réponse.
-        authResponsePacket.status = ServerAuthResponseStatus::SUCCESS;
-
-        // Log de succès d'authentification.
-        RCNET_log(RCNET_LOG_INFO,
-                  "[SERVER] [SIMULATION] [AUTH] - connectionId=%u authenticated successfully with accountId=%llu username=%s\n",
-                  httpMessage.connectionId,
-                  (unsigned long long)session.accountIdDatabase,
-                  session.accountUsernameDatabase.c_str());
-    }
-    else
-    {
-        // Marquer la session comme authentification invalide.
-        session.authStatus = AuthStatus::Invalid;
-
-        // Sauvegarder le message d'erreur renvoyé par le backend.
-        session.authErrorMessage = httpMessage.authTokenVerificationResponse.errorMessage;
-
-        // Indiquer l'échec dans la réponse réseau.
-        authResponsePacket.status = ServerAuthResponseStatus::INVALID_AUTH_TOKEN;
-
-        // Log d'échec d'authentification.
-        RCNET_log(RCNET_LOG_INFO,
-                  "[SERVER] [SIMULATION] [AUTH] - connectionId=%u authentication failed: %s\n",
-                  httpMessage.connectionId,
-                  session.authErrorMessage.c_str());
+        cJSON_Delete(requestRoot);
+        response.isValid = false;
+        response.errorMessage = "Failed to add authToken to JSON request";
+        return response;
     }
 
-    // Construire le message simulation -> réseau.
-    SimulationToNetworkOUTMessage outMsg{};
+    char* requestBodyRaw = cJSON_PrintUnformatted(requestRoot);
+    cJSON_Delete(requestRoot);
 
-    // Renseigner le type logique de message sortant.
-    outMsg.type = SimulationToNetworkOUTMessageType::SERVER_AUTH_RESPONSE_PACKET_RELIABLE;
+    if (requestBodyRaw == nullptr)
+    {
+        response.isValid = false;
+        response.errorMessage = "Failed to serialize JSON request";
+        return response;
+    }
 
-    // Renseigner l'identifiant de connexion cible.
-    outMsg.connectionId = httpMessage.connectionId;
+    std::string requestBody = requestBodyRaw;
+    cJSON_free(requestBodyRaw);
 
-    // Sérialiser le packet de réponse.
-    outMsg.serializedPacket = serializeServerAuthResponsePacketReliable(authResponsePacket);
+    // =========================================================================
+    // 2) Envoyer la requête HTTP au backend d'authentification
+    // =========================================================================
+    auto result = cli.Post(
+        "/auth/validate-token",
+        requestBody,
+        "application/json"
+    );
 
-    // Pousser le message dans la queue simulation -> réseau.
-    simToNetQueue.push(outMsg);
+    // Si la requête HTTP a complètement échoué (connexion, timeout, TLS, etc.)
+    if (!result)
+    {
+        response.isValid = false;
+        response.errorMessage = "HTTP request failed";
+        return response;
+    }
+
+    // Si le backend a répondu avec un code HTTP inattendu.
+    if (result->status != 200)
+    {
+        response.isValid = false;
+        response.errorMessage = "Auth API returned unexpected HTTP status";
+        return response;
+    }
+
+    // =========================================================================
+    // 3) Parser le JSON de réponse
+    // =========================================================================
+    cJSON* responseRoot = cJSON_Parse(result->body.c_str());
+    if (responseRoot == nullptr)
+    {
+        response.isValid = false;
+        response.errorMessage = "Failed to parse JSON response";
+        return response;
+    }
+
+    // Champs attendus :
+    // {
+    //   "isValid": true,
+    //   "errorMessage": "",
+    //   "accountIdDatabase": 123,
+    //   "accountUsernameDatabase": "Corentin"
+    // }
+    cJSON* isValidItem = cJSON_GetObjectItemCaseSensitive(responseRoot, "isValid");
+    cJSON* errorMessageItem = cJSON_GetObjectItemCaseSensitive(responseRoot, "errorMessage");
+    cJSON* accountIdItem = cJSON_GetObjectItemCaseSensitive(responseRoot, "accountIdDatabase");
+    cJSON* accountUsernameItem = cJSON_GetObjectItemCaseSensitive(responseRoot, "accountUsernameDatabase");
+
+    if (cJSON_IsBool(isValidItem))
+    {
+        response.isValid = cJSON_IsTrue(isValidItem);
+    }
+
+    if (cJSON_IsString(errorMessageItem) && errorMessageItem->valuestring != nullptr)
+    {
+        response.errorMessage = errorMessageItem->valuestring;
+    }
+
+    if (cJSON_IsNumber(accountIdItem))
+    {
+        response.accountIdDatabase = static_cast<uint64_t>(accountIdItem->valuedouble);
+    }
+
+    if (cJSON_IsString(accountUsernameItem) && accountUsernameItem->valuestring != nullptr)
+    {
+        response.accountUsernameDatabase = accountUsernameItem->valuestring;
+    }
+
+    cJSON_Delete(responseRoot);
+    return response;
 }

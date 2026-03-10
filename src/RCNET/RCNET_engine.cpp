@@ -661,7 +661,7 @@ static void rcnet_engine_httpThreadMain(void)
     }
 
     // Log de fin du thread HTTP.
-    RCNET_log(RCNET_LOG_INFO, "Thread HTTP terminé.");
+    RCNET_log(RCNET_LOG_INFO, "Thread HTTP terminer.");
 }
 
 // ============================================================================
@@ -715,7 +715,7 @@ static void rcnet_engine_natsThreadMain(void)
     }
 
     // Log de fin du thread NATS.
-    RCNET_log(RCNET_LOG_INFO, "Thread NATS terminé.");
+    RCNET_log(RCNET_LOG_INFO, "Thread NATS terminer.");
 }
 
 // ============================================================================
