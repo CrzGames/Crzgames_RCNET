@@ -11,6 +11,7 @@ static bool ServerNetworkIncoming_GetSessionFlags(
     uint32_t connectionId,
     bool& isTransportConnected,
     bool& isSecureSessionEstablished,
+    bool& isPacketEncryptionEnabled,
     AuthStatus& authStatus)
 {
     const NetworkState& networkState = GetNetworkState();
@@ -27,6 +28,7 @@ static bool ServerNetworkIncoming_GetSessionFlags(
     const ClientSession& session = it->second;
     isTransportConnected = session.isTransportConnected;
     isSecureSessionEstablished = session.isSecureSessionEstablished;
+    isPacketEncryptionEnabled = session.isPacketEncryptionEnabled;
     authStatus = session.authStatus;
 
     return true;
@@ -36,12 +38,14 @@ bool ServerNetworkIncoming_IsConnectionAllowedForAuthChannel(uint32_t connection
 {
     bool isTransportConnected = false;
     bool isSecureSessionEstablished = false;
+    bool isPacketEncryptionEnabled = false;
     AuthStatus authStatus = AuthStatus::None;
 
     if (!ServerNetworkIncoming_GetSessionFlags(
             connectionId,
             isTransportConnected,
             isSecureSessionEstablished,
+            isPacketEncryptionEnabled,
             authStatus))
     {
         return false;
@@ -49,6 +53,7 @@ bool ServerNetworkIncoming_IsConnectionAllowedForAuthChannel(uint32_t connection
 
     return isTransportConnected &&
            isSecureSessionEstablished &&
+           isPacketEncryptionEnabled &&
            authStatus != AuthStatus::Invalid;
 }
 
@@ -56,12 +61,14 @@ bool ServerNetworkIncoming_IsConnectionAllowedForGameplayChannels(uint32_t conne
 {
     bool isTransportConnected = false;
     bool isSecureSessionEstablished = false;
+    bool isPacketEncryptionEnabled = false;
     AuthStatus authStatus = AuthStatus::None;
 
     if (!ServerNetworkIncoming_GetSessionFlags(
             connectionId,
             isTransportConnected,
             isSecureSessionEstablished,
+            isPacketEncryptionEnabled,
             authStatus))
     {
         return false;
@@ -69,5 +76,6 @@ bool ServerNetworkIncoming_IsConnectionAllowedForGameplayChannels(uint32_t conne
 
     return isTransportConnected &&
            isSecureSessionEstablished &&
+           isPacketEncryptionEnabled &&
            authStatus == AuthStatus::Valid;
 }

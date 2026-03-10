@@ -29,12 +29,66 @@ struct ServerNetworkOutgoingReliableAckActionContext
     // Peer targeted by this packet.
     ENetPeer* peer = nullptr;
 
+    // Connection targeted by this packet.
+    // Stored to protect against ENetPeer* slot reuse.
+    uint32_t connectionId = 0;
+
     // Disconnect peer only after real ACK.
     bool disconnectAfterAck = false;
 
     // Enable encryption only after real ACK.
     bool enableEncryptionAfterAck = false;
 };
+
+// Extract connectionId stored in ENetPeer::data.
+// Returns false if peer/data is invalid or if connectionId == 0.
+static bool ServerNetworkOutgoing_TryGetConnectionIdFromPeer(const ENetPeer* peer, uint32_t& outConnectionId)
+{
+    if (peer == nullptr || peer->data == nullptr)
+    {
+        return false;
+    }
+
+    const uint32_t connectionId = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(peer->data));
+    if (connectionId == 0)
+    {
+        return false;
+    }
+
+    outConnectionId = connectionId;
+    return true;
+}
+
+// Validate that the peer pointer still refers to the same logical connection.
+// This protects post-ACK actions from stale ENetPeer* reuse.
+static bool ServerNetworkOutgoing_IsPeerStillBoundToConnectionId(ENetPeer* peer, uint32_t expectedConnectionId)
+{
+    if (peer == nullptr || expectedConnectionId == 0)
+    {
+        return false;
+    }
+
+    uint32_t currentConnectionId = 0;
+    if (!ServerNetworkOutgoing_TryGetConnectionIdFromPeer(peer, currentConnectionId))
+    {
+        return false;
+    }
+
+    if (currentConnectionId != expectedConnectionId)
+    {
+        return false;
+    }
+
+    const NetworkState& networkState = GetNetworkState();
+    std::unordered_map<uint32_t, ENetPeer*>::const_iterator it =
+        networkState.connectionIdToEnetPeer.find(expectedConnectionId);
+    if (it == networkState.connectionIdToEnetPeer.end())
+    {
+        return false;
+    }
+
+    return it->second == peer;
+}
 
 // Toggle encryption state for the connection linked to this peer.
 //
@@ -49,13 +103,12 @@ static void ServerNetworkOutgoing_SetPeerEncryptionEnabled(ENetPeer* peer, bool 
         return;
     }
 
-    if (peer->data == nullptr)
+    uint32_t connectionId = 0;
+    if (!ServerNetworkOutgoing_TryGetConnectionIdFromPeer(peer, connectionId))
     {
         RCNET_log(RCNET_LOG_WARN, "[SERVER] [NETWORK_OUT] [ENCRYPTION] - Cannot toggle encryption: peer->data is null");
         return;
     }
-
-    const uint32_t connectionId = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(peer->data));
     NetworkState& networkState = GetNetworkState();
 
     std::unordered_map<uint32_t, ENetPeer*>::const_iterator it =
@@ -128,6 +181,15 @@ static void ENET_CALLBACK ServerNetworkOutgoing_OnReliablePacketAcknowledged_Run
         return;
     }
 
+    if (!ServerNetworkOutgoing_IsPeerStillBoundToConnectionId(context->peer, context->connectionId))
+    {
+        RCNET_log(
+            RCNET_LOG_WARN,
+            "[SERVER] [NETWORK_OUT] [RELIABLE_ACK] - Ignored stale ACK action for connectionId=%u",
+            context->connectionId);
+        return;
+    }
+
     if (context->enableEncryptionAfterAck)
     {
         ServerNetworkOutgoing_SetPeerEncryptionEnabled(context->peer, true);
@@ -186,6 +248,20 @@ static bool ServerNetworkOutgoing_SendPacket(
         }
         else
         {
+            uint32_t connectionId = 0;
+            if (!ServerNetworkOutgoing_TryGetConnectionIdFromPeer(peer, connectionId))
+            {
+                if (disconnectAfterAck)
+                {
+                    enet_peer_disconnect_later(peer, 0);
+                }
+                enet_packet_destroy(enetPacket);
+                RCNET_log(
+                    RCNET_LOG_ERROR,
+                    "[SERVER] [NETWORK_OUT] [RELIABLE_ACK] - Failed to resolve connectionId for post-ACK actions");
+                return false;
+            }
+
             // Allocate callback context with nothrow to keep explicit failure path.
             ServerNetworkOutgoingReliableAckActionContext* context =
                 new (std::nothrow) ServerNetworkOutgoingReliableAckActionContext();
@@ -205,6 +281,7 @@ static bool ServerNetworkOutgoing_SendPacket(
             }
 
             context->peer = peer;
+            context->connectionId = connectionId;
             context->disconnectAfterAck = disconnectAfterAck;
             context->enableEncryptionAfterAck = enableEncryptionAfterAck;
 
