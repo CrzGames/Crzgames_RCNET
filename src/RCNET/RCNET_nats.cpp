@@ -32,7 +32,7 @@ static natsStatus customSignatureHandler(
 
 // Initialise un client NATS RCNET
 bool rcnet_nats_initialize(
-    RCNET_NATSClient *client,         // Structure client à initialiser
+    RCNET_NATSContext *natsContext,         // Structure natsContext à initialiser
     const char *natsServerURL,        // URL du serveur NATS (ex: nats://127.0.0.1:4222)
     bool useTLS,                      // Indique si on veut activer TLS
     bool skipVerifyCertsServer,       // Indique si on ignore la vérification du certificat serveur
@@ -40,7 +40,7 @@ bool rcnet_nats_initialize(
     const char *privateKeySeedNKey    // Seed privée NKey utilisée pour signer
 ) {
     // Vérifier les paramètres d'initialisation
-    if (client == NULL ||
+    if (natsContext == NULL ||
         natsServerURL == NULL ||
         publicKeyNKey == NULL ||
         privateKeySeedNKey == NULL)
@@ -64,7 +64,7 @@ bool rcnet_nats_initialize(
         return false;
     }
 
-    // Configure l'intervalle de ping client -> serveur à 20 000 ms (20 s)
+    // Configure l'intervalle de ping natsContext -> serveur à 20 000 ms (20 s)
     status = natsOptions_SetPingInterval(opts, 20000);
     if (status != NATS_OK)
     {
@@ -135,13 +135,13 @@ bool rcnet_nats_initialize(
         return false;
     }
 
-    // Initialise les champs internes du client avant connexion
-    client->connection = NULL;        // Pas encore de connexion active
-    client->subscriptions = NULL;     // Pas encore de tableau d'abonnements
-    client->subscriptionCount = 0;    // Aucun abonnement pour l'instant
+    // Initialise les champs internes du natsContext avant connexion
+    natsContext->connection = NULL;        // Pas encore de connexion active
+    natsContext->subscriptions = NULL;     // Pas encore de tableau d'abonnements
+    natsContext->subscriptionCount = 0;    // Aucun abonnement pour l'instant
 
     // Tente de se connecter au serveur NATS avec les options préparées
-    status = natsConnection_Connect(&(client->connection), opts);
+    status = natsConnection_Connect(&(natsContext->connection), opts);
     if (status != NATS_OK)
     {
         // Si la connexion échoue, log + destruction des options + retour false
@@ -160,59 +160,59 @@ bool rcnet_nats_initialize(
     return true;
 }
 
-// Nettoie complètement un client NATS
-void rcnet_nats_cleanup(RCNET_NATSClient *client) {
-    // Si le pointeur client est invalide, on ne fait rien
-    if (client == NULL)
+// Nettoie complètement un natsContext NATS
+void rcnet_nats_cleanup(RCNET_NATSContext *natsContext) {
+    // Si le pointeur natsContext est invalide, on ne fait rien
+    if (natsContext == NULL)
     {
         return;
     }
 
     // S'il existe un tableau d'abonnements...
-    if (client->subscriptions != NULL)
+    if (natsContext->subscriptions != NULL)
     {
         // ...on parcourt tous les abonnements stockés
-        for (size_t i = 0; i < client->subscriptionCount; i++)
+        for (size_t i = 0; i < natsContext->subscriptionCount; i++)
         {
             // Si l'abonnement courant existe...
-            if (client->subscriptions[i] != NULL)
+            if (natsContext->subscriptions[i] != NULL)
             {
                 // ...on demande au serveur d'arrêter proprement l'abonnement
                 // après avoir traité les messages déjà en attente
-                natsSubscription_Drain(client->subscriptions[i]);
+                natsSubscription_Drain(natsContext->subscriptions[i]);
 
                 // On attend au maximum 5 secondes la fin du drain
-                natsSubscription_WaitForDrainCompletion(client->subscriptions[i], 5000);
+                natsSubscription_WaitForDrainCompletion(natsContext->subscriptions[i], 5000);
 
-                // Puis on libère l'objet abonnement côté client
-                natsSubscription_Destroy(client->subscriptions[i]);
+                // Puis on libère l'objet abonnement côté natsContext
+                natsSubscription_Destroy(natsContext->subscriptions[i]);
             }
         }
 
         // On libère le tableau dynamique qui stocke les pointeurs d'abonnements
-        free(client->subscriptions);
+        free(natsContext->subscriptions);
     }
 
     // S'il existe une connexion active...
-    if (client->connection != NULL)
+    if (natsContext->connection != NULL)
     {
         // ...on force l'envoi des données en attente avant fermeture, max 5 secondes
-        natsConnection_FlushTimeout(client->connection, 5000);
+        natsConnection_FlushTimeout(natsContext->connection, 5000);
 
         // Puis on détruit l'objet connexion
-        natsConnection_Destroy(client->connection);
+        natsConnection_Destroy(natsContext->connection);
     }
 
     // Remise à zéro de la structure pour éviter les pointeurs pendants
-    client->connection = NULL;
-    client->subscriptions = NULL;
-    client->subscriptionCount = 0;
+    natsContext->connection = NULL;
+    natsContext->subscriptions = NULL;
+    natsContext->subscriptionCount = 0;
 }
 
 // Publie un message sur un sujet NATS
-bool rcnet_nats_publish(RCNET_NATSClient *client, const char *subject, const void *data, int dataLength) {
+bool rcnet_nats_publish(RCNET_NATSContext *natsContext, const char *subject, const void *data, int dataLength) {
     // Vérifie que les paramètres minimums sont valides
-    if (client == NULL || client->connection == NULL || subject == NULL || dataLength < 0)
+    if (natsContext == NULL || natsContext->connection == NULL || subject == NULL || dataLength < 0)
     {
         // Si non, log erreur + retour false
         RCNET_log(RCNET_LOG_ERROR, "Invalid parameters for NATS publish");
@@ -227,7 +227,7 @@ bool rcnet_nats_publish(RCNET_NATSClient *client, const char *subject, const voi
     }
 
     // Envoie le message sur le sujet demandé
-    natsStatus status = natsConnection_Publish(client->connection, subject, data, dataLength);
+    natsStatus status = natsConnection_Publish(natsContext->connection, subject, data, dataLength);
     if (status != NATS_OK)
     {
         // Si l'envoi échoue, log + retour false
@@ -239,10 +239,10 @@ bool rcnet_nats_publish(RCNET_NATSClient *client, const char *subject, const voi
     return true;
 }
 
-// S'abonne à un sujet NATS et stocke l'abonnement dans le client
-bool rcnet_nats_subscribe(RCNET_NATSClient *client, const char *subject, natsMsgHandler messageHandler, void *closure) {
+// S'abonne à un sujet NATS et stocke l'abonnement dans le natsContext
+bool rcnet_nats_subscribe(RCNET_NATSContext *natsContext, const char *subject, natsMsgHandler messageHandler, void *closure) {
     // Vérifie les paramètres obligatoires
-    if (client == NULL || client->connection == NULL || subject == NULL || messageHandler == NULL)
+    if (natsContext == NULL || natsContext->connection == NULL || subject == NULL || messageHandler == NULL)
     {
         // Si un paramètre manque, log erreur + retour false
         RCNET_log(RCNET_LOG_ERROR, "Invalid parameters for NATS subscribe");
@@ -255,7 +255,7 @@ bool rcnet_nats_subscribe(RCNET_NATSClient *client, const char *subject, natsMsg
     // S'abonner au sujet spécifié
     // Le callback messageHandler sera appelé à chaque message reçu sur ce sujet
     // closure sera repassé tel quel au callback
-    natsStatus status = natsConnection_Subscribe(&newSubscription, client->connection, subject, messageHandler, closure);
+    natsStatus status = natsConnection_Subscribe(&newSubscription, natsContext->connection, subject, messageHandler, closure);
 
     // Vérifier si l'abonnement a été créé avec succès
     if (status != NATS_OK)
@@ -267,7 +267,7 @@ bool rcnet_nats_subscribe(RCNET_NATSClient *client, const char *subject, natsMsg
 
     // Redimensionner le tableau d'abonnements pour ajouter 1 case de plus
     natsSubscription **newSubscriptions =
-        (natsSubscription **)realloc(client->subscriptions, (client->subscriptionCount + 1) * sizeof(natsSubscription*));
+        (natsSubscription **)realloc(natsContext->subscriptions, (natsContext->subscriptionCount + 1) * sizeof(natsSubscription*));
 
     // Si le realloc échoue...
     if (newSubscriptions == NULL)
@@ -283,11 +283,11 @@ bool rcnet_nats_subscribe(RCNET_NATSClient *client, const char *subject, natsMsg
     }
 
     // Mise à jour du pointeur du tableau d'abonnements
-    client->subscriptions = newSubscriptions;
+    natsContext->subscriptions = newSubscriptions;
 
     // Ajouter le nouvel abonnement dans la dernière case,
     // puis incrémenter le compteur d'abonnements
-    client->subscriptions[client->subscriptionCount++] = newSubscription;
+    natsContext->subscriptions[natsContext->subscriptionCount++] = newSubscription;
 
     // Log de succès
     RCNET_log(RCNET_LOG_INFO, "Subscribed to subject: %s", subject);

@@ -48,7 +48,7 @@ void rcnet_http_update(void)
 
 }
 
-void rcnet_nats_update(RCNET_NATSClient* natsClient)
+void rcnet_nats_update(RCNET_NATSContext* natsContext)
 {
 
 }

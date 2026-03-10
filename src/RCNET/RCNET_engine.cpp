@@ -75,7 +75,7 @@ static uint32_t g_serverChannelCount = 0;
 static ENetHost* g_enetServerHost = nullptr;
 
 // Client NATS global.
-static RCNET_NATSClient g_natsClient = {0};
+static RCNET_NATSContext g_natsClient = {0};
 static bool g_natsEnabled = false;
 static const char* g_natsServerURL = nullptr;
 static const char* g_natsPublicKeyNKey = nullptr;
@@ -536,14 +536,14 @@ static inline void rcnet_engine_httpUpdate(void)
 /**
  * \brief Exécute un tick NATS.
  */
-static inline void rcnet_engine_natsUpdate(RCNET_NATSClient* client)
+static inline void rcnet_engine_natsUpdate(RCNET_NATSContext* natsContext)
 {
     // Incrémente le compteur interne de tick NATS.
     natsTickId++;
 
     // Si le callback utilisateur existe, on l'appelle.
     if (callbacksServerEngine.rcnet_nats_update != nullptr)
-        callbacksServerEngine.rcnet_nats_update(client);
+        callbacksServerEngine.rcnet_nats_update(natsContext);
 }
 
 // ============================================================================
@@ -714,7 +714,7 @@ static void rcnet_engine_natsThreadMain(void)
 
     bool natsReady = false;
 
-    // Initialise le client NATS si activé.
+    // Initialise le natsContext NATS si activé.
     if (g_natsEnabled)
     {
         // Note : on passe les paramètres de connexion NATS via des variables globales
