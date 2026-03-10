@@ -50,8 +50,8 @@ void rcnet_load(void)
 
 void rcnet_unload(void)
 {
-    // Point de nettoyage applicatif à la fermeture du serveur.
-    // Actuellement vide.
+    // Nettoie le client HTTP global.
+    ServerHttp_ShutdownClient();
 }
 
 void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
@@ -66,7 +66,7 @@ void rcnet_network_outgoing_update(ENetHost* host)
     // - drainer les messages produits par simulation
     // - sérialiser / préparer si nécessaire
     // - envoyer les packets via ENet
-    ServerNetworkOutgoing_DrainSimulationMessages_And_SendPackets(host);
+    ServerNetworkOutgoing_DrainSimulationMessages_And_RunOutgoingNetworkLogic(host);
 }
 
 void rcnet_simulation_update(uint64_t currentTick, uint64_t serverTimeNs, uint64_t dtNs, double dt)
@@ -74,7 +74,7 @@ void rcnet_simulation_update(uint64_t currentTick, uint64_t serverTimeNs, uint64
     // À chaque tick simulation :
     // - on draine les messages entrants (Network IN / HTTP / NATS)
     // - puis on exécute la logique de simulation pour le tick courant
-    ServerSimulation_DrainNetworkIncomingAndHttpAndNatsMessages_And_RunSimulationForCurrentTick(
+    ServerSimulation_DrainNetworkIncomingAndHttpAndNatsMessages_And_RunSimulationLogic(
         currentTick,
         serverTimeNs,
         dtNs,
@@ -86,7 +86,7 @@ void rcnet_http_update(void)
 {
     // Exécute une unité de travail du thread HTTP.
     // Cette fonction peut bloquer en attendant un job depuis la queue Simulation -> HTTP.
-    ServerHttp_WaitAndProcessOneSimulationMessage();
+    ServerHttp_WaitAndProcessOneSimulationMessage_And_RunHttpLogic();
 }
 
 void rcnet_nats_update(RCNET_NATSContext* natsContext)

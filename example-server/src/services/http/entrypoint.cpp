@@ -4,7 +4,7 @@
 #include "core/threading/queues/simulation_to_http.h"
 #include "core/context.h"
 
-void ServerHttp_WaitAndProcessOneSimulationMessage(void)
+void ServerHttp_WaitAndProcessOneSimulationMessage_And_RunHttpLogic(void)
 {
     // Récupère la référence vers la queue qui transporte les jobs
     // envoyés par le thread simulation vers le thread HTTP.

@@ -12,7 +12,7 @@
 
 #include <RCNET/RCNET.h>
 
-void ServerSimulation_DrainNetworkIncomingAndHttpAndNatsMessages_And_RunSimulationForCurrentTick(
+void ServerSimulation_DrainNetworkIncomingAndHttpAndNatsMessages_And_RunSimulationLogic(
     uint64_t currentTick,
     uint64_t serverTimeNs,
     uint64_t dtNs,

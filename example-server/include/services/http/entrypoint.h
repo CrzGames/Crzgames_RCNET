@@ -1,3 +1,3 @@
 #pragma once
 
-void ServerHttp_WaitAndProcessOneSimulationMessage(void);
+void ServerHttp_WaitAndProcessOneSimulationMessage_And_RunHttpLogic(void);

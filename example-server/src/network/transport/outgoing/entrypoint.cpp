@@ -7,7 +7,7 @@
 
 #include <deque> // std::deque
 
-void ServerNetworkOutgoing_DrainSimulationMessages_And_SendPackets(ENetHost* host)
+void ServerNetworkOutgoing_DrainSimulationMessages_And_RunOutgoingNetworkLogic(ENetHost* host)
 {
     // Vérifier que l'host ENet est valide avant toute opération.
     if (host == nullptr)
