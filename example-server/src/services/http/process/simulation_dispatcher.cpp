@@ -4,7 +4,7 @@
 
 #include <RCNET/RCNET.h>
 
-void ServerHttp_ProcessSimulationDispatcher(SimulationToHttpMessage& message)
+void ServerHttp_ProcessSimulationDispatcher(const SimulationToHttpMessage& message)
 {
     switch (message.type)
     {

@@ -4,7 +4,7 @@
 #include "core/context.h"
 #include "services/http/requests/auth_validatetoken.h"
 
-void ServerHttp_ProcessSimulationDispatcher_HandleAuthValidateTokenRequestMessage(SimulationToHttpMessage& message)
+void ServerHttp_ProcessSimulationDispatcher_HandleAuthValidateTokenRequestMessage(const SimulationToHttpMessage& message)
 {
     // Récupérer la queue de messages de http vers simulation pour pouvoir 
     // envoyer la réponse à la simulation une fois la requête HTTP traitée
@@ -17,7 +17,7 @@ void ServerHttp_ProcessSimulationDispatcher_HandleAuthValidateTokenRequestMessag
     HttpToSimulationMessage out{};
     out.type = HttpToSimulationMessageType::AUTH_VALIDATE_TOKEN_RESPONSE;
     out.connectionId = message.connectionId;
-    out.authTokenVerificationResponse = response;
+    out.authTokenVerificationResponse = std::move(response);;
 
     // 3) push vers simulation
     httpToSimulationQueue.push(out);

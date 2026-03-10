@@ -24,3 +24,6 @@ SimulationToHttpQueue& GetSimulationToHttpQueue();
 
 // Accès global à la queue de communication du thread HTTP vers le thread simulation
 HttpToSimulationQueue& GetHttpToSimulationQueue();
+
+// Accès global à l'état du client HTTP utilisé par le thread HTTP
+HttpClientState& GetHttpClientState();
