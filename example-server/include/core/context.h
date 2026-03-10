@@ -2,11 +2,11 @@
 
 #include "game/state.h"
 #include "network/state.h"
-#include "services/http/httplib_wrapper.h"
 #include "core/threading/queues/http_to_simulation.h"
 #include "core/threading/queues/network_incoming_to_simulation.h"
 #include "core/threading/queues/simulation_to_http.h"
 #include "core/threading/queues/simulation_to_network_outgoing.h"
+#include "services/http/httplib_wrapper.h"
 
 // Accès global au game state
 GameState& GetGameState();
