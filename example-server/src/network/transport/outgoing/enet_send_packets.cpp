@@ -3,7 +3,31 @@
 
 #include <RCNET/RCNET.h> // RCNET_log
 
-static bool ServerNetworkOutgoing_SendPacket(ENetPeer* peer, NetworkChannel channel, const std::vector<uint8_t>& bytes, enet_uint32 flags)
+// Callback pour les acknowledgments de packets fiables qui déclenche la déconnexion du peer associé.
+// Cette fonction est appelée par ENet lorsque le packet fiable est accusé de réception par le client.
+static void ENET_CALLBACK ServerNetworkOutgoing_OnReliablePacketAcknowledged_DisconnectPeer(ENetPacket* packet)
+{
+    if (packet == nullptr)
+    {
+        return;
+    }
+
+    ENetPeer* peer = static_cast<ENetPeer*>(packet->userData);
+    if (peer == nullptr)
+    {
+        return;
+    }
+
+    RCNET_log(RCNET_LOG_INFO, "[SERVER] [NETWORK_OUT] [RELIABLE_ACK] - ACK received, disconnecting peer=%p\n", static_cast<void*>(peer));
+    enet_peer_disconnect_later(peer, 0);
+}
+
+static bool ServerNetworkOutgoing_SendPacket(
+    ENetPeer* peer,
+    NetworkChannel channel,
+    const std::vector<uint8_t>& bytes,
+    enet_uint32 flags,
+    bool disconnectAfterAck)
 {
     // Vérification de la validité du peer avant d'essayer d'envoyer un packet.
     if (peer == nullptr)
@@ -26,6 +50,21 @@ static bool ServerNetworkOutgoing_SendPacket(ENetPeer* peer, NetworkChannel chan
     }
 
     // Envoi du packet via ENet sur le channel spécifié.
+    if (disconnectAfterAck)
+    {
+        if ((flags & ENET_PACKET_FLAG_RELIABLE) == 0)
+        {
+            RCNET_log(RCNET_LOG_WARN, "[SERVER] [NETWORK_OUT] [RELIABLE_ACK] - disconnectAfterAck ignored on non-reliable packet");
+        }
+        else
+        {
+            enetPacket->userData = peer;
+            enet_packet_set_acknowledge_callback(
+                enetPacket,
+                ServerNetworkOutgoing_OnReliablePacketAcknowledged_DisconnectPeer);
+        }
+    }
+
     const int sendResult = enet_peer_send(
         peer,
         static_cast<enet_uint8>(channel),
@@ -45,33 +84,36 @@ static bool ServerNetworkOutgoing_SendPacket(ENetPeer* peer, NetworkChannel chan
     return true;
 }
 
-bool ServerNetworkOutgoing_SendMatchInitPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes)
+bool ServerNetworkOutgoing_SendMatchInitPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes, bool disconnectAfterAck)
 {
     return ServerNetworkOutgoing_SendPacket(
         peer,
         NetworkChannel::GAME_RELIABLE,
         bytes,
-        ENET_PACKET_FLAG_RELIABLE
+        ENET_PACKET_FLAG_RELIABLE,
+        disconnectAfterAck
     );
 }
 
-bool ServerNetworkOutgoing_SendWorldStaticStateInitPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes)
+bool ServerNetworkOutgoing_SendWorldStaticStateInitPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes, bool disconnectAfterAck)
 {
     return ServerNetworkOutgoing_SendPacket(
         peer,
         NetworkChannel::GAME_RELIABLE,
         bytes,
-        ENET_PACKET_FLAG_RELIABLE
+        ENET_PACKET_FLAG_RELIABLE,
+        disconnectAfterAck
     );
 }
 
-bool ServerNetworkOutgoing_SendMatchStartPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes)
+bool ServerNetworkOutgoing_SendMatchStartPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes, bool disconnectAfterAck)
 {
     return ServerNetworkOutgoing_SendPacket(
         peer,
         NetworkChannel::GAME_RELIABLE,
         bytes,
-        ENET_PACKET_FLAG_RELIABLE
+        ENET_PACKET_FLAG_RELIABLE,
+        disconnectAfterAck
     );
 }
 
@@ -81,26 +123,29 @@ bool ServerNetworkOutgoing_SendSnapshotFullPacketUnreliable(ENetPeer* peer, cons
         peer,
         NetworkChannel::GAME_UNRELIABLE,
         bytes,
-        0 // 0 signifie que le packet est envoyé de manière non fiable (unreliable)
+        0, // 0 signifie que le packet est envoyé de manière non fiable (unreliable)
+        false
     );
 }
 
-bool ServerNetworkOutgoing_SendSecureSessionHelloResponsePacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes)
+bool ServerNetworkOutgoing_SendSecureSessionHelloResponsePacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes, bool disconnectAfterAck)
 {
     return ServerNetworkOutgoing_SendPacket(
         peer,
         NetworkChannel::SECURE_SESSION_RELIABLE,
         bytes,
-        ENET_PACKET_FLAG_RELIABLE
+        ENET_PACKET_FLAG_RELIABLE,
+        disconnectAfterAck
     );
 }
 
-bool ServerNetworkOutgoing_SendAuthResponsePacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes)
+bool ServerNetworkOutgoing_SendAuthResponsePacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes, bool disconnectAfterAck)
 {
     return ServerNetworkOutgoing_SendPacket(
         peer,
         NetworkChannel::AUTH_RELIABLE,
         bytes,
-        ENET_PACKET_FLAG_RELIABLE
+        ENET_PACKET_FLAG_RELIABLE,
+        disconnectAfterAck
     );
 }

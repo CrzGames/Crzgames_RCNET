@@ -76,7 +76,7 @@ void ServerSimulation_ProcessHttpDispatcher_HandleAuthValidateTokenResponseMessa
 
         // Log d'échec d'authentification.
         RCNET_log(RCNET_LOG_INFO,
-                  "[SERVER] [SIMULATION] [AUTH] - connectionId=%u authentication failed: %s\n",
+                  "[SERVER] [SIMULATION] [AUTH] - connectionId=%u token validation failed: %s\n",
                   httpMessage.connectionId,
                   session.authErrorMessage.c_str());
     }
@@ -89,6 +89,10 @@ void ServerSimulation_ProcessHttpDispatcher_HandleAuthValidateTokenResponseMessa
 
     // Renseigner l'identifiant de connexion cible.
     outMsg.connectionId = httpMessage.connectionId;
+
+    // Renseigner l'indicateur de déconnexion après accusé de réception du packet correspondant.
+    // Si le token est invalide, on veut déconnecter le client après lui avoir envoyé la réponse d'échec d'authentification.
+    outMsg.disconnectAfterAck = (httpMessage.authTokenVerificationResponse.isValid == false);
 
     // Sérialiser le packet de réponse.
     outMsg.serializedPacket = serializeServerAuthResponsePacketReliable(authResponsePacket);

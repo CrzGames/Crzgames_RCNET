@@ -53,16 +53,16 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloM
         serverTxKey);
 
     // Préparer le packet de réponse envoyé au client.
-    ServerSecureSessionHelloResponsePacketReliable responsePacket{};
+    ServerSecureSessionHelloResponsePacketReliable secureSessionHelloResponsePacket{};
 
     // Renseigner le type du packet de réponse.
-    responsePacket.header.type = ServerReliablePacketType::SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE;
+    secureSessionHelloResponsePacket.header.type = ServerReliablePacketType::SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE;
 
     // Si le calcul crypto a échoué...
     if (!ok)
     {
         // ... indiquer une clé client invalide.
-        responsePacket.status = ServerSecureSessionHelloResponseStatus::INVALID_CLIENT_KEY;
+        secureSessionHelloResponsePacket.status = ServerSecureSessionHelloResponseStatus::INVALID_CLIENT_KEY;
     }
     else
     {
@@ -76,10 +76,10 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloM
         session.isSecureSessionEstablished = true;
 
         // Indiquer le succès dans la réponse.
-        responsePacket.status = ServerSecureSessionHelloResponseStatus::SUCCESS;
+        secureSessionHelloResponsePacket.status = ServerSecureSessionHelloResponseStatus::SUCCESS;
 
         // Fournir la clé publique serveur au client.
-        responsePacket.serverPublicKey = networkState.cryptoKxState.serverPublicKey;
+        secureSessionHelloResponsePacket.serverPublicKey = networkState.cryptoKxState.serverPublicKey;
     }
 
     // Construire le message sortant simulation -> réseau.
@@ -91,8 +91,12 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloM
     // Renseigner l'identifiant de connexion cible.
     outMsg.connectionId = msg.connectionId;
 
+    // Renseigner l'indicateur de déconnexion après accusé de réception du packet correspondant.
+    // Si le calcul des clés de session a échoué, on veut déconnecter le client après lui avoir envoyé la réponse d'échec de session sécurisée.
+    outMsg.disconnectAfterAck = (ok == false);
+
     // Sérialiser le packet prêt à être envoyé.
-    outMsg.serializedPacket = serializeServerSecureSessionHelloResponsePacketReliable(responsePacket);
+    outMsg.serializedPacket = serializeServerSecureSessionHelloResponsePacketReliable(secureSessionHelloResponsePacket);
 
     // Pousser le message vers le thread réseau sortant.
     simToNetQueue.push(outMsg);

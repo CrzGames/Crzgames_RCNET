@@ -122,8 +122,6 @@ enum class ServerAuthResponseStatus : uint8_t
 {
     SUCCESS = 0,
     INVALID_AUTH_TOKEN = 1,
-    EXPIRED_AUTH_TOKEN = 2,
-    BANNED_ACCOUNT = 3,
 };
 struct ServerAuthResponsePacketReliable
 {

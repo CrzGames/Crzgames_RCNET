@@ -27,6 +27,10 @@ struct SimulationToNetworkOUTMessage
     // à qui envoyer
     uint32_t connectionId = 0;
 
+    // Si true, le serveur doit fermer la connexion du client 
+    // après l'envoi de ce message dès que le client aura accusé de réception du packet correspondant.
+    bool disconnectAfterAck = false;
+
     // payload brut à envoyer (contenant le packet sérialisé correspondant au type de message)
     std::vector<uint8_t> serializedPacket;
 };
