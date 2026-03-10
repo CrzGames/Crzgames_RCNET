@@ -71,8 +71,17 @@ static bool ServerNetworkIncoming_IsConnectionAuthenticated(uint32_t connectionI
 
 bool ServerNetworkIncoming_IsConnectionAllowedForAuthChannel(uint32_t connectionId)
 {
-    return ServerNetworkIncoming_IsConnectionTransportConnected(connectionId) &&
-           ServerNetworkIncoming_IsConnectionSecureSessionEstablished(connectionId);
+    // Le channel auth est autorise seulement si la connexion transport est active,
+    // la session secure est etablie et l'auth n'a pas deja ete invalidee.
+    ClientSession* session = ServerNetworkIncoming_FindSessionByConnectionId(connectionId);
+    if (session == nullptr)
+    {
+        return false;
+    }
+
+    return session->isTransportConnected &&
+           session->isSecureSessionEstablished &&
+           session->authStatus != AuthStatus::Invalid;
 }
 
 bool ServerNetworkIncoming_IsConnectionAllowedForGameplayChannels(uint32_t connectionId)

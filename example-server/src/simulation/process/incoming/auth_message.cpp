@@ -30,6 +30,15 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleAuthMessage(
     // Référence directe vers la session trouvée.
     ClientSession& session = sit->second;
 
+    // Si l'auth a deja ete invalidee, ignorer toute nouvelle tentative.
+    if (session.authStatus == AuthStatus::Invalid)
+    {
+        RCNET_log(RCNET_LOG_INFO,
+                  "[SERVER] [SIMULATION] [AUTH] - connectionId=%u auth already invalid, ignoring new auth request\n",
+                  msg.connectionId);
+        return;
+    }
+
     // Si l'utilisateur est déjà authentifié, il n'y a rien à faire.
     if (session.authStatus == AuthStatus::Valid)
     {
