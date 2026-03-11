@@ -4,7 +4,9 @@
 #include <string>  // std::string
 #include <array>   // std::array
 
-#include <sodium.h> // crypto_kx_PUBLICKEYBYTES
+#include <sodium.h> // crypto_kx_PUBLICKEYBYTES, crypto_sign_BYTES
+
+#include "network/protocol/secure_session.h" // secure-session signature metadata
 
 // ======================================================================================
 // ServerReliablePacketType
@@ -104,18 +106,46 @@ enum class ServerSecureSessionHelloResponseStatus : uint8_t
 {
     SUCCESS = 0,
     INVALID_CLIENT_KEY = 1,
+    SERVER_ATTESTATION_FAILED = 2,
 };
+
 struct ServerSecureSessionHelloResponsePacketReliable
 {
     // Header commun à tous les packets reliable serveur -> client.
     ServerReliablePacketHeader header;
 
     // Statut de la réponse du serveur
-    ServerSecureSessionHelloResponseStatus status;
+    ServerSecureSessionHelloResponseStatus status = ServerSecureSessionHelloResponseStatus::INVALID_CLIENT_KEY;
 
-    // Clé exchange publique du serveur pour établir une session sécurisée.
-    // Utilisée par le client pour effectuer le key exchange et chiffrer les échanges suivants.
-    std::array<uint8_t, crypto_kx_PUBLICKEYBYTES> serverPublicKey;
+    // IMPORTANT:
+    // Les 4 champs ci-dessous (serverPublicKey, issuedAtUnixSeconds,
+    // expiresAtUnixSeconds, clientNonceEcho) sont copiés dans
+    // ServerCryptoSigningSecureSessionPayload (voir crypto/signing.h),
+    // puis signés côté serveur via
+    // ServerCryptoSigning_SignSecureSessionPayload(...).
+
+    // Clé publique KX (X25519) du serveur utilisée par le client dans
+    // crypto_kx_client_session_keys(...) pour dériver les clés de session.
+    std::array<uint8_t, crypto_kx_PUBLICKEYBYTES> serverPublicKey{};
+
+    // Timestamp UNIX (secondes) d'émission de l'attestation signée.
+    uint64_t issuedAtUnixSeconds = 0;
+
+    // Timestamp UNIX (secondes) d'expiration de l'attestation signée.
+    // Le client doit refuser la réponse si now > expiresAtUnixSeconds.
+    uint64_t expiresAtUnixSeconds = 0;
+
+    // Copie exacte de la valeur reçue dans
+    // ClientSecureSessionHelloPacketReliable::clientNonce.
+    // Le client doit vérifier que cette valeur == son nonce local envoyé.
+    std::array<uint8_t, SERVER_SECURE_SESSION_CLIENT_NONCE_BYTES> clientNonceEcho{};
+
+    // Signature Ed25519 detached calculée côté serveur sur le payload:
+    // [serverPublicKey, issuedAtUnixSeconds, expiresAtUnixSeconds, clientNonceEcho]
+    // (avec le domaine de signature défini dans crypto/signing.cpp).
+    // Vérification côté client via crypto_sign_verify_detached(...) avec
+    // la clé publique Ed25519 serveur pinnée (hardcodée).
+    std::array<uint8_t, crypto_sign_BYTES> signature{};
 };
 
 enum class ServerAuthResponseStatus : uint8_t
@@ -123,6 +153,7 @@ enum class ServerAuthResponseStatus : uint8_t
     SUCCESS = 0,
     INVALID_AUTH_TOKEN = 1,
 };
+
 struct ServerAuthResponsePacketReliable
 {
     // Header commun à tous les packets reliable serveur -> client.

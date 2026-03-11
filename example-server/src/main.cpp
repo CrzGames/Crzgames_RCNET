@@ -40,8 +40,8 @@ int main(int argc, char* argv[])
     myServerConfig.natsConfig.publicKeyNKey = ServerConfig::natsPublicKeyNKey;
     myServerConfig.natsConfig.privateKeySeedNKey = ServerConfig::natsPrivateKeySeedNKey;
 #else
-    myServerConfig.natsConfig.publicKeyNKey = std::getenv("NATS_NKEY_PUBLIC");
-    myServerConfig.natsConfig.privateKeySeedNKey = std::getenv("NATS_NKEY_PRIVATE");
+    myServerConfig.natsConfig.publicKeyNKey = std::getenv("SERVER_NATS_NKEY_PUBLIC");
+    myServerConfig.natsConfig.privateKeySeedNKey = std::getenv("SERVER_NATS_NKEY_PRIVATE");
 #endif
 
     // Lancer le moteur avec nos callbacks et les tick rates désirés

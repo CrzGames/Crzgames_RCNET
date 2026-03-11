@@ -6,6 +6,8 @@
 
 #include <sodium.h> // crypto_kx_PUBLICKEYBYTES
 
+#include "network/protocol/secure_session.h" // SERVER_SECURE_SESSION_CLIENT_NONCE_BYTES
+
 // ======================================================================================
 // ClientReliablePacketType
 //
@@ -37,11 +39,17 @@ struct ClientSecureSessionHelloPacketReliable
 
     // Version du protocole réseau utilisé par le client.
     // Permet au serveur de vérifier la compatibilité du protocole avant d'accepter la connexion.
-    uint32_t networkProtocolVersion;
+    uint32_t networkProtocolVersion = 0;
 
     // Clé exchange publique du client pour établir une session sécurisée.
     // Utilisée par le serveur pour effectuer le key exchange et chiffrer les échanges suivants.
-    std::array<uint8_t, crypto_kx_PUBLICKEYBYTES> clientPublicKey;
+    std::array<uint8_t, crypto_kx_PUBLICKEYBYTES> clientPublicKey{};
+
+    // Nonce anti-replay genere par le client pour CE handshake.
+    // Le serveur doit renvoyer EXACTEMENT cette valeur dans
+    // ServerSecureSessionHelloResponsePacketReliable::clientNonceEcho
+    // avant verification de la signature cote client.
+    std::array<uint8_t, SERVER_SECURE_SESSION_CLIENT_NONCE_BYTES> clientNonce{};
 };
 
 struct ClientAuthPacketReliable

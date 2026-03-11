@@ -6,6 +6,7 @@
 #include "simulation/entrypoint.h"
 #include "services/http/entrypoint.h"
 #include "crypto/kx.h"
+#include "crypto/signing.h"
 #include "services/http/client.h"
 
 #include <RCNET/RCNET.h>
@@ -26,6 +27,14 @@ void rcnet_load(void)
         RCNET_log(RCNET_LOG_ERROR, "Failed to initialize server crypto KX state");
 
         // Sort de la fonction de callback pour éviter de continuer l'initialisation du serveur dans un état potentiellement instable.
+        return;
+    }
+
+    // Initialise l'identite Ed25519 utilisee pour signer la cle KX du boot.
+    if (!ServerCryptoSigning_Initialize(networkState.cryptoSigningState))
+    {
+        rcnet_engine_eventQuit();
+        RCNET_log(RCNET_LOG_ERROR, "Failed to initialize server crypto signing state");
         return;
     }
 

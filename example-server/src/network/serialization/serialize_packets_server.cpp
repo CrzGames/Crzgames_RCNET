@@ -59,6 +59,10 @@ std::vector<uint8_t> serializeServerSecureSessionHelloResponsePacketReliable(con
     writer.writeU8(static_cast<uint8_t>(packet.header.type));
     writer.writeU8(static_cast<uint8_t>(packet.status));
     writer.writeBytes(packet.serverPublicKey.data(), packet.serverPublicKey.size());
+    writer.writeU64(packet.issuedAtUnixSeconds);
+    writer.writeU64(packet.expiresAtUnixSeconds);
+    writer.writeBytes(packet.clientNonceEcho.data(), packet.clientNonceEcho.size());
+    writer.writeBytes(packet.signature.data(), packet.signature.size());
 
     return writer.buffer();
 }

@@ -1,15 +1,17 @@
-#include "simulation/process/incoming/secure_session_hello_message.h"
+﻿#include "simulation/process/incoming/secure_session_hello_message.h"
 
 #include "crypto/kx.h"
+#include "crypto/signing.h"
 #include "network/packets/server/reliable.h"
 #include "network/serialization/serialize_packets_server.h"
 
 #include <array>         // std::array
+#include <chrono>        // std::chrono
 #include <cstdint>       // uint32_t, etc.
 #include <mutex>         // std::lock_guard
 #include <unordered_map> // std::unordered_map
 
-#include <sodium.h>
+#include <sodium.h> // sodium_memzero
 
 #include <RCNET/RCNET.h>
 
@@ -18,107 +20,140 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloM
     SimulationToNetworkOUTQueue& simToNetQueue,
     const NetworkINToSimulationMessage& msg)
 {
-    // Préparer le buffer de clé RX serveur.
+    // Etape 1: buffers temporaires pour les cles de session derivees cote serveur.
+    // serverRxKey: cle qui servira a dechiffrer ce que le client envoie.
+    // serverTxKey: cle qui servira a chiffrer ce que le serveur envoie.
     std::array<uint8_t, crypto_kx_SESSIONKEYBYTES> serverRxKey{};
-
-    // Préparer le buffer de clé TX serveur.
     std::array<uint8_t, crypto_kx_SESSIONKEYBYTES> serverTxKey{};
 
-    bool ok = false;
+    bool keyExchangeOk = false;
+    bool secureSessionAccepted = false;
     bool secureSessionEstablishedForLog = false;
 
-    // Préparer le packet de réponse envoyé au client.
+    // Etape 2: construire la reponse (status par defaut = erreur).
     ServerSecureSessionHelloResponsePacketReliable secureSessionHelloResponsePacket{};
-
-    // Renseigner le type du packet de réponse.
-    secureSessionHelloResponsePacket.header.type = ServerReliablePacketType::SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE;
+    secureSessionHelloResponsePacket.header.type =
+        ServerReliablePacketType::SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE;
+    secureSessionHelloResponsePacket.status =
+        ServerSecureSessionHelloResponseStatus::INVALID_CLIENT_KEY;
 
     {
         std::lock_guard<std::mutex> lock(networkState.sessionsMutex);
 
-        // Rechercher la session correspondant à cette connexion.
         std::unordered_map<uint32_t, ClientSession>::iterator sit =
             networkState.sessions.find(msg.connectionId);
 
-        // Si la session n'existe pas, on ne peut pas traiter le hello sécurisé.
         if (sit == networkState.sessions.end())
         {
-            // Log d'avertissement pour signaler une connexion inconnue.
-            RCNET_log(RCNET_LOG_WARN,
-                      "[SERVER] [SIMULATION] [SECURE_SESSION] - Unknown connectionId=%u\n",
-                      msg.connectionId);
-
-            // Abandon du traitement.
+            RCNET_log(
+                RCNET_LOG_WARN,
+                "[SERVER] [SIMULATION] [SECURE_SESSION] - Unknown connectionId=%u",
+                msg.connectionId);
             return;
         }
 
-        // Référence directe vers la session du client.
         ClientSession& session = sit->second;
 
-        // Sauvegarder la clé publique client dans la session.
+        // Etape 3: memoriser la cle publique KX du client pour cette session.
         session.clientPublicKey = msg.secureSessionHelloPacket.clientPublicKey;
 
-        // Calculer les clés de session serveur à partir
-        // de l'état crypto global serveur et de la clé publique client.
-        ok = ServerCryptoKx_ComputeSessionKeys(
+        // Etape 4: deriver les cles de session via crypto_kx.
+        keyExchangeOk = ServerCryptoKx_ComputeSessionKeys(
             networkState.cryptoKxState,
             msg.secureSessionHelloPacket.clientPublicKey,
             serverRxKey,
             serverTxKey);
 
-        // Si le calcul crypto a échoué...
-        if (!ok)
+        if (keyExchangeOk)
         {
-            // ... indiquer une clé client invalide.
-            secureSessionHelloResponsePacket.status = ServerSecureSessionHelloResponseStatus::INVALID_CLIENT_KEY;
-        }
-        else
-        {
-            // Stocker la clé RX serveur dans la session.
-            session.serverRxKey = serverRxKey;
+            // Etape 5: construire l'attestation signee de la cle KX serveur.
+            // issuedAt/expiresAt servent a limiter la fenetre de validite.
+            const uint64_t issuedAtUnixSeconds = static_cast<uint64_t>(
+                std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::system_clock::now().time_since_epoch())
+                    .count());
+            const uint64_t expiresAtUnixSeconds =
+                issuedAtUnixSeconds + SERVER_SECURE_SESSION_SIGNATURE_TTL_SECONDS;
 
-            // Stocker la clé TX serveur dans la session.
-            session.serverTxKey = serverTxKey;
+            secureSessionHelloResponsePacket.status =
+                ServerSecureSessionHelloResponseStatus::SUCCESS;
+            secureSessionHelloResponsePacket.serverPublicKey =
+                networkState.cryptoKxState.serverPublicKey;
+            secureSessionHelloResponsePacket.issuedAtUnixSeconds = issuedAtUnixSeconds;
+            secureSessionHelloResponsePacket.expiresAtUnixSeconds = expiresAtUnixSeconds;
+            // Reprendre EXACTEMENT la valeur du champ clientNonce recu:
+            // ClientSecureSessionHelloPacketReliable::clientNonce.
+            secureSessionHelloResponsePacket.clientNonceEcho =
+                msg.secureSessionHelloPacket.clientNonce;
 
-            // Marquer la session comme sécurisée.
-            session.isSecureSessionEstablished = true;
+            // Ce payload est le contenu exact protege par la signature Ed25519.
+            ServerCryptoSigningSecureSessionPayload signedPayload{};
+            signedPayload.serverKxPublicKey = secureSessionHelloResponsePacket.serverPublicKey;
+            signedPayload.issuedAtUnixSeconds = secureSessionHelloResponsePacket.issuedAtUnixSeconds;
+            signedPayload.expiresAtUnixSeconds = secureSessionHelloResponsePacket.expiresAtUnixSeconds;
+            signedPayload.clientNonceEcho = secureSessionHelloResponsePacket.clientNonceEcho;
 
-            // Indiquer le succès dans la réponse.
-            secureSessionHelloResponsePacket.status = ServerSecureSessionHelloResponseStatus::SUCCESS;
+            // Etape 6: signer l'attestation.
+            const bool signingOk = ServerCryptoSigning_SignSecureSessionPayload(
+                networkState.cryptoSigningState,
+                signedPayload,
+                secureSessionHelloResponsePacket.signature);
 
-            // Fournir la clé publique serveur au client.
-            secureSessionHelloResponsePacket.serverPublicKey = networkState.cryptoKxState.serverPublicKey;
+            if (signingOk)
+            {
+                // Etape 7a (succes): stocker les cles derivees dans la session.
+                session.serverRxKey = serverRxKey;
+                session.serverTxKey = serverTxKey;
+                session.isSecureSessionEstablished = true;
+                secureSessionAccepted = true;
+            }
+            else
+            {
+                // Etape 7b (echec): ne pas activer de session securisee.
+                session.isSecureSessionEstablished = false;
+                session.serverRxKey.fill(0);
+                session.serverTxKey.fill(0);
+
+                secureSessionHelloResponsePacket.status =
+                    ServerSecureSessionHelloResponseStatus::SERVER_ATTESTATION_FAILED;
+
+                RCNET_log(
+                    RCNET_LOG_ERROR,
+                    "[SERVER] [SIMULATION] [SECURE_SESSION] - Failed to sign secure-session attestation for connectionId=%u",
+                    msg.connectionId);
+            }
         }
 
         secureSessionEstablishedForLog = session.isSecureSessionEstablished;
     }
 
-    // Construire le message sortant simulation -> réseau.
+    // Nettoyage defensif: effacer les buffers temporaires de cles.
+    sodium_memzero(serverRxKey.data(), serverRxKey.size());
+    sodium_memzero(serverTxKey.data(), serverTxKey.size());
+
+    // Etape 8: preparer l'envoi reseau de la reponse secure-session.
     SimulationToNetworkOUTMessage outMsg{};
-
-    // Renseigner le type logique de message sortant.
     outMsg.type = SimulationToNetworkOUTMessageType::SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE;
-
-    // Renseigner l'identifiant de connexion cible.
     outMsg.connectionId = msg.connectionId;
 
-    // Renseigner l'indicateur de déconnexion après accusé de réception du packet correspondant.
-    // Si le calcul des clés de session a échoué, on veut déconnecter le client après lui avoir envoyé la réponse d'échec de session sécurisée.
-    outMsg.disconnectAfterAck = (ok == false);
+    // En cas d'echec (KX ou signature), deconnecter apres ACK de la reponse
+    // pour garantir que le client recoit le status explicite.
+    outMsg.disconnectAfterAck = !secureSessionAccepted;
 
-    // Activer le chiffrement réseau seulement après ACK de la réponse
-    // de secure session en succès.
-    outMsg.enableEncryptionAfterAck = ok;
+    // Activer le chiffrement uniquement apres ACK d'une reponse valide:
+    // on evite tout decalage d'etat entre simulation et transport reseau.
+    outMsg.enableEncryptionAfterAck = secureSessionAccepted;
 
-    // Sérialiser le packet prêt à être envoyé.
-    outMsg.serializedPacket = serializeServerSecureSessionHelloResponsePacketReliable(secureSessionHelloResponsePacket);
+    outMsg.serializedPacket =
+        serializeServerSecureSessionHelloResponsePacketReliable(secureSessionHelloResponsePacket);
 
-    // Pousser le message vers le thread réseau sortant.
     simToNetQueue.push(outMsg);
 
-    // Log du résultat final.
-    RCNET_log(RCNET_LOG_INFO,
-              "[SERVER] [SIMULATION] [SECURE_SESSION] - connectionId=%u secureSessionEstablished=%u\n",
-              msg.connectionId,
-              secureSessionEstablishedForLog ? 1u : 0u);
+    RCNET_log(
+        RCNET_LOG_INFO,
+        "[SERVER] [SIMULATION] [SECURE_SESSION] - connectionId=%u accepted=%u secureSessionEstablished=%u keyExchangeOk=%u",
+        msg.connectionId,
+        secureSessionAccepted ? 1u : 0u,
+        secureSessionEstablishedForLog ? 1u : 0u,
+        keyExchangeOk ? 1u : 0u);
 }

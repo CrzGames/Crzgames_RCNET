@@ -10,38 +10,38 @@
 #include <RCNET/RCNET.h> // RCNET_log
 
 // ============================================================================
-// Post-ACK actions context
+// Contexte des actions post-ACK
 // ============================================================================
 //
-// This context is attached to ENetPacket::userData only for reliable packets
-// that need an action after a real ACK from the remote peer.
+// Ce contexte est attache a ENetPacket::userData uniquement pour les paquets
+// fiables qui doivent executer une action APRES un ACK reel du pair distant.
 //
-// Why:
-// - ENet ACK callback only receives ENetPacket*;
-// - we therefore store the state needed by post-ACK actions inside userData.
+// Pourquoi:
+// - le callback ACK d'ENet recoit seulement ENetPacket*;
+// - on stocke donc dans userData l'etat necessaire aux actions post-ACK.
 //
-// Lifetime:
-// 1) allocated before enet_peer_send,
-// 2) read in ACK callback,
-// 3) always destroyed in packet free callback (ACK or no ACK).
+// Cycle de vie:
+// 1) alloue avant enet_peer_send,
+// 2) lu dans le callback ACK,
+// 3) toujours detruit dans le callback free du paquet (ACK ou non).
 struct ServerNetworkOutgoingReliableAckActionContext
 {
-    // Peer targeted by this packet.
+    // Peer cible par ce paquet.
     ENetPeer* peer = nullptr;
 
-    // Connection targeted by this packet.
-    // Stored to protect against ENetPeer* slot reuse.
+    // Connection ciblee par ce paquet.
+    // Stockee pour se proteger contre la reutilisation d'un slot ENetPeer*.
     uint32_t connectionId = 0;
 
-    // Disconnect peer only after real ACK.
+    // Deconnecter le peer uniquement apres un vrai ACK.
     bool disconnectAfterAck = false;
 
-    // Enable encryption only after real ACK.
+    // Activer le chiffrement uniquement apres un vrai ACK.
     bool enableEncryptionAfterAck = false;
 };
 
-// Extract connectionId stored in ENetPeer::data.
-// Returns false if peer/data is invalid or if connectionId == 0.
+// Extrait le connectionId stocke dans ENetPeer::data.
+// Retourne false si peer/data est invalide ou si connectionId == 0.
 static bool ServerNetworkOutgoing_TryGetConnectionIdFromPeer(const ENetPeer* peer, uint32_t& outConnectionId)
 {
     if (peer == nullptr || peer->data == nullptr)
@@ -59,8 +59,8 @@ static bool ServerNetworkOutgoing_TryGetConnectionIdFromPeer(const ENetPeer* pee
     return true;
 }
 
-// Validate that the peer pointer still refers to the same logical connection.
-// This protects post-ACK actions from stale ENetPeer* reuse.
+// Verifie que le pointeur peer correspond toujours a la meme connexion logique.
+// Cela protege les actions post-ACK contre la reutilisation d'un ENetPeer* stale.
 static bool ServerNetworkOutgoing_IsPeerStillBoundToConnectionId(ENetPeer* peer, uint32_t expectedConnectionId)
 {
     if (peer == nullptr || expectedConnectionId == 0)
@@ -90,12 +90,12 @@ static bool ServerNetworkOutgoing_IsPeerStillBoundToConnectionId(ENetPeer* peer,
     return it->second == peer;
 }
 
-// Toggle encryption state for the connection linked to this peer.
+// Active/desactive l'etat de chiffrement pour la connexion liee a ce peer.
 //
-// Defensive checks:
-// - peer must exist,
-// - peer->data must contain a valid connectionId,
-// - connectionId must still map to the same ENetPeer*.
+// Verifications defensives:
+// - peer doit exister,
+// - peer->data doit contenir un connectionId valide,
+// - connectionId doit toujours pointer vers le meme ENetPeer*.
 static void ServerNetworkOutgoing_SetPeerEncryptionEnabled(ENetPeer* peer, bool enabled)
 {
     if (peer == nullptr)
@@ -124,8 +124,8 @@ static void ServerNetworkOutgoing_SetPeerEncryptionEnabled(ENetPeer* peer, bool 
 
     networkState.connectionIdToEncryptionEnabled[connectionId] = enabled;
 
-    // Mirror encryption state in session so ENet encrypt/decrypt callbacks can
-    // read both "enabled" and per-peer keys under the same sessions mutex.
+    // Replique l'etat de chiffrement dans la session pour que les callbacks
+    // ENet encrypt/decrypt lisent "enabled" + les cles peer sous le meme mutex.
     {
         std::lock_guard<std::mutex> lock(networkState.sessionsMutex);
         std::unordered_map<uint32_t, ClientSession>::iterator sit =
@@ -143,10 +143,10 @@ static void ServerNetworkOutgoing_SetPeerEncryptionEnabled(ENetPeer* peer, bool 
         enabled ? 1u : 0u);
 }
 
-// ENet packet free callback.
+// Callback free d'ENet sur paquet.
 //
-// ENet calls this when it finally releases the packet from its internal queues.
-// We destroy the context allocated with new here to avoid leaks in every path.
+// ENet appelle ce callback lorsqu'il libere finalement le paquet de ses files.
+// On detruit ici le contexte alloue avec new pour eviter les fuites memoire.
 static void ENET_CALLBACK ServerNetworkOutgoing_OnReliablePacketFreed_DestroyAckContext(ENetPacket* packet)
 {
     if (packet == nullptr)
@@ -163,10 +163,10 @@ static void ENET_CALLBACK ServerNetworkOutgoing_OnReliablePacketFreed_DestroyAck
     }
 }
 
-// ENet ACK callback for reliable packets.
+// Callback ACK d'ENet pour les paquets fiables.
 //
-// This callback runs only when ENet confirms the packet has been ACKed by the
-// remote side. We run business actions that must happen after real delivery.
+// Ce callback s'execute uniquement quand ENet confirme que le paquet a ete ACK
+// par le pair distant. On lance ici les actions metier post-livraison reelle.
 static void ENET_CALLBACK ServerNetworkOutgoing_OnReliablePacketAcknowledged_RunActions(ENetPacket* packet)
 {
     if (packet == nullptr)
@@ -213,31 +213,31 @@ static bool ServerNetworkOutgoing_SendPacket(
     bool disconnectAfterAck,
     bool enableEncryptionAfterAck)
 {
-    // Peer must be valid before creating/sending any packet.
+    // Le peer doit etre valide avant de creer/envoyer un paquet.
     if (peer == nullptr)
     {
         return false;
     }
 
-    // Create ENet packet from serialized bytes.
+    // Cree le paquet ENet a partir des bytes serialises.
     ENetPacket* enetPacket = enet_packet_create(
         bytes.data(),
         bytes.size(),
         flags
     );
 
-    // Abort if packet creation failed.
+    // Echec si la creation du paquet ENet a echoue.
     if (enetPacket == nullptr)
     {
         RCNET_log(RCNET_LOG_ERROR, "Failed to create ENet packet for sending");
         return false;
     }
 
-    // If a post-ACK action is requested, prepare callback context.
+    // Si une action post-ACK est demandee, preparer le contexte callback.
     //
     // Important:
-    // - post-ACK actions only make sense for reliable packets;
-    // - unreliable packets have no delivery ACK in ENet.
+    // - les actions post-ACK n'ont de sens que sur paquet fiable;
+    // - les paquets non fiables n'ont pas d'ACK de livraison dans ENet.
     if (disconnectAfterAck || enableEncryptionAfterAck)
     {
         if ((flags & ENET_PACKET_FLAG_RELIABLE) == 0)
@@ -262,19 +262,21 @@ static bool ServerNetworkOutgoing_SendPacket(
                 return false;
             }
 
-            // Allocate callback context with nothrow to keep explicit failure path.
+            // Alloue le contexte callback avec nothrow pour garder
+            // un chemin d'echec explicite.
             ServerNetworkOutgoingReliableAckActionContext* context =
                 new (std::nothrow) ServerNetworkOutgoingReliableAckActionContext();
             if (context == nullptr)
             {
-                // Fallback: if caller wanted disconnect-after-ACK, force disconnect
-                // now because we cannot track ACK without context.
+                // Fallback: si l'appelant voulait disconnect-after-ACK,
+                // on deconnecte immediatement car on ne peut pas suivre l'ACK
+                // sans contexte.
                 if (disconnectAfterAck)
                 {
                     enet_peer_disconnect_later(peer, 0);
                 }
 
-                // ENet did not take ownership of this packet yet.
+                // ENet n'a pas encore pris possession de ce paquet.
                 enet_packet_destroy(enetPacket);
                 RCNET_log(RCNET_LOG_ERROR, "Failed to allocate post-ACK context");
                 return false;
@@ -285,7 +287,7 @@ static bool ServerNetworkOutgoing_SendPacket(
             context->disconnectAfterAck = disconnectAfterAck;
             context->enableEncryptionAfterAck = enableEncryptionAfterAck;
 
-            // Attach context to packet and register both callbacks.
+            // Attache le contexte au paquet et enregistre les deux callbacks.
             enetPacket->userData = context;
             enet_packet_set_acknowledge_callback(
                 enetPacket,
@@ -302,16 +304,16 @@ static bool ServerNetworkOutgoing_SendPacket(
         enetPacket
     );
 
-    // Handle send failure.
+    // Gestion d'echec d'envoi.
     if (sendResult < 0)
     {
-        // Fallback: preserve disconnect intent even when send failed.
+        // Fallback: conserve l'intention de deconnexion meme si l'envoi echoue.
         if (disconnectAfterAck)
         {
             enet_peer_disconnect_later(peer, 0);
         }
 
-        // Send failed: ENet did not queue this packet, so manual destroy is required.
+        // Envoi echoue: ENet n'a pas queue ce paquet, il faut le detruire manuellement.
         enet_packet_destroy(enetPacket);
         RCNET_log(RCNET_LOG_ERROR, "Failed to send ENet packet");
         return false;
@@ -362,7 +364,7 @@ bool ServerNetworkOutgoing_SendSnapshotFullPacketUnreliable(ENetPeer* peer, cons
         peer,
         NetworkChannel::GAME_UNRELIABLE,
         bytes,
-        0, // 0 = unreliable packet
+        0, // 0 = paquet non fiable
         false,
         false
     );
@@ -374,12 +376,12 @@ bool ServerNetworkOutgoing_SendSecureSessionHelloResponsePacketReliable(
     bool disconnectAfterAck,
     bool enableEncryptionAfterAck)
 {
-    // Secure-session response can do two post-ACK actions:
-    // - disconnect after ACK when secure session failed,
-    // - enable encryption after ACK when secure session succeeded.
+    // La reponse secure-session peut faire deux actions post-ACK:
+    // - deconnecter apres ACK si la secure session a echoue,
+    // - activer le chiffrement apres ACK si la secure session a reussi.
     //
-    // Enabling encryption only after ACK avoids switching too early, before
-    // the client has confirmed reception of this secure-session response.
+    // Activer le chiffrement seulement apres ACK evite de basculer trop tot,
+    // avant confirmation client de reception de cette reponse secure-session.
     return ServerNetworkOutgoing_SendPacket(
         peer,
         NetworkChannel::SECURE_SESSION_RELIABLE,

@@ -29,6 +29,11 @@ bool deserializeClientSecureSessionHelloPacketReliable(const void* data, size_t 
         return false;
     }
 
+    if (!reader.readBytes(outPacket.clientNonce.data(), outPacket.clientNonce.size()))
+    {
+        return false;
+    }
+
     if (!reader.empty())
     {
         return false;
