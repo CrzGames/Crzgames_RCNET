@@ -128,7 +128,11 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloM
 
     // Etape 8: preparer l'envoi reseau de la reponse secure-session.
     SimulationToNetworkOUTMessage outMsg{};
+
+    // Le type de message determine le type de packet reseau a envoyer, et donc la facon de le serializer.
     outMsg.type = SimulationToNetworkOUTMessageType::SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE;
+
+    // Associer la reponse au client via connectionId.
     outMsg.connectionId = msg.connectionId;
 
     // En cas d'echec (KX ou signature), deconnecter apres ACK de la reponse
