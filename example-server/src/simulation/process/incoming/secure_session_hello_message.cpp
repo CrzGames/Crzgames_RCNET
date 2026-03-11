@@ -32,17 +32,15 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloM
 
     // Etape 2: construire la reponse (status par defaut = erreur).
     ServerSecureSessionHelloResponsePacketReliable secureSessionHelloResponsePacket{};
-    secureSessionHelloResponsePacket.header.type =
-        ServerReliablePacketType::SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE;
-    secureSessionHelloResponsePacket.status =
-        ServerSecureSessionHelloResponseStatus::INVALID_CLIENT_KEY;
+    secureSessionHelloResponsePacket.header.type = ServerReliablePacketType::SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE;
+    secureSessionHelloResponsePacket.status = ServerSecureSessionHelloResponseStatus::INVALID_CLIENT_KEY;
 
     {
+        // Lock le mutex de sessions pour acceder a networkState.sessions de facon thread-safe.
         std::lock_guard<std::mutex> lock(networkState.sessionsMutex);
 
-        std::unordered_map<uint32_t, ClientSession>::iterator sit =
-            networkState.sessions.find(msg.connectionId);
-
+        // Recuperer la session client associee a ce connectionId.
+        std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
         if (sit == networkState.sessions.end())
         {
             RCNET_log(
@@ -52,6 +50,7 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloM
             return;
         }
 
+        // On a trouve la session client correspondante, on recupere la reference pour la suite.
         ClientSession& session = sit->second;
 
         // Etape 3: memoriser la cle publique KX du client pour cette session.
@@ -72,19 +71,16 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloM
                 std::chrono::duration_cast<std::chrono::seconds>(
                     std::chrono::system_clock::now().time_since_epoch())
                     .count());
-            const uint64_t expiresAtUnixSeconds =
-                issuedAtUnixSeconds + SERVER_SECURE_SESSION_SIGNATURE_TTL_SECONDS;
+            const uint64_t expiresAtUnixSeconds = issuedAtUnixSeconds + SERVER_SECURE_SESSION_SIGNATURE_TTL_SECONDS;
 
-            secureSessionHelloResponsePacket.status =
-                ServerSecureSessionHelloResponseStatus::SUCCESS;
-            secureSessionHelloResponsePacket.serverPublicKey =
-                networkState.cryptoKxState.serverPublicKey;
+            secureSessionHelloResponsePacket.status = ServerSecureSessionHelloResponseStatus::SUCCESS;
+            secureSessionHelloResponsePacket.serverPublicKey = networkState.cryptoKxState.serverPublicKey;
             secureSessionHelloResponsePacket.issuedAtUnixSeconds = issuedAtUnixSeconds;
             secureSessionHelloResponsePacket.expiresAtUnixSeconds = expiresAtUnixSeconds;
+
             // Reprendre EXACTEMENT la valeur du champ clientNonce recu:
             // ClientSecureSessionHelloPacketReliable::clientNonce.
-            secureSessionHelloResponsePacket.clientNonceEcho =
-                msg.secureSessionHelloPacket.clientNonce;
+            secureSessionHelloResponsePacket.clientNonceEcho = msg.secureSessionHelloPacket.clientNonce;
 
             // Ce payload est le contenu exact protege par la signature Ed25519.
             ServerCryptoSigningSecureSessionPayload signedPayload{};
@@ -114,8 +110,7 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloM
                 session.serverRxKey.fill(0);
                 session.serverTxKey.fill(0);
 
-                secureSessionHelloResponsePacket.status =
-                    ServerSecureSessionHelloResponseStatus::SERVER_ATTESTATION_FAILED;
+                secureSessionHelloResponsePacket.status = ServerSecureSessionHelloResponseStatus::SERVER_ATTESTATION_FAILED;
 
                 RCNET_log(
                     RCNET_LOG_ERROR,
@@ -144,9 +139,10 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloM
     // on evite tout decalage d'etat entre simulation et transport reseau.
     outMsg.enableEncryptionAfterAck = secureSessionAccepted;
 
-    outMsg.serializedPacket =
-        serializeServerSecureSessionHelloResponsePacketReliable(secureSessionHelloResponsePacket);
+    // Serializer la reponse en vue de son envoi reseau.
+    outMsg.serializedPacket = serializeServerSecureSessionHelloResponsePacketReliable(secureSessionHelloResponsePacket);
 
+    // Etape 9: envoyer la reponse via la queue de communication simulation -> reseau.
     simToNetQueue.push(outMsg);
 
     RCNET_log(
