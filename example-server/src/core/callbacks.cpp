@@ -5,6 +5,7 @@
 #include "network/transport/outgoing/entrypoint.h"
 #include "simulation/entrypoint.h"
 #include "services/http/entrypoint.h"
+#include "services/nats/entrypoint.h"
 #include "crypto/kx.h"
 #include "crypto/signing.h"
 #include "services/http/client.h"
@@ -100,13 +101,13 @@ void rcnet_http_update(void)
 
 void rcnet_nats_update(RCNET_NATSContext* natsContext)
 {
-    // Point d'entrée prévu pour le traitement NATS.
-    // Actuellement vide.
-    (void)natsContext;
+    // Exécute une unité de travail du thread NATS.
+    // Cette fonction peut bloquer en attendant un job depuis la queue Simulation -> NATS.
+    ServerNats_WaitAndProcessOneSimulationMessage_And_RunNatsLogic(natsContext);
 }
 
 void rcnet_wake_blocking_threads(void)
 {
     GetSimulationToHttpQueue().stop();
-    //GetSimulationToNatsQueue().stop();
+    GetSimulationToNatsQueue().stop();
 }

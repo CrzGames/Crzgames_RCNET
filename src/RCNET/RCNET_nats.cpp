@@ -222,7 +222,7 @@ bool rcnet_nats_publish(RCNET_NATSContext *natsContext, const char *subject, con
     // Si on indique une taille > 0 mais sans buffer de données, c'est incohérent
     if (data == NULL && dataLength > 0)
     {
-        RCNET_log(RCNET_LOG_ERROR, "data is NULL but dataLength > 0");
+        RCNET_log(RCNET_LOG_ERROR, "data is NULL but dataLength > 0 for subject '%s'", subject);
         return false;
     }
 
@@ -231,7 +231,7 @@ bool rcnet_nats_publish(RCNET_NATSContext *natsContext, const char *subject, con
     if (status != NATS_OK)
     {
         // Si l'envoi échoue, log + retour false
-        RCNET_log(RCNET_LOG_ERROR, "Failed to publish message: %s", natsStatus_GetText(status));
+        RCNET_log(RCNET_LOG_ERROR, "Failed to publish message: %s for subject '%s'", natsStatus_GetText(status), subject);
         return false;
     }
 
@@ -261,7 +261,7 @@ bool rcnet_nats_subscribe(RCNET_NATSContext *natsContext, const char *subject, n
     if (status != NATS_OK)
     {
         // Si l'abonnement échoue, log + retour false
-        RCNET_log(RCNET_LOG_ERROR, "Failed to subscribe to subject: %s", natsStatus_GetText(status));
+        RCNET_log(RCNET_LOG_ERROR, "Failed to subscribe to subject '%s': %s", subject, natsStatus_GetText(status));
         return false;
     }
 
@@ -290,7 +290,7 @@ bool rcnet_nats_subscribe(RCNET_NATSContext *natsContext, const char *subject, n
     natsContext->subscriptions[natsContext->subscriptionCount++] = newSubscription;
 
     // Log de succès
-    RCNET_log(RCNET_LOG_INFO, "Subscribed to subject: %s", subject);
+    RCNET_log(RCNET_LOG_INFO, "Subscribed to subject '%s'", subject);
 
     // Abonnement réussi
     return true;

@@ -5,6 +5,7 @@
 #include "simulation/queue_draining.h"
 #include "simulation/process/network_incoming_dispatcher.h"
 #include "simulation/process/http_dispatcher.h"
+#include "simulation/process/nats_dispatcher.h"
 #include "simulation/match_flow.h"
 #include "simulation/snapshots.h"
 
@@ -23,6 +24,7 @@ void ServerSimulation_DrainNetworkIncomingAndHttpAndNatsMessages_And_RunSimulati
     SimulationToNetworkOUTQueue& simulationToNetworkOUTQueue = GetSimulationToNetworkOUTQueue();
     SimulationToHttpQueue& simulationToHttpQueue = GetSimulationToHttpQueue();
     HttpToSimulationQueue& httpToSimulationQueue = GetHttpToSimulationQueue();
+    NatsToSimulationQueue& natsToSimulationQueue = GetNatsToSimulationQueue();
 
     // Préparer la deque locale qui recevra les messages réseau entrants drainés.
     std::deque<NetworkINToSimulationMessage> networkInToSimulationMessages;
@@ -39,6 +41,14 @@ void ServerSimulation_DrainNetworkIncomingAndHttpAndNatsMessages_And_RunSimulati
     ServerSimulation_DrainHttpToSimulationMessages(
         httpToSimulationQueue,
         httpToSimulationMessages);
+
+    // Préparer la deque locale qui recevra les messages NATS entrants drainés.
+    std::deque<NatsToSimulationMessage> natsToSimulationMessages;
+
+    // Drainer la queue NATS -> simulation.
+    ServerSimulation_DrainNatsToSimulationMessages(
+        natsToSimulationQueue,
+        natsToSimulationMessages);
 
     // Récupérer l'état global du jeu.
     GameState& gameState = GetGameState();
@@ -58,6 +68,12 @@ void ServerSimulation_DrainNetworkIncomingAndHttpAndNatsMessages_And_RunSimulati
         networkState,
         simulationToNetworkOUTQueue,
         httpToSimulationMessages);
+
+    // Traiter tous les messages entrants provenant du thread NATS.
+    ServerSimulation_ProcessNatsDispatcher(
+        networkState,
+        simulationToNetworkOUTQueue,
+        natsToSimulationMessages);
 
     // Gérer le flow global de match.
     ServerSimulation_CheckMatchFlow(

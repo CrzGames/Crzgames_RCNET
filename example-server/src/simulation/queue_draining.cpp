@@ -17,3 +17,12 @@ void ServerSimulation_DrainHttpToSimulationMessages(
     // dans la deque locale fournie en sortie.
     httpToSimQueue.drain(outMessages);
 }
+
+void ServerSimulation_DrainNatsToSimulationMessages(
+    NatsToSimulationQueue& natsToSimQueue,
+    std::deque<NatsToSimulationMessage>& outMessages)
+{
+    // Drainer toute la queue NATS -> simulation
+    // dans la deque locale fournie en sortie.
+    natsToSimQueue.drain(outMessages);
+}

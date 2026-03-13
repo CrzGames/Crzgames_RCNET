@@ -12,6 +12,8 @@ static NetworkINToSimulationQueue g_netToSimQueue;
 static SimulationToNetworkOUTQueue g_simToNetQueue;
 static SimulationToHttpQueue g_simToHttpQueue;
 static HttpToSimulationQueue g_httpToSimQueue;
+static SimulationToNatsQueue g_simToNatsQueue;
+static NatsToSimulationQueue g_natsToSimQueue;
 
 GameState& GetGameState()
 {
@@ -41,6 +43,16 @@ SimulationToHttpQueue& GetSimulationToHttpQueue()
 HttpToSimulationQueue& GetHttpToSimulationQueue()
 {
     return g_httpToSimQueue;
+}
+
+NatsToSimulationQueue& GetNatsToSimulationQueue()
+{
+    return g_natsToSimQueue;
+}
+
+SimulationToNatsQueue& GetSimulationToNatsQueue()
+{
+    return g_simToNatsQueue;
 }
 
 httplib::Client& GetHttpClient()
