@@ -36,6 +36,7 @@ using namespace std::chrono;
     #include <sched.h>
     #include <string.h>
     #include <errno.h>
+    #include <time.h>
 #endif
 
 // ============================================================================
@@ -104,9 +105,17 @@ static uint32_t networkIncomingPollTimeoutMs = 1;
 // Exemple : 32 signifie 32 ticks d'envoi par seconde.
 static int networkOutgoingTickRateHz = 32;
 
-// Durée d'un tick réseau sortant en nanosecondes.
-// Calculée à partir de networkOutgoingTickRateHz.
-static uint64_t networkOutgoingTickDurationNs = 0;
+// Fréquence réseau sortante effectivement retenue sous forme uint64.
+static uint64_t g_netOutTickHz = 32;
+
+// Partie entière de la durée d'un tick réseau sortant en ns.
+static uint64_t g_netOutTickBaseNs = 0;
+
+// Reste de division de 1 seconde par la fréquence réseau sortante.
+static uint64_t g_netOutTickRem = 0;
+
+// Accumulateur du reste pour distribuer proprement les ns résiduels.
+static uint64_t g_netOutTickRemAcc = 0;
 
 // ============================================================================
 // 4) Paramètres de temps exact simulation (sans drift)
@@ -194,11 +203,23 @@ static constexpr uint64_t kMaxIncomingWorkBudgetNs = 500'000ull; // 500 µs
 // Structure globale qui contient les callbacks utilisateur retenus par le moteur.
 static RCNET_Callbacks callbacksServerEngine = {};
 
-// ==
+// ============================================================================
+// 7-bis) Priorités Linux fixes
+// ============================================================================
+
+// Priorité Linux RT du thread simulation.
+// Valeur volontairement élevée, mais non maximale.
+static constexpr int kLinuxSimulationThreadPriority = 80;
+
+// Priorité Linux RT du thread réseau.
+// Valeur inférieure à celle du thread simulation.
+static constexpr int kLinuxNetworkThreadPriority = 70;
+
+// ============================================================================
 static bool rcnet_engine_setCurrentThreadPrioritySimulationLinux(void)
 {
 #if defined(__linux__)
-    const int policy = SCHED_RR;
+    const int policy = SCHED_FIFO;
 
     sched_param param = {};
     const int minPriority = sched_get_priority_min(policy);
@@ -213,8 +234,14 @@ static bool rcnet_engine_setCurrentThreadPrioritySimulationLinux(void)
         return false;
     }
 
-    // Priorite haute, mais on garde une petite marge sous le max.
-    param.sched_priority = (maxPriority > minPriority) ? (maxPriority - 1) : maxPriority;
+    // Clamp de la priorité voulue dans la plage autorisée par Linux.
+    param.sched_priority = kLinuxSimulationThreadPriority;
+
+    if (param.sched_priority < minPriority)
+        param.sched_priority = minPriority;
+
+    if (param.sched_priority > maxPriority)
+        param.sched_priority = maxPriority;
 
     const int result = pthread_setschedparam(pthread_self(), policy, &param);
     if (result != 0)
@@ -229,7 +256,7 @@ static bool rcnet_engine_setCurrentThreadPrioritySimulationLinux(void)
 
     RCNET_log(
         RCNET_LOG_INFO,
-        "Priorite Linux du thread simulation configuree avec succes (policy=SCHED_RR, priority=%d).",
+        "Priorite Linux du thread simulation configuree avec succes (policy=SCHED_FIFO, priority=%d).",
         param.sched_priority
     );
     return true;
@@ -241,7 +268,7 @@ static bool rcnet_engine_setCurrentThreadPrioritySimulationLinux(void)
 static bool rcnet_engine_setCurrentThreadPriorityNetworkLinux(void)
 {
 #if defined(__linux__)
-    const int policy = SCHED_RR;
+    const int policy = SCHED_FIFO;
 
     sched_param param = {};
     const int minPriority = sched_get_priority_min(policy);
@@ -256,19 +283,14 @@ static bool rcnet_engine_setCurrentThreadPriorityNetworkLinux(void)
         return false;
     }
 
-    // Priorite un cran en-dessous du thread simulation.
-    if (maxPriority - minPriority >= 2)
-    {
-        param.sched_priority = maxPriority - 2;
-    }
-    else if (maxPriority > minPriority)
-    {
-        param.sched_priority = maxPriority - 1;
-    }
-    else
-    {
+    // Clamp de la priorité voulue dans la plage autorisée par Linux.
+    param.sched_priority = kLinuxNetworkThreadPriority;
+
+    if (param.sched_priority < minPriority)
+        param.sched_priority = minPriority;
+
+    if (param.sched_priority > maxPriority)
         param.sched_priority = maxPriority;
-    }
 
     const int result = pthread_setschedparam(pthread_self(), policy, &param);
     if (result != 0)
@@ -283,7 +305,7 @@ static bool rcnet_engine_setCurrentThreadPriorityNetworkLinux(void)
 
     RCNET_log(
         RCNET_LOG_INFO,
-        "Priorite Linux du thread reseau configuree avec succes (policy=SCHED_RR, priority=%d).",
+        "Priorite Linux du thread reseau configuree avec succes (policy=SCHED_FIFO, priority=%d).",
         param.sched_priority
     );
     return true;
@@ -349,17 +371,65 @@ static inline uint64_t rcnet_engine_consumeSimulationStepNs(void)
 }
 
 /**
+ * \brief Consomme exactement un pas de tick réseau sortant en ns sans dérive.
+ *
+ * La logique est strictement la même que pour la simulation :
+ * - stepNs démarre avec la base entière
+ * - on accumule le reste
+ * - quand l'accumulateur dépasse la fréquence, on ajoute 1 ns
+ *
+ * Cela permet de représenter exactement 1 seconde répartie sur N ticks OUT.
+ */
+static inline uint64_t rcnet_engine_consumeNetworkOutgoingStepNs(void)
+{
+    // On part de la partie entière de la durée du tick réseau sortant.
+    uint64_t stepNs = g_netOutTickBaseNs;
+
+    // On accumule le reste de division.
+    g_netOutTickRemAcc += g_netOutTickRem;
+
+    // Si on a accumulé assez de reste pour "gagner" 1 ns supplémentaire,
+    // on le redistribue maintenant.
+    if (g_netOutTickRemAcc >= g_netOutTickHz)
+    {
+        // On retire une "unité de fréquence" de l'accumulateur.
+        g_netOutTickRemAcc -= g_netOutTickHz;
+
+        // On ajoute 1 ns au tick courant.
+        stepNs += 1;
+    }
+
+    // On retourne la durée exacte du tick courant.
+    return stepNs;
+}
+
+/**
  * \brief Retourne le temps monotone courant en nanosecondes.
  *
  * Utilise steady_clock pour garantir que l'horloge ne recule jamais.
  */
 static uint64_t rcnet_engine_getCurrentTimeNs(void)
 {
+#if defined(__linux__)
+    timespec ts{};
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0)
+    {
+        // Fallback de secours si clock_gettime echoue.
+        auto now = steady_clock::now();
+        return static_cast<uint64_t>(
+            duration_cast<nanoseconds>(now.time_since_epoch()).count()
+        );
+    }
+
+    return static_cast<uint64_t>(ts.tv_sec) * 1'000'000'000ull
+         + static_cast<uint64_t>(ts.tv_nsec);
+#else
     // Lit l'heure monotone courante.
     auto now = steady_clock::now();
 
     // Convertit le temps écoulé depuis l'epoch de steady_clock en nanosecondes.
     return static_cast<uint64_t>(duration_cast<nanoseconds>(now.time_since_epoch()).count());
+#endif
 }
 
 /**
@@ -374,29 +444,60 @@ static inline void rcnet_sleep_until_ns(uint64_t targetTimeNs)
     // Marge finale dans laquelle on ne dort plus et on finit en spin.
     constexpr uint64_t kSpinMarginNs = 200'000ull; // 200 µs
 
-    // Boucle jusqu'à atteindre ou dépasser l'instant cible.
     while (true)
     {
-        // Récupère l'heure actuelle.
-        uint64_t now = rcnet_engine_getCurrentTimeNs();
+        const uint64_t now = rcnet_engine_getCurrentTimeNs();
 
-        // Si on a atteint la cible, on sort.
         if (now >= targetTimeNs)
             return;
 
-        // Calcule le temps restant.
-        uint64_t remaining = targetTimeNs - now;
+        const uint64_t remaining = targetTimeNs - now;
 
-        // S'il reste assez longtemps, on dort sur la plus grosse partie.
+#if defined(__linux__)
+        // Tant qu'on est en dehors de la marge finale,
+        // on utilise un sleep absolu sur CLOCK_MONOTONIC.
+        if (remaining > kSpinMarginNs)
+        {
+            const uint64_t sleepUntilNs = targetTimeNs - kSpinMarginNs;
+
+            timespec ts{};
+            ts.tv_sec  = static_cast<time_t>(sleepUntilNs / 1'000'000'000ull);
+            ts.tv_nsec = static_cast<long>(sleepUntilNs % 1'000'000'000ull);
+
+            const int rc = clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, nullptr);
+
+            if (rc == 0)
+            {
+                // On revient dans la boucle pour finir proprement la marge finale.
+                continue;
+            }
+
+            if (rc == EINTR)
+            {
+                // Signal recu : on recalcule simplement.
+                continue;
+            }
+
+            // En cas d'erreur inattendue, fallback sur le comportement portable actuel.
+            std::this_thread::sleep_for(std::chrono::nanoseconds(remaining - kSpinMarginNs));
+            continue;
+        }
+        else
+        {
+            // Marge finale: comportement identique a ton code actuel.
+            std::this_thread::yield();
+        }
+#else
+        // Comportement portable conserve tel quel.
         if (remaining > kSpinMarginNs)
         {
             std::this_thread::sleep_for(std::chrono::nanoseconds(remaining - kSpinMarginNs));
         }
         else
         {
-            // Laisse le scheduler respirer pendant le spin
             std::this_thread::yield();
         }
+#endif
     }
 }
 
@@ -439,7 +540,7 @@ static void rcnet_engine_cleanupRCENet(void)
  */
 static bool rcnet_engine_initOpenssl(void)
 {
-    // Initialise OpenSSL 
+    // Initialise OpenSSL
     if (OPENSSL_init_ssl(0, nullptr) != 1)
     {
         unsigned long err = ERR_get_error();
@@ -558,8 +659,17 @@ static bool rcnet_engine_init(void)
     // Calcule la fréquence réseau sortante effectivement utilisée.
     uint64_t outHz = (networkOutgoingTickRateHz > 0) ? (uint64_t)networkOutgoingTickRateHz : 32ull;
 
-    // Calcule la durée d'un tick OUT en nanosecondes.
-    networkOutgoingTickDurationNs = 1'000'000'000ull / outHz;
+    // Stocke la fréquence réseau sortante.
+    g_netOutTickHz = outHz;
+
+    // Calcule la partie entière de la durée d'un tick OUT.
+    g_netOutTickBaseNs = 1'000'000'000ull / outHz;
+
+    // Calcule le reste de division pour la compensation sans drift.
+    g_netOutTickRem = 1'000'000'000ull % outHz;
+
+    // Reset de l'accumulateur du reste.
+    g_netOutTickRemAcc = 0;
 
     // Expose la fréquence simulation utilisée.
     g_simulationTickRateHz.store((uint32_t)g_simTickHz, std::memory_order_relaxed);
@@ -570,7 +680,7 @@ static bool rcnet_engine_init(void)
     // Expose le timeout de poll réseau entrant utilisé.
     g_networkIncomingPollTimeoutMs.store(networkIncomingPollTimeoutMs, std::memory_order_relaxed);
 
-    // Log de la configuration effective du moteur
+    // Log de la configuration effective du moteur.
     RCNET_log(RCNET_LOG_INFO, "Simulation tick rate: %u Hz", rcnet_engine_getSimulationTickRateHz());
     RCNET_log(RCNET_LOG_INFO, "Network outgoing tick rate: %u Hz", rcnet_engine_getNetworkOutgoingTickRateHz());
     RCNET_log(RCNET_LOG_INFO, "Network incoming poll timeout: %u ms", rcnet_engine_getNetworkIncomingPollTimeoutMs());
@@ -1247,7 +1357,7 @@ static void rcnet_engine_simulationThreadMain(void)
 static void rcnet_engine_networkThreadMain(void)
 {
     rcnet_engine_setCurrentThreadPriorityNetworkLinux();
-    
+
     // Log de démarrage du thread réseau.
     RCNET_log(RCNET_LOG_INFO, "Thread reseau demarrer.");
 
@@ -1300,16 +1410,16 @@ static void rcnet_engine_networkThreadMain(void)
     // B) Préparation du timing réseau OUT
     // ------------------------------------------------------------------------
 
-    // Durée d'un tick réseau sortant.
-    const uint64_t outPeriodNs = networkOutgoingTickDurationNs;
+    // Durée exacte du tick réseau sortant courant.
+    uint64_t outStepNs = rcnet_engine_consumeNetworkOutgoingStepNs();
 
     // Prochaine échéance absolue d'envoi.
     uint64_t nextOutNs = 0;
 
     // Si le tick OUT est actif, on calcule la première deadline.
-    if (outPeriodNs > 0)
+    if (outStepNs > 0)
     {
-        nextOutNs = rcnet_engine_getCurrentTimeNs() + outPeriodNs;
+        nextOutNs = rcnet_engine_getCurrentTimeNs() + outStepNs;
     }
 
     // Tant que le serveur tourne.
@@ -1324,7 +1434,7 @@ static void rcnet_engine_networkThreadMain(void)
 
         // Si le tick OUT est actif, on borne le timeout
         // pour ne pas rater la prochaine deadline OUT.
-        if (outPeriodNs > 0)
+        if (outStepNs > 0)
         {
             // Lit le temps courant.
             const uint64_t nowNs = rcnet_engine_getCurrentTimeNs();
@@ -1411,7 +1521,7 @@ static void rcnet_engine_networkThreadMain(void)
                 }
 
                 // Si un tick OUT est actif, on évite d'entamer sa marge finale.
-                if (outPeriodNs > 0)
+                if (outStepNs > 0)
                 {
                     const uint64_t outRemainingNs = (nowNs < nextOutNs) ? (nextOutNs - nowNs) : 0;
 
@@ -1437,7 +1547,7 @@ static void rcnet_engine_networkThreadMain(void)
         // --------------------------------------------------------------------
 
         // Si le tick OUT est actif.
-        if (outPeriodNs > 0)
+        if (outStepNs > 0)
         {
             // Lit le temps courant.
             uint64_t nowNs = rcnet_engine_getCurrentTimeNs();
@@ -1452,8 +1562,11 @@ static void rcnet_engine_networkThreadMain(void)
                 // Exécute le tick OUT utilisateur.
                 rcnet_engine_networkOutgoingUpdate(g_enetServerHost);
 
+                // Calcule la durée exacte du tick OUT suivant.
+                outStepNs = rcnet_engine_consumeNetworkOutgoingStepNs();
+
                 // Programme la prochaine deadline absolue.
-                nextOutNs += outPeriodNs;
+                nextOutNs += outStepNs;
 
                 // Incrémente le compteur de catch-up.
                 catchUpOut++;
@@ -1470,8 +1583,11 @@ static void rcnet_engine_networkThreadMain(void)
                           "Backlog NET OUT trop grand: catch-up atteint (%u). Drop backlog.",
                           kMaxCatchUpTicks);
 
+                // Recalcule un pas réseau sortant exact.
+                outStepNs = rcnet_engine_consumeNetworkOutgoingStepNs();
+
                 // Rebase la prochaine deadline à partir de maintenant.
-                nextOutNs = nowNs + outPeriodNs;
+                nextOutNs = nowNs + outStepNs;
             }
         }
     }
