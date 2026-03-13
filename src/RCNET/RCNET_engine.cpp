@@ -9,6 +9,9 @@
 #include <chrono>     // horloges et durées
 #include <thread>     // std::thread, std::this_thread::sleep_for
 #include <atomic>     // std::atomic
+#include <array>      // std::array
+#include <algorithm>  // std::sort
+#include <vector>
 
 using namespace std::chrono;
 
@@ -132,6 +135,34 @@ static uint64_t httpTickId = 0;
 static uint64_t natsTickId = 0;
 
 // ============================================================================
+// 5-bis) Statistiques runtime simulation
+// ============================================================================
+
+// Dernier temps réel d'exécution d'un tick simulation.
+static std::atomic<uint64_t> g_simLastExecNs{0};
+
+// Temps max d'exécution d'un tick sur la fenêtre courante.
+static std::atomic<uint64_t> g_simMaxExecNs{0};
+
+// Dernier retard observé avant exécution d'un tick.
+static std::atomic<uint64_t> g_simLastLatenessNs{0};
+
+// Retard max observé sur la fenêtre courante.
+static std::atomic<uint64_t> g_simMaxLatenessNs{0};
+
+// Nombre de ticks exécutés en retard sur la fenêtre courante.
+static std::atomic<uint64_t> g_simLateTickCount{0};
+
+// Nombre de ticks de catch-up exécutés sur la fenêtre courante.
+static std::atomic<uint64_t> g_simCatchUpTickCount{0};
+
+// Nombre de drops backlog simulation sur la fenêtre courante.
+static std::atomic<uint64_t> g_simBacklogDropCount{0};
+
+// Fréquence réelle observée sur la dernière fenêtre d'une seconde.
+static std::atomic<uint32_t> g_simRealTickRateHz{0};
+
+// ============================================================================
 // 6) Paramètres de robustesse des boucles
 // ============================================================================
 
@@ -157,6 +188,25 @@ static RCNET_Callbacks callbacksServerEngine = {};
 // ============================================================================
 // 8) Helpers temps
 // ============================================================================
+
+/**
+ * \brief Retourne l'index "nearest-rank" d'un percentile sur un tableau trie.
+ *
+ * Exemple :
+ * - percentile=95 sur 100 elements -> index 94
+ * - percentile=99 sur 100 elements -> index 98
+ */
+static inline size_t rcnet_engine_percentileNearestRankIndex(size_t count, size_t percentile)
+{
+    if (count == 0)
+        return 0;
+
+    // Rang = ceil(percentile * count / 100)
+    const size_t rank = (percentile * count + 99) / 100;
+
+    // Conversion rang (1..N) -> index (0..N-1)
+    return (rank > 0) ? (rank - 1) : 0;
+}
 
 /**
  * \brief Consomme exactement un pas de simulation en ns sans dérive.
@@ -237,9 +287,8 @@ static inline void rcnet_sleep_until_ns(uint64_t targetTimeNs)
         }
         else
         {
-            // Sinon on laisse volontairement la boucle tourner
-            // pour terminer plus précisément.
-            // Alternative possible : std::this_thread::yield();
+            // Laisse le scheduler respirer pendant le spin
+            std::this_thread::yield();
         }
     }
 }
@@ -722,69 +771,342 @@ static void rcnet_engine_natsThreadMain(void)
 // 17) Thread simulation
 // ============================================================================
 
-/**
- * \brief Point d'entrée du thread simulation.
- *
- * Cette boucle exécute une simulation à tick fixe basée sur des échéances absolues.
- */
 static void rcnet_engine_simulationThreadMain(void)
 {
     RCNET_log(RCNET_LOG_INFO, "Thread simulation demarrer.");
 
-    // Lit le temps courant au démarrage du thread.
+    // ------------------------------------------------------------------------
+    // A) Constantes de budget / seuils de diagnostic
+    // ------------------------------------------------------------------------
+
+    // Budget theorique d'un tick simulation a la frequence courante.
+    const uint64_t simBudgetNs = 1'000'000'000ull / g_simTickHz;
+
+    // Seuil warning "tick lent" : 75% du budget.
+    const uint64_t warnBudgetNs = (simBudgetNs * 75ull) / 100ull;
+
+    // Fenetre de stats : 1 seconde reelle.
+    constexpr uint64_t kStatsWindowNs = 1'000'000'000ull;
+
+    // Historique des temps de traitement de tick sur les 2 dernieres secondes.
+    const size_t tickExecHistoryCapacity =
+        (size_t)((g_simTickHz > 0) ? (g_simTickHz * 2ull) : 256ull);
+
+    // ------------------------------------------------------------------------
+    // B) Initialisation de l'horloge de simulation
+    // ------------------------------------------------------------------------
+
     uint64_t nowNs = rcnet_engine_getCurrentTimeNs();
-
-    // Calcule la durée exacte du premier tick simulation.
     uint64_t nextStepNs = rcnet_engine_consumeSimulationStepNs();
-
-    // Calcule la première échéance absolue de simulation.
     uint64_t nextSimNs = nowNs + nextStepNs;
 
-    // Tant que le serveur tourne.
+    // ------------------------------------------------------------------------
+    // C) Initialisation des stats de fenetre
+    // ------------------------------------------------------------------------
+
+    uint64_t statsWindowStartNs = nowNs;
+
+    // Nombre de ticks simulation reellement executes dans la fenetre courante.
+    uint32_t statsExecutedTicks = 0;
+
+    // Somme des temps d'execution reels de ticks sur la fenetre courante.
+    uint64_t statsExecSumNs = 0;
+
+    // Somme des retards de reveil sur la fenetre courante.
+    uint64_t statsLateSumNs = 0;
+
+    // Temps max observe sur la fenetre courante.
+    uint64_t statsMaxExecNsInWindow = 0;
+
+    // Identifiant du tick sur lequel le temps max de la fenetre a ete observe.
+    uint64_t statsMaxExecTickIdInWindow = 0;
+
+    // Historique circulaire des temps reels de traitement de tick.
+    std::vector<uint64_t> tickExecHistoryNs(tickExecHistoryCapacity, 0);
+    size_t tickExecHistoryWriteIndex = 0;
+    size_t tickExecHistoryCount = 0;
+
+    // ------------------------------------------------------------------------
+    // D) Boucle principale simulation
+    // ------------------------------------------------------------------------
+
     while (serverIsRunning.load(std::memory_order_relaxed))
     {
-        // Relit le temps courant.
         nowNs = rcnet_engine_getCurrentTimeNs();
 
-        // Reset du compteur de rattrapage simulation pour cette itération.
+        // Reset du compteur de rattrapage simulation pour cette iteration.
         uint32_t catchUpSim = 0;
 
         // Tant qu'on est en retard sur la simulation
-        // et qu'on n'a pas dépassé la limite de catch-up.
+        // et qu'on n'a pas depasse la limite de catch-up.
         while (nowNs >= nextSimNs && catchUpSim < kMaxCatchUpTicks)
         {
-            // Exécute le tick simulation courant.
+            // Temps reel de depart du tick.
+            const uint64_t tickStartNs = rcnet_engine_getCurrentTimeNs();
+
+            // Retard avant execution par rapport a la deadline prevue.
+            const uint64_t latenessNs = (tickStartNs > nextSimNs) ? (tickStartNs - nextSimNs) : 0;
+
+            // Execute le tick simulation logique.
             rcnet_engine_simulationUpdate(nextStepNs);
 
-            // Calcule la durée exacte du tick suivant.
+            // L'identifiant du tick simulation vient d'etre incremente
+            // dans rcnet_engine_simulationUpdate().
+            const uint64_t currentSimulationTickId = simulationTickId;
+
+            // Temps reel de fin du tick.
+            const uint64_t tickEndNs = rcnet_engine_getCurrentTimeNs();
+
+            // Temps reel d'execution du tick.
+            const uint64_t execNs = tickEndNs - tickStartNs;
+
+            // Publie les dernieres valeurs observees.
+            g_simLastExecNs.store(execNs, std::memory_order_relaxed);
+            g_simLastLatenessNs.store(latenessNs, std::memory_order_relaxed);
+
+            // Met a jour le max d'execution global de la fenetre.
+            {
+                uint64_t prevMax = g_simMaxExecNs.load(std::memory_order_relaxed);
+                while (execNs > prevMax &&
+                       !g_simMaxExecNs.compare_exchange_weak(prevMax, execNs, std::memory_order_relaxed))
+                {
+                }
+            }
+
+            // Met a jour le max de retard global de la fenetre.
+            {
+                uint64_t prevMax = g_simMaxLatenessNs.load(std::memory_order_relaxed);
+                while (latenessNs > prevMax &&
+                       !g_simMaxLatenessNs.compare_exchange_weak(prevMax, latenessNs, std::memory_order_relaxed))
+                {
+                }
+            }
+
+            // Met a jour le max d'execution local de la fenetre
+            // et memorise le tick sur lequel ce max a ete observe.
+            if (execNs > statsMaxExecNsInWindow)
+            {
+                statsMaxExecNsInWindow = execNs;
+                statsMaxExecTickIdInWindow = currentSimulationTickId;
+            }
+
+            // Si le tick est lance en retard, on le compte
+            // et on ajoute son retard a la somme de fenetre.
+            if (latenessNs > 0)
+            {
+                g_simLateTickCount.fetch_add(1, std::memory_order_relaxed);
+                statsLateSumNs += latenessNs;
+            }
+
+            // Si on fait du catch-up au-dela du premier tick de cette passe,
+            // on compte un tick de rattrapage.
+            if (catchUpSim > 0)
+            {
+                g_simCatchUpTickCount.fetch_add(1, std::memory_order_relaxed);
+            }
+
+            // Stats de fenetre.
+            statsExecutedTicks++;
+            statsExecSumNs += execNs;
+
+            // Stocke le temps reel de traitement dans l'historique circulaire.
+            tickExecHistoryNs[tickExecHistoryWriteIndex] = execNs;
+            tickExecHistoryWriteIndex = (tickExecHistoryWriteIndex + 1) % tickExecHistoryCapacity;
+
+            if (tickExecHistoryCount < tickExecHistoryCapacity)
+            {
+                tickExecHistoryCount++;
+            }
+
+            // Warning tick lent.
+            if (execNs >= warnBudgetNs && execNs < simBudgetNs)
+            {
+                RCNET_log(
+                    RCNET_LOG_WARN,
+                    "SIMULATION_ALERTE: tick lent detecte, duree_traitement_tick=%.3f ms, retard_sur_horaire=%.3f ms, budget_max_par_tick=%.3f ms, identifiant_tick_simulation=%llu",
+                    (double)execNs / 1'000'000.0,
+                    (double)latenessNs / 1'000'000.0,
+                    (double)simBudgetNs / 1'000'000.0,
+                    (unsigned long long)currentSimulationTickId
+                );
+            }
+
+            // Erreur si budget theorique depasse.
+            if (execNs > simBudgetNs)
+            {
+                RCNET_log(
+                    RCNET_LOG_ERROR,
+                    "SIMULATION_ALERTE: tick hors budget, duree_traitement_tick=%.3f ms, budget_max_par_tick=%.3f ms, retard_sur_horaire=%.3f ms, identifiant_tick_simulation=%llu",
+                    (double)execNs / 1'000'000.0,
+                    (double)simBudgetNs / 1'000'000.0,
+                    (double)latenessNs / 1'000'000.0,
+                    (unsigned long long)currentSimulationTickId
+                );
+            }
+
+            // Calcule la duree exacte du tick suivant.
             nextStepNs = rcnet_engine_consumeSimulationStepNs();
 
-            // Programme la prochaine échéance absolue.
+            // Programme la prochaine echeance absolue.
             nextSimNs += nextStepNs;
 
-            // Incrémente le compteur de catch-up.
+            // Incremente le compteur de catch-up.
             catchUpSim++;
 
-            // Relit le temps pour savoir si un autre rattrapage est nécessaire.
+            // Relit le temps pour savoir si un autre rattrapage est necessaire.
             nowNs = rcnet_engine_getCurrentTimeNs();
         }
 
-        // Si on est toujours en retard après le catch-up max,
-        // on drop le backlog accumulé.
+        // Si on est toujours en retard apres le catch-up max,
+        // on drop le backlog accumule.
         if (nowNs >= nextSimNs)
         {
-            RCNET_log(RCNET_LOG_WARN,
-                      "Backlog SIM trop grand: catch-up atteint (%u). Drop backlog.",
-                      kMaxCatchUpTicks);
+            g_simBacklogDropCount.fetch_add(1, std::memory_order_relaxed);
+
+            RCNET_log(
+                RCNET_LOG_WARN,
+                "SIMULATION_ALERTE: retard_accumule_trop_important, limite_rattrapage_atteinte=%u, backlog_abandonne, retard_courant=%.3f ms",
+                kMaxCatchUpTicks,
+                (double)(nowNs - nextSimNs) / 1'000'000.0
+            );
 
             // Recalcule un pas simulation.
             nextStepNs = rcnet_engine_consumeSimulationStepNs();
 
-            // Rebase la prochaine échéance depuis maintenant.
+            // Rebase la prochaine echeance depuis maintenant.
             nextSimNs = nowNs + nextStepNs;
         }
 
-        // Attend jusqu'à la prochaine échéance absolue de simulation.
+        // --------------------------------------------------------------------
+        // E) Publication des stats toutes les 1 seconde
+        // --------------------------------------------------------------------
+
+        const uint64_t statsNowNs = rcnet_engine_getCurrentTimeNs();
+        const uint64_t statsElapsedNs = statsNowNs - statsWindowStartNs;
+
+        if (statsElapsedNs >= kStatsWindowNs)
+        {
+            // Hz reel observe sur la fenetre.
+            const double realHz =
+                (statsElapsedNs > 0)
+                    ? ((double)statsExecutedTicks * 1'000'000'000.0 / (double)statsElapsedNs)
+                    : 0.0;
+
+            // Temps moyen reel d'execution par tick sur la fenetre.
+            const double avgExecMs =
+                (statsExecutedTicks > 0)
+                    ? ((double)statsExecSumNs / (double)statsExecutedTicks) / 1'000'000.0
+                    : 0.0;
+
+            // Snapshot des compteurs atomiques.
+            const uint64_t lastExecNs   = g_simLastExecNs.load(std::memory_order_relaxed);
+            const uint64_t lastLateNs   = g_simLastLatenessNs.load(std::memory_order_relaxed);
+            const uint64_t maxLateNs    = g_simMaxLatenessNs.load(std::memory_order_relaxed);
+            const uint64_t lateTicks    = g_simLateTickCount.load(std::memory_order_relaxed);
+            const uint64_t catchUpTicks = g_simCatchUpTickCount.load(std::memory_order_relaxed);
+            const uint64_t backlogDrops = g_simBacklogDropCount.load(std::memory_order_relaxed);
+
+            // Temps moyen reel de retard de reveil sur la fenetre.
+            const double avgLateMs =
+                (lateTicks > 0)
+                    ? ((double)statsLateSumNs / (double)lateTicks) / 1'000'000.0
+                    : 0.0;
+
+            // Calcule p95 / p99 sur l'historique des temps reels de traitement
+            // des deux dernieres secondes.
+            uint64_t p95ExecNs = 0;
+            uint64_t p99ExecNs = 0;
+
+            if (tickExecHistoryCount > 0)
+            {
+                std::vector<uint64_t> sortedExecHistoryNs(
+                    tickExecHistoryNs.begin(),
+                    tickExecHistoryNs.begin() + static_cast<std::ptrdiff_t>(tickExecHistoryCount)
+                );
+
+                std::sort(sortedExecHistoryNs.begin(), sortedExecHistoryNs.end());
+
+                const size_t p95Index =
+                    rcnet_engine_percentileNearestRankIndex(tickExecHistoryCount, 95);
+
+                const size_t p99Index =
+                    rcnet_engine_percentileNearestRankIndex(tickExecHistoryCount, 99);
+
+                p95ExecNs = sortedExecHistoryNs[p95Index];
+                p99ExecNs = sortedExecHistoryNs[p99Index];
+            }
+
+            g_simRealTickRateHz.store((uint32_t)(realHz + 0.5), std::memory_order_relaxed);
+
+            RCNET_log(
+                RCNET_LOG_INFO,
+                "SIMULATION_ETAT:\n"
+                "  frequence_cible_tick_simulation_hz=%llu\n"
+                "  frequence_reelle_tick_simulation_hz_sur_derniere_seconde=%.2f\n"
+                "  nombre_ticks_simulation_executes_sur_derniere_seconde=%u\n"
+                "\n"
+                "  temps_reel_utilise_pour_traiter_un_tick_de_simulation:\n"
+                "    temps_moyen_par_tick_sur_derniere_seconde_ms=%.3f\n"
+                "    temps_en_ms_sous_lequel_se_situent_95_pourcent_des_ticks_sur_les_deux_dernieres_secondes=%.3f\n"
+                "    temps_en_ms_sous_lequel_se_situent_99_pourcent_des_ticks_sur_les_deux_dernieres_secondes=%.3f\n"
+                "    temps_maximum_observe_pour_un_tick_sur_derniere_seconde_ms=%.3f\n"
+                "    identifiant_tick_du_temps_maximum_observe_sur_derniere_seconde=%llu\n"
+                "\n"
+                "  retard_de_reveil_du_thread_simulation_par_rapport_a_l_horaire_prevu:\n"
+                "    retard_moyen_de_reveil_du_thread_sur_derniere_seconde_ms=%.3f\n"
+                "    retard_maximum_observe_sur_derniere_seconde_ms=%.3f\n"
+                "    nombre_de_reveils_du_thread_apres_l_horaire_prevu_sur_derniere_seconde=%llu\n"
+                "\n"
+                "  tick_observe_au_moment_du_log:\n"
+                "    identifiant_tick_simulation=%llu\n"
+                "    retard_de_reveil_du_thread_ms=%.3f\n"
+                "    temps_reel_de_traitement_du_tick_ms=%.3f\n"
+                "    temps_total_reel_du_tick_retard_plus_traitement_ms=%.3f\n"
+                "    marge_restante_avant_de_deborder_sur_le_tick_suivant_ms=%.3f\n"
+                "\n"
+                "  stabilite_du_moteur_de_simulation:\n"
+                "    nombre_ticks_de_rattrapage_executes_sur_derniere_seconde=%llu\n"
+                "    nombre_abandons_de_backlog_simulation_sur_derniere_seconde=%llu",
+                (unsigned long long)g_simTickHz,
+                realHz,
+                (unsigned)statsExecutedTicks,
+
+                avgExecMs,
+                (double)p95ExecNs / 1'000'000.0,
+                (double)p99ExecNs / 1'000'000.0,
+                (double)statsMaxExecNsInWindow / 1'000'000.0,
+                (unsigned long long)statsMaxExecTickIdInWindow,
+
+                avgLateMs,
+                (double)maxLateNs / 1'000'000.0,
+                (unsigned long long)lateTicks,
+
+                (unsigned long long)simulationTickId,
+                (double)lastLateNs / 1'000'000.0,
+                (double)lastExecNs / 1'000'000.0,
+                (double)(lastLateNs + lastExecNs) / 1'000'000.0,
+                (double)((simBudgetNs > (lastLateNs + lastExecNs)) ? (simBudgetNs - (lastLateNs + lastExecNs)) : 0ull) / 1'000'000.0,
+
+                (unsigned long long)catchUpTicks,
+                (unsigned long long)backlogDrops
+            );
+
+            // Reset de la fenetre suivante.
+            statsWindowStartNs = statsNowNs;
+            statsExecutedTicks = 0;
+            statsExecSumNs = 0;
+            statsLateSumNs = 0;
+            statsMaxExecNsInWindow = 0;
+            statsMaxExecTickIdInWindow = 0;
+
+            g_simMaxExecNs.store(0, std::memory_order_relaxed);
+            g_simMaxLatenessNs.store(0, std::memory_order_relaxed);
+            g_simLateTickCount.store(0, std::memory_order_relaxed);
+            g_simCatchUpTickCount.store(0, std::memory_order_relaxed);
+            g_simBacklogDropCount.store(0, std::memory_order_relaxed);
+        }
+
+        // Attend jusqu'a la prochaine echeance absolue de simulation.
         rcnet_sleep_until_ns(nextSimNs);
     }
 

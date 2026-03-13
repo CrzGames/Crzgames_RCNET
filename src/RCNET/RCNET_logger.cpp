@@ -64,13 +64,13 @@ void rcnet_logger_log(const RCNET_LogLevel logLevel, const char* file, int line,
     char prefix[256];
     snprintf(prefix, sizeof(prefix), "[%s:%s:%d:%s] ", levelStr, filename, line, function);
 
-    char message[1024];
+    char message[8192];
     va_list args;
     va_start(args, format);
     vsnprintf(message, sizeof(message), format, args);
     va_end(args);
 
-    char fullMessage[1280];
+    char fullMessage[8448];
     snprintf(fullMessage, sizeof(fullMessage), "%s%s", prefix, message);
 
     // Utiliser fprintf pour les plateformes natives
