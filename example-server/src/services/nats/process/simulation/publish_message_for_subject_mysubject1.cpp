@@ -1,5 +1,7 @@
 #include "services/nats/process/simulation/publish_message_for_subject_mysubject1.h"
 
+#include <cstring> // strlen
+
 #include "cJSON.h"
 
 void ServerNats_ProcessSimulationDispatcher_HandlePublishMessageForSubjectMySubject1(
