@@ -29,6 +29,16 @@ using namespace std::chrono;
 #include <sodium.h> // sodium_init
 
 // ============================================================================
+// Dépendances système pour les threads et l'affinité CPU
+// ============================================================================
+#if defined(__linux__)
+    #include <pthread.h>
+    #include <sched.h>
+    #include <string.h>
+    #include <errno.h>
+#endif
+
+// ============================================================================
 // 1) État global exposé thread-safe
 // ============================================================================
 
@@ -183,6 +193,104 @@ static constexpr uint64_t kMaxIncomingWorkBudgetNs = 500'000ull; // 500 µs
 
 // Structure globale qui contient les callbacks utilisateur retenus par le moteur.
 static RCNET_Callbacks callbacksServerEngine = {};
+
+// ==
+static bool rcnet_engine_setCurrentThreadPrioritySimulationLinux(void)
+{
+#if defined(__linux__)
+    const int policy = SCHED_RR;
+
+    sched_param param = {};
+    const int minPriority = sched_get_priority_min(policy);
+    const int maxPriority = sched_get_priority_max(policy);
+
+    if (minPriority == -1 || maxPriority == -1)
+    {
+        RCNET_log(
+            RCNET_LOG_WARN,
+            "Impossible de recuperer la plage de priorite Linux pour le thread simulation."
+        );
+        return false;
+    }
+
+    // Priorite haute, mais on garde une petite marge sous le max.
+    param.sched_priority = (maxPriority > minPriority) ? (maxPriority - 1) : maxPriority;
+
+    const int result = pthread_setschedparam(pthread_self(), policy, &param);
+    if (result != 0)
+    {
+        RCNET_log(
+            RCNET_LOG_WARN,
+            "Impossible de definir la priorite Linux du thread simulation: %s",
+            strerror(result)
+        );
+        return false;
+    }
+
+    RCNET_log(
+        RCNET_LOG_INFO,
+        "Priorite Linux du thread simulation configuree avec succes (policy=SCHED_RR, priority=%d).",
+        param.sched_priority
+    );
+    return true;
+#else
+    return true;
+#endif
+}
+
+static bool rcnet_engine_setCurrentThreadPriorityNetworkLinux(void)
+{
+#if defined(__linux__)
+    const int policy = SCHED_RR;
+
+    sched_param param = {};
+    const int minPriority = sched_get_priority_min(policy);
+    const int maxPriority = sched_get_priority_max(policy);
+
+    if (minPriority == -1 || maxPriority == -1)
+    {
+        RCNET_log(
+            RCNET_LOG_WARN,
+            "Impossible de recuperer la plage de priorite Linux pour le thread reseau."
+        );
+        return false;
+    }
+
+    // Priorite un cran en-dessous du thread simulation.
+    if (maxPriority - minPriority >= 2)
+    {
+        param.sched_priority = maxPriority - 2;
+    }
+    else if (maxPriority > minPriority)
+    {
+        param.sched_priority = maxPriority - 1;
+    }
+    else
+    {
+        param.sched_priority = maxPriority;
+    }
+
+    const int result = pthread_setschedparam(pthread_self(), policy, &param);
+    if (result != 0)
+    {
+        RCNET_log(
+            RCNET_LOG_WARN,
+            "Impossible de definir la priorite Linux du thread reseau: %s",
+            strerror(result)
+        );
+        return false;
+    }
+
+    RCNET_log(
+        RCNET_LOG_INFO,
+        "Priorite Linux du thread reseau configuree avec succes (policy=SCHED_RR, priority=%d).",
+        param.sched_priority
+    );
+    return true;
+#else
+    return true;
+#endif
+}
 
 // ============================================================================
 // 8) Helpers temps
@@ -772,6 +880,8 @@ static void rcnet_engine_natsThreadMain(void)
 
 static void rcnet_engine_simulationThreadMain(void)
 {
+    rcnet_engine_setCurrentThreadPrioritySimulationLinux();
+
     RCNET_log(RCNET_LOG_INFO, "Thread simulation demarrer.");
 
     // ------------------------------------------------------------------------
@@ -1136,6 +1246,8 @@ static void rcnet_engine_simulationThreadMain(void)
  */
 static void rcnet_engine_networkThreadMain(void)
 {
+    rcnet_engine_setCurrentThreadPriorityNetworkLinux();
+    
     // Log de démarrage du thread réseau.
     RCNET_log(RCNET_LOG_INFO, "Thread reseau demarrer.");
 
