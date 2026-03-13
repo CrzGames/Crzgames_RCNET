@@ -9,7 +9,6 @@
 #include <chrono>     // horloges et durées
 #include <thread>     // std::thread, std::this_thread::sleep_for
 #include <atomic>     // std::atomic
-#include <array>      // std::array
 #include <algorithm>  // std::sort
 #include <vector>
 
@@ -782,7 +781,7 @@ static void rcnet_engine_simulationThreadMain(void)
     // Budget theorique d'un tick simulation a la frequence courante.
     const uint64_t simBudgetNs = 1'000'000'000ull / g_simTickHz;
 
-    // Seuil warning "tick lent" : 75% du budget.
+    // Seuil warning "tick lent" sur le temps de traitement pur : 75% du budget.
     const uint64_t warnBudgetNs = (simBudgetNs * 75ull) / 100ull;
 
     // Fenetre de stats : 1 seconde reelle.
@@ -812,7 +811,8 @@ static void rcnet_engine_simulationThreadMain(void)
     // Somme des temps d'execution reels de ticks sur la fenetre courante.
     uint64_t statsExecSumNs = 0;
 
-    // Somme des retards de reveil sur la fenetre courante.
+    // Somme des retards de reveil sur la fenetre courante
+    // uniquement pour les ticks effectivement en retard.
     uint64_t statsLateSumNs = 0;
 
     // Temps max observe sur la fenetre courante.
@@ -859,6 +859,10 @@ static void rcnet_engine_simulationThreadMain(void)
 
             // Temps reel d'execution du tick.
             const uint64_t execNs = tickEndNs - tickStartNs;
+
+            // Temps reel total du tick, depuis la deadline theorique
+            // jusqu'a la fin effective du traitement.
+            const uint64_t totalRealTickNs = latenessNs + execNs;
 
             // Publie les dernieres valeurs observees.
             g_simLastExecNs.store(execNs, std::memory_order_relaxed);
@@ -918,28 +922,30 @@ static void rcnet_engine_simulationThreadMain(void)
                 tickExecHistoryCount++;
             }
 
-            // Warning tick lent.
+            // Warning tick lent sur le temps de traitement pur.
             if (execNs >= warnBudgetNs && execNs < simBudgetNs)
             {
                 RCNET_log(
                     RCNET_LOG_WARN,
-                    "SIMULATION_ALERTE: tick lent detecte, duree_traitement_tick=%.3f ms, retard_sur_horaire=%.3f ms, budget_max_par_tick=%.3f ms, identifiant_tick_simulation=%llu",
+                    "SIMULATION_ALERTE: tick lent detecte, temps_reel_de_traitement_du_tick=%.3f ms, retard_de_reveil=%.3f ms, temps_total_reel_du_tick=%.3f ms, budget_maximal_par_tick_avant_de_deborder_sur_le_tick_suivant=%.3f ms, identifiant_tick_simulation=%llu",
                     (double)execNs / 1'000'000.0,
                     (double)latenessNs / 1'000'000.0,
+                    (double)totalRealTickNs / 1'000'000.0,
                     (double)simBudgetNs / 1'000'000.0,
                     (unsigned long long)currentSimulationTickId
                 );
             }
 
-            // Erreur si budget theorique depasse.
-            if (execNs > simBudgetNs)
+            // Alerte si le temps reel complet du tick depasse le budget.
+            if (totalRealTickNs > simBudgetNs)
             {
                 RCNET_log(
                     RCNET_LOG_ERROR,
-                    "SIMULATION_ALERTE: tick hors budget, duree_traitement_tick=%.3f ms, budget_max_par_tick=%.3f ms, retard_sur_horaire=%.3f ms, identifiant_tick_simulation=%llu",
+                    "SIMULATION_ALERTE: tick reel complet hors budget, temps_total_reel_du_tick=%.3f ms, retard_de_reveil=%.3f ms, temps_reel_de_traitement_du_tick=%.3f ms, budget_maximal_par_tick_avant_de_deborder_sur_le_tick_suivant=%.3f ms, identifiant_tick_simulation=%llu",
+                    (double)totalRealTickNs / 1'000'000.0,
+                    (double)latenessNs / 1'000'000.0,
                     (double)execNs / 1'000'000.0,
                     (double)simBudgetNs / 1'000'000.0,
-                    (double)latenessNs / 1'000'000.0,
                     (unsigned long long)currentSimulationTickId
                 );
             }
@@ -1006,7 +1012,8 @@ static void rcnet_engine_simulationThreadMain(void)
             const uint64_t catchUpTicks = g_simCatchUpTickCount.load(std::memory_order_relaxed);
             const uint64_t backlogDrops = g_simBacklogDropCount.load(std::memory_order_relaxed);
 
-            // Temps moyen reel de retard de reveil sur la fenetre.
+            // Temps moyen reel de retard de reveil sur la fenetre,
+            // uniquement parmi les ticks effectivement en retard.
             const double avgLateMs =
                 (lateTicks > 0)
                     ? ((double)statsLateSumNs / (double)lateTicks) / 1'000'000.0
@@ -1038,6 +1045,10 @@ static void rcnet_engine_simulationThreadMain(void)
 
             g_simRealTickRateHz.store((uint32_t)(realHz + 0.5), std::memory_order_relaxed);
 
+            const uint64_t lastTotalRealTickNs = lastLateNs + lastExecNs;
+            const uint64_t lastRemainingBudgetNs =
+                (simBudgetNs > lastTotalRealTickNs) ? (simBudgetNs - lastTotalRealTickNs) : 0ull;
+
             RCNET_log(
                 RCNET_LOG_INFO,
                 "SIMULATION_ETAT:\n"
@@ -1053,7 +1064,7 @@ static void rcnet_engine_simulationThreadMain(void)
                 "    identifiant_tick_du_temps_maximum_observe_sur_derniere_seconde=%llu\n"
                 "\n"
                 "  retard_de_reveil_du_thread_simulation_par_rapport_a_l_horaire_prevu:\n"
-                "    retard_moyen_de_reveil_du_thread_sur_derniere_seconde_ms=%.3f\n"
+                "    retard_moyen_de_reveil_du_thread_parmi_les_ticks_en_retard_sur_derniere_seconde_ms=%.3f\n"
                 "    retard_maximum_observe_sur_derniere_seconde_ms=%.3f\n"
                 "    nombre_de_reveils_du_thread_apres_l_horaire_prevu_sur_derniere_seconde=%llu\n"
                 "\n"
@@ -1061,7 +1072,7 @@ static void rcnet_engine_simulationThreadMain(void)
                 "    identifiant_tick_simulation=%llu\n"
                 "    retard_de_reveil_du_thread_ms=%.3f\n"
                 "    temps_reel_de_traitement_du_tick_ms=%.3f\n"
-                "    temps_total_reel_du_tick_retard_plus_traitement_ms=%.3f\n"
+                "    temps_total_reel_du_tick_en_comptant_retard_de_reveil_plus_traitement_ms=%.3f\n"
                 "    marge_restante_avant_de_deborder_sur_le_tick_suivant_ms=%.3f\n"
                 "\n"
                 "  stabilite_du_moteur_de_simulation:\n"
@@ -1084,8 +1095,8 @@ static void rcnet_engine_simulationThreadMain(void)
                 (unsigned long long)simulationTickId,
                 (double)lastLateNs / 1'000'000.0,
                 (double)lastExecNs / 1'000'000.0,
-                (double)(lastLateNs + lastExecNs) / 1'000'000.0,
-                (double)((simBudgetNs > (lastLateNs + lastExecNs)) ? (simBudgetNs - (lastLateNs + lastExecNs)) : 0ull) / 1'000'000.0,
+                (double)lastTotalRealTickNs / 1'000'000.0,
+                (double)lastRemainingBudgetNs / 1'000'000.0,
 
                 (unsigned long long)catchUpTicks,
                 (unsigned long long)backlogDrops
