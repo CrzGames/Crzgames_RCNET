@@ -9,9 +9,6 @@ void ServerSimulation_PublishGameserverSimulationEtatMetricsToNatsIfNeeded(
     const GameserverSimulationEtatMetricsPayload& payloadFromCurrentTick,
     SimulationToNatsQueue& simToNatsQueue)
 {
-    // Debut de mesure du bloc "publish gameserver simulation etat metrics to nats".
-    const std::chrono::steady_clock::time_point publishBegin = std::chrono::steady_clock::now();
-
     // Intervalle de publication vise: 1 seconde (en nanosecondes).
     static constexpr uint64_t kPublishIntervalNs = 1'000'000'000ull;
 
