@@ -13,6 +13,10 @@
 
 struct NetworkState
 {
+    // Identifiant unique du serveur.
+    // Recuperer via le SDK Agones lors de l'initialisation du serveur.
+    uint64_t serverId;
+
     // ------------------------------------------------------------------------
     // Connections - ATTENTION: thread reseau UNIQUEMENT
     // ------------------------------------------------------------------------

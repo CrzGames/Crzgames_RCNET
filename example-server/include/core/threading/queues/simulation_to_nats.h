@@ -6,6 +6,8 @@
 #include <mutex>              // std::mutex, std::lock_guard
 #include <string>             // std::string
 
+#include "services/nats/types/gameserver_simulation_etat_metrics_payload.h" // GameserverSimulationEtatMetricsPayload
+
 // ======================================================================================
 // Messages de la simulation vers le thread NATS (Simulation -> NATS)
 // ======================================================================================
@@ -14,6 +16,9 @@ enum class SimulationToNatsMessageType : uint8_t
 {
     // Publie un message sur le sujet NATS : mysubject1.
     PUBLISH_MESSAGE_FOR_SUBJECT_MYSUBJECT1 = 0,
+
+    // Publie un message sur le sujet NATS des metrics simulation du game server.
+    PUBLISH_MESSAGE_FOR_SUBJECT_GAMESERVER_SIMULATION_ETAT_METRICS = 1,
 };
 
 struct SimulationToNatsMessage
@@ -25,6 +30,9 @@ struct SimulationToNatsMessage
 
     // Pour le type PUBLISH_MESSAGE_FOR_SUBJECT_MYSUBJECT1
     std::string mySubject1Message;
+
+    // Pour le type PUBLISH_MESSAGE_FOR_SUBJECT_GAMESERVER_SIMULATION_ETAT_METRICS
+    GameserverSimulationEtatMetricsPayload gameserverSimulationEtatMetricsPayload{};
 };
 
 struct SimulationToNatsQueue
