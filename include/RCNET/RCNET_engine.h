@@ -98,6 +98,83 @@ typedef struct RCNET_Callbacks
 } RCNET_Callbacks;
 
 // ============================================================================
+// Snapshot metrics simulation (publiees chaque seconde)
+// ============================================================================
+
+/**
+ * \brief Snapshot des metrics de simulation calculees sur la derniere fenetre.
+ *
+ * Cette structure est remplie par le thread simulation une fois par fenetre
+ * de stats (actuellement 1 seconde), puis exposee en lecture via
+ * rcnet_engine_getLastSimulationEtatMetrics().
+ *
+ * Important:
+ * - Toutes les valeurs "sur_derniere_seconde" concernent la fenetre de stats
+ *   precedente complete.
+ * - Les valeurs en "_ms" sont exprimees en millisecondes.
+ * - Les compteurs sont remis a zero a chaque nouvelle fenetre.
+ */
+typedef struct RCNET_SimulationEtatMetrics
+{
+    // Frequence cible configuree pour la simulation (ticks logiques par seconde).
+    uint64_t frequence_cible_tick_simulation_hz;
+
+    // Frequence reellement observee sur la derniere fenetre.
+    // Peut differer de la cible en cas de charge ou de rattrapage.
+    double frequence_reelle_tick_simulation_hz_sur_derniere_seconde;
+
+    // Nombre de ticks simulation effectivement executes pendant la fenetre.
+    uint32_t nombre_ticks_simulation_executes_sur_derniere_seconde;
+
+    // Temps moyen de traitement d'un tick (execution du callback simulation),
+    // sans inclure le retard de reveil.
+    double temps_moyen_par_tick_sur_derniere_seconde_ms;
+
+    // Percentile 95 des temps de traitement de tick calcule sur l'historique
+    // glissant des deux dernieres secondes.
+    double temps_en_ms_sous_lequel_se_situent_95_pourcent_des_ticks_sur_les_deux_dernieres_secondes;
+
+    // Percentile 99 des temps de traitement de tick calcule sur l'historique
+    // glissant des deux dernieres secondes.
+    double temps_en_ms_sous_lequel_se_situent_99_pourcent_des_ticks_sur_les_deux_dernieres_secondes;
+
+    // Plus grand temps de traitement observe sur un tick pendant la fenetre.
+    double temps_maximum_observe_pour_un_tick_sur_derniere_seconde_ms;
+
+    // Identifiant du tick qui a produit le maximum de traitement ci-dessus.
+    uint64_t identifiant_tick_du_temps_maximum_observe_sur_derniere_seconde;
+
+    // Retard moyen de reveil du thread simulation, calcule uniquement sur
+    // les ticks qui etaient effectivement en retard.
+    double retard_moyen_de_reveil_du_thread_parmi_les_ticks_en_retard_sur_derniere_seconde_ms;
+
+    // Plus grand retard de reveil observe pendant la fenetre.
+    double retard_maximum_observe_sur_derniere_seconde_ms;
+
+    // Nombre de ticks dont le reveil thread a eu lieu apres l'horaire prevu.
+    uint64_t nombre_de_reveils_du_thread_apres_l_horaire_prevu_sur_derniere_seconde;
+
+    // Temps total reel moyen d'un tick:
+    // (retard de reveil + temps de traitement), moyenne sur la fenetre.
+    double temps_moyen_total_reel_du_tick_en_comptant_retard_de_reveil_plus_traitement_sur_derniere_seconde_ms;
+
+    // Marge moyenne restante avant de deborder sur le tick suivant:
+    // (budget de tick - temps total reel du tick), borne inferieure a 0.
+    double marge_moyenne_restante_avant_de_deborder_sur_le_tick_suivant_sur_derniere_seconde_ms;
+
+    // Budget maximal theorique d'un tick avant debordement sur le tick suivant.
+    // Exemple: a 128 Hz, cette valeur vaut environ 7.8125 ms.
+    double budget_maximal_par_tick_avant_de_deborder_sur_le_tick_suivant_ms;
+
+    // Nombre de ticks de rattrapage executes pendant la fenetre.
+    uint64_t nombre_ticks_de_rattrapage_executes_sur_derniere_seconde;
+
+    // Nombre de fois ou un backlog a ete abandonne pendant la fenetre
+    // pour eviter une derive de la simulation.
+    uint64_t nombre_abandons_de_backlog_simulation_sur_derniere_seconde;
+} RCNET_SimulationEtatMetrics;
+
+// ============================================================================
 // API publique moteur
 // ============================================================================
 
@@ -158,6 +235,14 @@ uint32_t rcnet_engine_getNetworkOutgoingTickRateHz(void);
  * sortante approche.
  */
 uint32_t rcnet_engine_getNetworkIncomingPollTimeoutMs(void);
+
+/**
+ * \brief Retourne le dernier snapshot de metrics simulation publie par le moteur.
+ *
+ * \param outMetrics Pointeur de sortie vers la structure a remplir.
+ * \return true si un snapshot est disponible, false sinon.
+ */
+bool rcnet_engine_getLastSimulationEtatMetrics(RCNET_SimulationEtatMetrics* outMetrics);
 
 // ============================================================================
 // Helpers utilitaires
