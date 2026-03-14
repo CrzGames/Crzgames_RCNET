@@ -174,9 +174,11 @@ static std::atomic<uint64_t> g_simLateTickCount{0};
 
 // Nombre de ticks de catch-up exécutés sur la fenêtre courante.
 static std::atomic<uint64_t> g_simCatchUpTickCount{0};
+static std::atomic<uint64_t> g_simCatchUpTickCountSinceStartup{0};
 
 // Nombre de drops backlog simulation sur la fenêtre courante.
 static std::atomic<uint64_t> g_simBacklogDropCount{0};
+static std::atomic<uint64_t> g_simBacklogDropCountSinceStartup{0};
 
 // Fréquence réelle observée sur la dernière fenêtre d'une seconde.
 static std::atomic<uint32_t> g_simRealTickRateHz{0};
@@ -1161,6 +1163,7 @@ static void rcnet_engine_simulationThreadMain(void)
             if (catchUpSim > 0)
             {
                 g_simCatchUpTickCount.fetch_add(1, std::memory_order_relaxed);
+                g_simCatchUpTickCountSinceStartup.fetch_add(1, std::memory_order_relaxed);
             }
 
             // Stats de fenetre.
@@ -1223,6 +1226,7 @@ static void rcnet_engine_simulationThreadMain(void)
         if (nowNs >= nextSimNs)
         {
             g_simBacklogDropCount.fetch_add(1, std::memory_order_relaxed);
+            g_simBacklogDropCountSinceStartup.fetch_add(1, std::memory_order_relaxed);
 
             RCNET_log(
                 RCNET_LOG_WARN,
@@ -1264,6 +1268,10 @@ static void rcnet_engine_simulationThreadMain(void)
             const uint64_t lateTicks    = g_simLateTickCount.load(std::memory_order_relaxed);
             const uint64_t catchUpTicks = g_simCatchUpTickCount.load(std::memory_order_relaxed);
             const uint64_t backlogDrops = g_simBacklogDropCount.load(std::memory_order_relaxed);
+            const uint64_t catchUpTicksSinceStartup =
+                g_simCatchUpTickCountSinceStartup.load(std::memory_order_relaxed);
+            const uint64_t backlogDropsSinceStartup =
+                g_simBacklogDropCountSinceStartup.load(std::memory_order_relaxed);
 
             // Temps moyen reel de retard de reveil sur la fenetre,
             // uniquement parmi les ticks effectivement en retard.
@@ -1349,8 +1357,12 @@ static void rcnet_engine_simulationThreadMain(void)
 
                 g_lastSimulationEtatMetrics.nombre_ticks_de_rattrapage_executes_sur_derniere_seconde =
                     catchUpTicks;
+                g_lastSimulationEtatMetrics.nombre_ticks_de_rattrapage_executes_depuis_le_lancement_du_serveur =
+                    catchUpTicksSinceStartup;
                 g_lastSimulationEtatMetrics.nombre_abandons_de_backlog_simulation_sur_derniere_seconde =
                     backlogDrops;
+                g_lastSimulationEtatMetrics.nombre_abandons_de_backlog_simulation_depuis_le_lancement_du_serveur =
+                    backlogDropsSinceStartup;
             }
 
             g_hasLastSimulationEtatMetrics.store(true, std::memory_order_relaxed);
@@ -1373,7 +1385,9 @@ static void rcnet_engine_simulationThreadMain(void)
                 "  marge_moyenne_restante_avant_de_deborder_sur_le_tick_suivant_sur_derniere_seconde_ms=%.3f\n"
                 "  budget_maximal_par_tick_avant_de_deborder_sur_le_tick_suivant_ms=%.3f\n"
                 "  nombre_ticks_de_rattrapage_executes_sur_derniere_seconde=%llu\n"
-                "  nombre_abandons_de_backlog_simulation_sur_derniere_seconde=%llu",
+                "  nombre_ticks_de_rattrapage_executes_depuis_le_lancement_du_serveur=%llu\n"
+                "  nombre_abandons_de_backlog_simulation_sur_derniere_seconde=%llu\n"
+                "  nombre_abandons_de_backlog_simulation_depuis_le_lancement_du_serveur=%llu",
                 (unsigned long long)g_simTickHz,
                 realHz,
                 (unsigned)statsExecutedTicks,
@@ -1393,7 +1407,9 @@ static void rcnet_engine_simulationThreadMain(void)
                 (double)simBudgetNs / 1'000'000.0,
 
                 (unsigned long long)catchUpTicks,
-                (unsigned long long)backlogDrops
+                (unsigned long long)catchUpTicksSinceStartup,
+                (unsigned long long)backlogDrops,
+                (unsigned long long)backlogDropsSinceStartup
             );
 
             // Reset de la fenetre suivante.
@@ -1776,6 +1792,8 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, const RCNET_ServerConfig* 
 
     // Reset le temps logique exposé.
     g_serverTimeNsMonotonic.store(0, std::memory_order_relaxed);
+    g_simCatchUpTickCountSinceStartup.store(0, std::memory_order_relaxed);
+    g_simBacklogDropCountSinceStartup.store(0, std::memory_order_relaxed);
 
     // Reset du dernier snapshot de metrics simulation exposé.
     {

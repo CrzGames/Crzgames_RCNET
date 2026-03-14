@@ -169,9 +169,17 @@ typedef struct RCNET_SimulationEtatMetrics
     // Nombre de ticks de rattrapage executes pendant la fenetre.
     uint64_t nombre_ticks_de_rattrapage_executes_sur_derniere_seconde;
 
+    // Nombre total de ticks de rattrapage executes depuis le lancement
+    // courant du serveur (compteur cumulatif, jamais remis a zero en fenetre).
+    uint64_t nombre_ticks_de_rattrapage_executes_depuis_le_lancement_du_serveur;
+
     // Nombre de fois ou un backlog a ete abandonne pendant la fenetre
     // pour eviter une derive de la simulation.
     uint64_t nombre_abandons_de_backlog_simulation_sur_derniere_seconde;
+
+    // Nombre total d'abandons de backlog depuis le lancement courant
+    // du serveur (compteur cumulatif, jamais remis a zero en fenetre).
+    uint64_t nombre_abandons_de_backlog_simulation_depuis_le_lancement_du_serveur;
 } RCNET_SimulationEtatMetrics;
 
 // ============================================================================

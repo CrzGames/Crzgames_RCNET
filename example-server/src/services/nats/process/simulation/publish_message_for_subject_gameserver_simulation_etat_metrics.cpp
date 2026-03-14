@@ -75,7 +75,9 @@ void ServerNats_ProcessSimulationDispatcher_HandlePublishMessageForSubjectGamese
     jsonOk = jsonOk && (cJSON_AddNumberToObject(root, "marge_moyenne_restante_avant_de_deborder_sur_le_tick_suivant_sur_derniere_seconde_ms", metrics.marge_moyenne_restante_avant_de_deborder_sur_le_tick_suivant_sur_derniere_seconde_ms) != nullptr);
     jsonOk = jsonOk && (cJSON_AddNumberToObject(root, "budget_maximal_par_tick_avant_de_deborder_sur_le_tick_suivant_ms", metrics.budget_maximal_par_tick_avant_de_deborder_sur_le_tick_suivant_ms) != nullptr);
     jsonOk = jsonOk && (cJSON_AddNumberToObject(root, "nombre_ticks_de_rattrapage_executes_sur_derniere_seconde", (double) metrics.nombre_ticks_de_rattrapage_executes_sur_derniere_seconde) != nullptr);
+    jsonOk = jsonOk && (cJSON_AddNumberToObject(root, "nombre_ticks_de_rattrapage_executes_depuis_le_lancement_du_serveur", (double) metrics.nombre_ticks_de_rattrapage_executes_depuis_le_lancement_du_serveur) != nullptr);
     jsonOk = jsonOk && (cJSON_AddNumberToObject(root, "nombre_abandons_de_backlog_simulation_sur_derniere_seconde", (double) metrics.nombre_abandons_de_backlog_simulation_sur_derniere_seconde) != nullptr);
+    jsonOk = jsonOk && (cJSON_AddNumberToObject(root, "nombre_abandons_de_backlog_simulation_depuis_le_lancement_du_serveur", (double) metrics.nombre_abandons_de_backlog_simulation_depuis_le_lancement_du_serveur) != nullptr);
 
     // Si au moins une insertion JSON a echoue, on nettoie et on sort.
     if (!jsonOk)
