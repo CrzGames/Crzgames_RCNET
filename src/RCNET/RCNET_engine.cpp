@@ -1367,7 +1367,7 @@ static void rcnet_engine_simulationThreadMain(void)
 
             g_hasLastSimulationEtatMetrics.store(true, std::memory_order_relaxed);
 
-            RCNET_log(
+            /*RCNET_log(
                 RCNET_LOG_INFO,
                 "SIMULATION_ETAT:\n"
                 "  frequence_cible_tick_simulation_hz=%llu\n"
@@ -1410,7 +1410,7 @@ static void rcnet_engine_simulationThreadMain(void)
                 (unsigned long long)catchUpTicksSinceStartup,
                 (unsigned long long)backlogDrops,
                 (unsigned long long)backlogDropsSinceStartup
-            );
+            );*/
 
             // Reset de la fenetre suivante.
             statsWindowStartNs = statsNowNs;
@@ -1597,9 +1597,10 @@ static void rcnet_engine_networkThreadMain(void)
 
                 // Si l'événement contient un packet RECEIVE,
                 // on détruit explicitement le packet après traitement.
-                if (event.type == ENET_EVENT_TYPE_RECEIVE)
+                if (event.type == ENET_EVENT_TYPE_RECEIVE && event.packet != nullptr)
                 {
                     enet_packet_destroy(event.packet);
+                    event.packet = nullptr;
                 }
 
                 // Lit le temps courant après traitement.
