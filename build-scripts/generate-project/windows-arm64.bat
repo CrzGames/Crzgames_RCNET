@@ -19,7 +19,7 @@ cmake -S . -B build\windows\arm64 ^
 
 for %%b in (Debug Release) do (
   call :print_green "Building %%b..."
-  cmake --build build\windows\arm64 --config %%b
+  cmake --build build\windows\arm64 --config %%b --parallel 8
 )
 
 call :print_green "Generate lib RCNET for Windows arm64 in Release and Debug generated successfully, go to the build\windows\arm64 directory..."
