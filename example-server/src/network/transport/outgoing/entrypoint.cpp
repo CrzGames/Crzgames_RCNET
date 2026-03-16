@@ -20,12 +20,12 @@ void ServerNetworkOutgoing_DrainSimulationMessages_And_RunOutgoingNetworkLogic(E
     // Installer le compresseur LZ4 au niveau host.
     // Cette fonction est idempotente : si déjà installé, elle ne fait rien.
     // La compression et la décompression seront appliquées par ENet sur le trafic UDP du host.
-    ServerNetworkCompression_EnsureHostLz4CompressorInstalled(host);
+    //ServerNetworkCompression_EnsureHostLz4CompressorInstalled(host);
 
     // Installer l'encryptor XChaCha20-Poly1305 au niveau host.
     // Cette fonction est idempotente : si déjà installé, elle ne fait rien.
     // Les callbacks décideront ensuite peer par peer si les paquets applicatifs doivent être chiffrés.
-    ServerNetworkEncryption_EnsureHostEncryptorInstalled(host);
+    //ServerNetworkEncryption_EnsureHostEncryptorInstalled(host);
 
     // Récupérer une référence vers la queue simulation -> réseau sortant.
     SimulationToNetworkOUTQueue& simToNetQueue = GetSimulationToNetworkOUTQueue();

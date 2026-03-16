@@ -13,8 +13,7 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleDisconnectMessage(
         std::lock_guard<std::mutex> lock(networkState.sessionsMutex);
 
         // Rechercher la session correspondant à cette connexion.
-        std::unordered_map<uint32_t, ClientSession>::iterator sit =
-            networkState.sessions.find(msg.connectionId);
+        std::unordered_map<uint32_t, ClientSession>::iterator sit = networkState.sessions.find(msg.connectionId);
 
         // Si aucune session n'existe, on ignore simplement le message.
         if (sit == networkState.sessions.end())

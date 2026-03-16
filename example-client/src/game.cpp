@@ -129,27 +129,30 @@ static void net_pump_events(void)
                 break;
 
             case ENET_EVENT_TYPE_RECEIVE:
-                if(event.channelID == 0) // channel handshake/auth/encrypt
+                if(event.channelID == 0) // channel SECURE_SESSION_RELIABLE (0)
                 {
                     // Traiter le message de handshake du serveur (ex: token, accountIdDatabase, etc.)
-                    RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [HANDSHAKE] - Packet received from server (size=%u bytes)\n", (unsigned)event.packet->dataLength);
+                    RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [SECURE_SESSION] - Packet received from server (size=%u bytes)\n", (unsigned)event.packet->dataLength);
                 }
-                else if (event.channelID == 1) // channel inputs
+                else if (event.channelID == 1) // channel AUTH_RELIABLE (1)
                 {
-                    // Ignorer côté client, on n’attend rien du serveur sur ce channel (c’est pour les inputs du client vers le serveur), donc on peut juste ignorer les messages reçus.
+                    RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [AUTH] - Packet received from server (size=%u bytes)\n", (unsigned)event.packet->dataLength);
                 }
-                else if (event.channelID == 2) // channel snapshots (ex: position de tous les joueurs, etc.)
+                else if (event.channelID == 2) // channel GAME RELIABLE (2)
                 {
-                    RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [SNAPSHOT] - Packet received from server (size=%u bytes)\n", (unsigned)event.packet->dataLength);
+                    RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [GAME_RELIABLE] - Packet received from server (size=%u bytes)\n", (unsigned)event.packet->dataLength);
                 }
-                else if (event.channelID == 3) // channel events importants (ex: events de gameplay, chat, etc.)
+                else if (event.channelID == 3) // channel GAME UNRELIABLE (3)
                 {
-                    // Traiter les messages importants du serveur (ex: events de gameplay, chat, etc.)
-                    RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [EVENT] - Packet received from server (size=%u bytes)\n", (unsigned)event.packet->dataLength);
+                    RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [GAME_UNRELIABLE] - Packet received from server (size=%u bytes)\n", (unsigned)event.packet->dataLength);
                 }
 
                 // IMPORTANT: détruire le packet après usage
-                enet_packet_destroy(event.packet);
+                if (event.packet != nullptr)
+                {
+                    enet_packet_destroy(event.packet);
+                    event.packet = nullptr;
+                }
                 break;
 
             // Le serveur déconnecte le client
@@ -195,14 +198,7 @@ void rc2d_draw(void)
 
 void rc2d_keypressed(const char *key, SDL_Scancode scancode, SDL_Keycode keycode, SDL_Keymod mod, bool isrepeat, SDL_KeyboardID keyboardID)
 {
-    // Exemple: envoyer un message quand tu appuies sur espace
-    if (enetServerPeer && isConnectedToServer && keycode == SDLK_SPACE && !isrepeat)
-    {
-        const char* msg = "ping";
-        ENetPacket* p = enet_packet_create(msg, strlen(msg) + 1, 0 /* UNRELIABLE */);
-        enet_peer_send(enetServerPeer, 0, p);
-        enet_host_flush(enetClientHost); // optionnel, force l'envoi immédiat
-    }
+
 }
 
 void rc2d_mousepressed(float x, float y, RC2D_MouseButton button, int clicks, SDL_MouseID mouseID)

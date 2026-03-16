@@ -8,18 +8,20 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleConnectMessage(
     NetworkState& networkState,
     const NetworkINToSimulationMessage& msg)
 {
-    // Créer une nouvelle session vide.
-    ClientSession session{};
-
-    // Assigner l'identifiant de connexion porté par le message.
-    session.connectionId = msg.connectionId;
-
-    // Marquer la couche transport comme connectée.
-    session.isTransportConnected = true;
-
     // Enregistrer la session dans l'état réseau global.
     {
         std::lock_guard<std::mutex> lock(networkState.sessionsMutex);
+
+        // Créer une nouvelle session vide.
+        ClientSession session{};
+
+        // Assigner l'identifiant de connexion porté par le message.
+        session.connectionId = msg.connectionId;
+
+        // Marquer la couche transport comme connectée.
+        session.isTransportConnected = true;
+
+        // Enregistrer la session dans l'état réseau global.
         networkState.sessions[msg.connectionId] = session;
     }
 
