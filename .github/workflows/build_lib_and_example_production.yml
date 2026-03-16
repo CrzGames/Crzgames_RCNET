@@ -33,13 +33,13 @@ jobs:
       - name: Get dependencies with CMake - All platforms
         run: cmake -P cmake/setup_dependencies.cmake
 
-      - name: Setup Xcode and Setup Command Line Tools - macOS / iOS
+      - name: Setup Xcode and Setup Command Line Tools - macOS (arm64)
         if: matrix.config.platform == 'macos'
         uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: ${{ env.XCODE_VERSION }}
 
-      - name: Determine SDK Path and set SDKROOT - macOS / iOS
+      - name: Determine SDK Path and set SDKROOT - macOS (arm64)
         if: matrix.config.platform == 'macos'
         run: |
           sdk="${{ matrix.config.sdk }}"
