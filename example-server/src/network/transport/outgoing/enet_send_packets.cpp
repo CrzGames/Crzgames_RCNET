@@ -219,6 +219,17 @@ static bool ServerNetworkOutgoing_SendPacket(
         return false;
     }
 
+    // Warn si la taille depasse la cible "ultra-safe" de payload UDP.
+    if (bytes.size() > kServerNetworkOutgoingPayloadMaxBytes)
+    {
+        RCNET_log(
+            RCNET_LOG_WARN,
+            "[SERVER] [NETWORK_OUT] [PAYLOAD] - Payload size=%llu bytes exceeds target max=%u bytes (channel=%u).",
+            (unsigned long long)bytes.size(),
+            (unsigned)kServerNetworkOutgoingPayloadMaxBytes,
+            (unsigned)channel);
+    }
+
     // Cree le paquet ENet a partir des bytes serialises.
     ENetPacket* enetPacket = enet_packet_create(
         bytes.data(),
