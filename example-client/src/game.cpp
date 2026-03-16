@@ -1,5 +1,6 @@
-#include <game.h>
-#include <game_screen.h>
+#include "game.h"
+
+#include "game_screen.h"
 
 GameScreen gameScreen;
 
