@@ -96,15 +96,6 @@ else()
   endif()
 endif()
 
-# Choix de visibilité des deps de rcnet
-# - Si on build les exemples (client qui link RC2D), on N’exporte pas les deps => PRIVATE
-# - Sinon (server template / usage classique), on exporte => PUBLIC
-if(RCNET_BUILD_EXAMPLE)
-  set(RCNET_DEPS_VISIBILITY PRIVATE)
-else()
-  set(RCNET_DEPS_VISIBILITY PUBLIC)
-endif()
-
 # ============================================================
 # Paths — Dépendances précompilées (Crzgames_Libraries)
 # ============================================================
@@ -152,13 +143,11 @@ endif()
 # - Build en statique uniquement
 # - Pas de tests / utilitaires (inutile dans un framework)
 # ============================================================
-if(NOT RCNET_BUILD_EXAMPLE)
-  set(CMAKE_POLICY_VERSION_MINIMUM "3.5" CACHE STRING "Allow old subprojects" FORCE) # Autoriser les vieux subprojects de CJSON
-  set(CJSON_OVERRIDE_BUILD_SHARED_LIBS ON  CACHE BOOL "" FORCE) # ignore BUILD_SHARED_LIBS global
-  set(CJSON_BUILD_SHARED_LIBS      OFF CACHE BOOL "" FORCE) # force STATIC pour cJSON
-  set(ENABLE_CJSON_TEST   OFF CACHE BOOL "" FORCE) # Désactiver les tests
-  set(ENABLE_CJSON_UTILS  OFF CACHE BOOL "" FORCE) # Désactiver les outils
-endif()
+set(CMAKE_POLICY_VERSION_MINIMUM "3.5" CACHE STRING "Allow old subprojects" FORCE) # Autoriser les vieux subprojects de CJSON
+set(CJSON_OVERRIDE_BUILD_SHARED_LIBS ON  CACHE BOOL "" FORCE) # ignore BUILD_SHARED_LIBS global
+set(CJSON_BUILD_SHARED_LIBS      OFF CACHE BOOL "" FORCE) # force STATIC pour cJSON
+set(ENABLE_CJSON_TEST   OFF CACHE BOOL "" FORCE) # Désactiver les tests
+set(ENABLE_CJSON_UTILS  OFF CACHE BOOL "" FORCE) # Désactiver les outils
 
 # ============================================================
 # Exemple client — Configuration build
@@ -171,10 +160,10 @@ if(RCNET_BUILD_EXAMPLE)
   set(RC2D_EOS_SDK_ENABLED OFF CACHE BOOL "")
   set(RC2D_STEAMWORKS_SDK_ENABLED OFF CACHE BOOL "")
   set(RC2D_GPU_SHADER_HOT_RELOAD_ENABLED OFF CACHE BOOL "")
-  set(RC2D_MEMORY_DEBUG_ENABLED OFF CACHE BOOL "")
-  set(RC2D_DATA_MODULE_ENABLED OFF CACHE BOOL "")
+  set(RC2D_MEMORY_DEBUG_ENABLED ON CACHE BOOL "")
+  set(RC2D_DATA_MODULE_ENABLED ON CACHE BOOL "")
   set(RC2D_NET_MODULE_ENABLED ON CACHE BOOL "")
-  set(RC2D_VIDEO_MODULE_ENABLED OFF CACHE BOOL "")
+  set(RC2D_VIDEO_MODULE_ENABLED ON CACHE BOOL "")
   set(RC2D_ONNX_MODULE_ENABLED OFF CACHE BOOL "")
   set(RC2D_ASSERT_LEVEL 3 CACHE STRING "")
   set(RC2D_BUILDING_SHARED OFF CACHE BOOL "")
@@ -194,11 +183,11 @@ endif()
 if(RCNET_BUILD_EXAMPLE)
   add_subdirectory(dependencies/Crzgames_RC2D EXCLUDE_FROM_ALL)
 endif()
-if(NOT TARGET cjson)
+if(NOT TARGET cjson) # On fait cela parce que dans Crzgames_RC2D, on subdirectory déjà cJSON.
   add_subdirectory(dependencies/cJSON EXCLUDE_FROM_ALL)
 endif()
 if(UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
-  add_subdirectory(dependencies/nats    EXCLUDE_FROM_ALL)
+  add_subdirectory(dependencies/nats EXCLUDE_FROM_ALL)
 endif()
 
 # ============================================================
@@ -361,42 +350,42 @@ endfunction()
 # - Lier rcenet
 # - Ajouter les libs système nécessaires (Windows : ws2_32, winmm)
 # ============================================================
-function(rcnet_configure_rcenet target_name visibility)
+function(rcnet_configure_rcenet target_name)
   if (WIN32) # Windows
     # Link le dossier include de RCEnet à la target
-    target_include_directories(${target_name} ${visibility} "${CRZGAMES_LIBRARIES_PATH}/windows/include/include_rcenet")
+    target_include_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/windows/include/include_rcenet")
 
     # Rajouter le répertoire de la lib RCEnet, pour le linker ensuite
-    target_link_directories(${target_name} ${visibility} "${CRZGAMES_LIBRARIES_PATH}/windows/lib/rcenet/${RCNET_ARCH}")
+    target_link_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/windows/lib/rcenet/${RCNET_ARCH}")
 
     # Link les librairies RCEnet
-    target_link_libraries(${target_name} ${visibility}
+    target_link_libraries(${target_name} PUBLIC
       rcenet
       ws2_32 # Bibliothèque native à Windows (pour la librairie Enet)
       winmm # Bibliothèque native à Windows (pour la librairie Enet)
     )
   elseif(APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin") # macOS
     # Link le dossier include de RCEnet à la target
-    target_include_directories(${target_name} ${visibility} "${CRZGAMES_LIBRARIES_PATH}/macos/include/include_rcenet")
+    target_include_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/macos/include/include_rcenet")
 
     # Ajouter explicitement la lib .dylib à linker
-    target_link_directories(${target_name} ${visibility}
+    target_link_directories(${target_name} PUBLIC
       "${CRZGAMES_LIBRARIES_PATH}/macos/lib/rcenet"
     )
 
     # Link la librairies RCEnet
-    target_link_libraries(${target_name} ${visibility}
+    target_link_libraries(${target_name} PUBLIC
       rcenet
     )
   elseif (UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
     # Link le dossier include de RCEnet à la target
-    target_include_directories(${target_name} ${visibility} "${CRZGAMES_LIBRARIES_PATH}/linux/include/include_rcenet")
+    target_include_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/linux/include/include_rcenet")
 
     # Rajouter le répertoire de la lib RCEnet, pour le linker ensuite
-    target_link_directories(${target_name} ${visibility} "${CRZGAMES_LIBRARIES_PATH}/linux/lib/rcenet/${RCNET_ARCH}")
+    target_link_directories(${target_name} PUBLIC "${CRZGAMES_LIBRARIES_PATH}/linux/lib/rcenet/${RCNET_ARCH}")
 
     # Link les librairies RCEnet
-    target_link_libraries(${target_name} ${visibility}
+    target_link_libraries(${target_name} PUBLIC
       rcenet
     )
   endif()
@@ -411,14 +400,14 @@ endfunction()
 # - Exposer les headers cJSON via include path (PUBLIC)
 # - Lier la lib statique cJSON à la target
 # ============================================================
-function(rcnet_configure_cjson target_name visibility)
+function(rcnet_configure_cjson target_name)
   # Le header cJSON.h est dans dependencies/cJSON/cJSON.h
-  target_include_directories(${target_name} ${visibility}
+  target_include_directories(${target_name} PUBLIC
     "${DEPENDENCIES_PATH}/cJSON"
   )
 
   # Link la librairie cJSON
-  target_link_libraries(${target_name} ${visibility} cjson)
+  target_link_libraries(${target_name} PUBLIC cjson)
 endfunction()
 
 # ============================================================
@@ -488,10 +477,10 @@ rcnet_target_compile_definitions(${PROJECT_NAME})
 rcnet_configure_openssl(${PROJECT_NAME})
 
 # RCEnet / ENet
-rcnet_configure_rcenet(${PROJECT_NAME} ${RCNET_DEPS_VISIBILITY})
+rcnet_configure_rcenet(${PROJECT_NAME})
 
 # cJSON (parsing JSON léger côté runtime)
-rcnet_configure_cjson(${PROJECT_NAME} ${RCNET_DEPS_VISIBILITY})
+rcnet_configure_cjson(${PROJECT_NAME})
 
 # NATS Client C (client NATS pour la communication inter-services)
 rcnet_configure_nats(${PROJECT_NAME})
@@ -531,7 +520,7 @@ if(RCNET_BUILD_EXAMPLE)
   # ============================================================
   # server example compile definitions
   # ============================================================
-  function(rcnet_target_compile_definitions target_name)
+  function(server_example_compile_definitions target_name)
     # Environement de build (dev/staging/production) : ajoute des macros préprocesseur pour différencier les builds
     # dans le code source, par exemple pour activer des logs de debug en dev mais pas en production.
     if(SERVER_ENV STREQUAL "dev")
@@ -586,7 +575,7 @@ if(RCNET_BUILD_EXAMPLE)
   # ============================================================
   # Compile Definitions
   # ============================================================
-  rcnet_target_compile_definitions(${RCNET_EXAMPLE_SERVER_TARGET_NAME})
+  server_example_compile_definitions(${RCNET_EXAMPLE_SERVER_TARGET_NAME})
 
   # ============================================================
   # Include directories pour l’exemple
@@ -603,11 +592,8 @@ if(RCNET_BUILD_EXAMPLE)
   # Lie la target de l’exemple à la bibliothèque RCNET pour pouvoir utiliser le moteur dans l’exemple.
   # ============================================================
   target_link_libraries(${RCNET_EXAMPLE_SERVER_TARGET_NAME} PRIVATE
-    ${PROJECT_NAME} # RCNET
+    ${PROJECT_NAME} # rcnet (moteur de serveur de jeu)
   )
-
-  rcnet_configure_rcenet(${RCNET_EXAMPLE_SERVER_TARGET_NAME} PRIVATE)
-  rcnet_configure_cjson(${RCNET_EXAMPLE_SERVER_TARGET_NAME} PRIVATE)
 endif()
 
 # ============================================================
@@ -664,7 +650,6 @@ if(RCNET_BUILD_EXAMPLE)
   # Lie la target de l’exemple à la bibliothèque RCNET pour pouvoir utiliser le moteur dans l’exemple.
   # ============================================================
   target_link_libraries(${RCNET_EXAMPLE_CLIENT_TARGET_NAME} PRIVATE
-    ${PROJECT_NAME} # RCNET
-    rc2d # RC2D (moteur de jeu 2D utilisé dans l’exemple client)
+    rc2d # rc2d (moteur de jeu 2d)
   )
 endif()

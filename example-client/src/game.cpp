@@ -25,28 +25,28 @@ void rc2d_simulation_update(uint64_t currentTick, uint64_t dtNs, double dt)
 
 void rc2d_network_incoming_update(ENetHost* host, const ENetEvent* event)
 {
-    switch (event.type)
+    switch (event->type)
     {
         case ENET_EVENT_TYPE_CONNECT:
             RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [CONNECT] - Connected to server.\n");
             break;
 
         case ENET_EVENT_TYPE_RECEIVE:
-            if(event.channelID == 0) // channel SECURE_SESSION_RELIABLE (0)
+            if(event->channelID == 0) // channel SECURE_SESSION_RELIABLE (0)
             {
-                RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [SECURE_SESSION] - Packet received from server (size=%u bytes)\n", (unsigned)event.packet->dataLength);
+                RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [SECURE_SESSION] - Packet received from server (size=%u bytes)\n", (unsigned)event->packet->dataLength);
             }
-            else if (event.channelID == 1) // channel AUTH_RELIABLE (1)
+            else if (event->channelID == 1) // channel AUTH_RELIABLE (1)
             {
-                RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [AUTH] - Packet received from server (size=%u bytes)\n", (unsigned)event.packet->dataLength);
+                RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [AUTH] - Packet received from server (size=%u bytes)\n", (unsigned)event->packet->dataLength);
             }
-            else if (event.channelID == 2) // channel GAME RELIABLE (2)
+            else if (event->channelID == 2) // channel GAME RELIABLE (2)
             {
-                RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [GAME_RELIABLE] - Packet received from server (size=%u bytes)\n", (unsigned)event.packet->dataLength);
+                RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [GAME_RELIABLE] - Packet received from server (size=%u bytes)\n", (unsigned)event->packet->dataLength);
             }
-            else if (event.channelID == 3) // channel GAME UNRELIABLE (3)
+            else if (event->channelID == 3) // channel GAME UNRELIABLE (3)
             {
-                RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [GAME_UNRELIABLE] - Packet received from server (size=%u bytes)\n", (unsigned)event.packet->dataLength);
+                RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [GAME_UNRELIABLE] - Packet received from server (size=%u bytes)\n", (unsigned)event->packet->dataLength);
             }
             break;
 
