@@ -240,6 +240,15 @@ function(rcnet_configure_cpphttplib target_name)
   target_include_directories(${target_name} PUBLIC
     "${DEPENDENCIES_PATH}/cpp-httplib"
   )
+
+  # Pour cpp-http sous macOS, il faut linker explicitement les frameworks CoreFoundation et Security 
+  # pour que la partie TLS fonctionne correctement.
+  if(APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    target_link_libraries(${target_name} PUBLIC
+      "-framework CoreFoundation"
+      "-framework Security"
+    )
+  endif()
 endfunction()
 
 # ============================================================
