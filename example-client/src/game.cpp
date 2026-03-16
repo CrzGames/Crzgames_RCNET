@@ -1,22 +1,35 @@
 #include "game.h"
 
 #include "game_screen.h"
+#include "scenes/scene-menu.h"
+#include "scenes/scene-editormap.h"
+#include "scenes/scene-manager.h"
+#include "scenes/scene-splashscreen.h"
+#include "scenes/scene-game.h"
 
+SceneManager sceneManager;
 GameScreen gameScreen;
 
 void rc2d_unload(void)
 {
-
+    sceneManager.unload();
 }
 
 void rc2d_load(void)
 {
-    rc2d_engine_networkConnectToServer("51.254.137.3", 12345);
+    sceneManager.addScene("menu", new MenuScene());
+    sceneManager.addScene("editormap", new EditorMapScene());
+    sceneManager.addScene("splashscreen", new SplashScreenScene());
+    sceneManager.addScene("game", new GameScene());
+    sceneManager.changeScene("splashscreen");
+
+    rc2d_engine_networkConnectToServer("127.0.0.1", 12345);
 }
 
 void rc2d_update(double dt)
 {
     gameScreen.update(dt);
+    sceneManager.update(dt);
 }
 
 void rc2d_simulation_update(uint64_t currentTick, uint64_t dtNs, double dt)
@@ -83,15 +96,15 @@ void rc2d_websocket_update(void)
 
 void rc2d_draw(void)
 {
-
+    sceneManager.draw();
 }
 
 void rc2d_keypressed(const char *key, SDL_Scancode scancode, SDL_Keycode keycode, SDL_Keymod mod, bool isrepeat, SDL_KeyboardID keyboardID)
 {
-
+    sceneManager.keypressed(key, scancode, keycode, mod, isrepeat, keyboardID);
 }
 
 void rc2d_mousepressed(float x, float y, RC2D_MouseButton button, int clicks, SDL_MouseID mouseID)
 {
-
+    sceneManager.mousepressed(x, y, button, clicks, mouseID);
 }
