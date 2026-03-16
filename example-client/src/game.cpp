@@ -10,7 +10,7 @@ void rc2d_unload(void)
 
 void rc2d_load(void)
 {
-    rc2d_engine_networkConnectToServer("127.0.0.1", 12345);
+    rc2d_engine_networkConnectToServer("51.254.137.3", 12345);
 }
 
 void rc2d_update(double dt)

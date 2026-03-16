@@ -1,14 +1,10 @@
-name: Generate RCNET library static (production) + Example app
+name: Generate RCNET library static (staging) + Example app
 
 on:
-  release:
-    types:
-      - published
+  push:
+    branches:
+      - staging
   workflow_dispatch:
-
-permissions:
-  contents: write
-  discussions: write
 
 env:
   XCODE_VERSION: "26.3.0"
@@ -51,17 +47,11 @@ jobs:
           echo "SDK Version: $SDKVERSION"
         shell: bash
 
-      - name: Install dev dependencies (for SDL3) - Linux (x64)
+      - name: Install dependencies - Linux (x64/arm64)
         if: matrix.config.platform == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get -y install build-essential git make \
-          pkg-config cmake ninja-build gnome-desktop-testing libasound2-dev libpulse-dev \
-          libaudio-dev libfribidi-dev libjack-dev libsndio-dev libx11-dev libxext-dev \
-          libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev \
-          libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev \
-          libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev libthai-dev \
-          libpipewire-0.3-dev libwayland-dev libdecor-0-dev liburing-dev
+          sudo apt-get -y install build-essential
 
       - name: Build RCNET (scripts) - Linux (x64/arm64)
         if: matrix.config.platform == 'linux'

@@ -1,0 +1,90 @@
+name: Generate RCNET library static (production) + Example app
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  discussions: write
+
+env:
+  XCODE_VERSION: "26.3.0"
+
+jobs:
+  build_librcnet:
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+        - { runner: windows-2025,     platform: windows,  arch: x64 }
+        - { runner: windows-11-arm,   platform: windows,  arch: arm64 }
+        - { runner: ubuntu-22.04,     platform: linux,    arch: x64 }
+        - { runner: ubuntu-22.04-arm, platform: linux,    arch: arm64 }
+        - { runner: macos-26,         platform: macos,    arch: arm64, sdk: macosx } 
+    name: ${{ matrix.config.platform }}-${{ matrix.config.arch }}-${{ matrix.config.sdk }}
+    runs-on: ${{ matrix.config.runner }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Get dependencies with CMake - All platforms
+        run: cmake -P cmake/setup_dependencies.cmake
+
+      - name: Setup Xcode and Setup Command Line Tools - macOS / iOS
+        if: matrix.config.platform == 'macos'
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+
+      - name: Determine SDK Path and set SDKROOT - macOS / iOS
+        if: matrix.config.platform == 'macos'
+        run: |
+          sdk="${{ matrix.config.sdk }}"
+          SDKROOT=$(xcrun --sdk "$sdk" --show-sdk-path)
+          SDKVERSION=$(xcrun --sdk "$sdk" --show-sdk-version)
+          echo "SDKROOT=$SDKROOT" >> $GITHUB_ENV
+          echo "Using SDK: $sdk"
+          echo "SDK Path: $SDKROOT"
+          echo "SDK Version: $SDKVERSION"
+        shell: bash
+
+      - name: Install dependencies - Linux (x64/arm64)
+        if: matrix.config.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install build-essential
+
+      - name: Build RCNET (scripts) - Linux (x64/arm64)
+        if: matrix.config.platform == 'linux'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if [ "${{ matrix.config.arch }}" = "x64" ]; then
+            chmod +x ./build-scripts/generate-project/linux-x64.sh
+            ./build-scripts/generate-project/linux-x64.sh
+          else
+            chmod +x ./build-scripts/generate-project/linux-arm64.sh
+            ./build-scripts/generate-project/linux-arm64.sh
+          fi
+
+      - name: Build RCNET (scripts) - Windows (x64/arm64)
+        if: matrix.config.platform == 'windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          if ("${{ matrix.config.arch }}" -eq "x64") {
+            .\build-scripts\generate-project\windows-x64.bat
+          } else {
+            .\build-scripts\generate-project\windows-arm64.bat
+          }
+
+      - name: Build RCNET (scripts) - macOS (arm64)
+        if: matrix.config.platform == 'macos'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          chmod +x ./build-scripts/generate-project/macos-arm64.sh
+          ./build-scripts/generate-project/macos-arm64.sh
