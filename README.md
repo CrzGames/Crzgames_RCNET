@@ -157,7 +157,7 @@
   4. Download and Install Patchelf (pour l exemple du client qui utilise RC2D) : sudo apt install -y patchelf
   5. Download and Install dev dependencies for SDL3 (pour l exemple du client qui utilise RC2D) :
     sudo apt-get update
-    sudo apt-get -y install build-essential git make \
+    sudo apt-get -y install git make \
     pkg-config cmake ninja-build gnome-desktop-testing libasound2-dev libpulse-dev \
     libaudio-dev libfribidi-dev libjack-dev libsndio-dev libx11-dev libxext-dev \
     libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev \
