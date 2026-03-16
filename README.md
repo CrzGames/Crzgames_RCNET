@@ -154,6 +154,23 @@
      sudo apt update
      sudo apt install -y build-essential
   3. Download and Install CMake >= 3.28.0 : sudo apt install -y cmake
+  4. Download and Install Patchelf (pour l exemple du client qui utilise RC2D) : sudo apt install -y patchelf
+  5. Download and Install dev dependencies for SDL3 (pour l exemple du client qui utilise RC2D) :
+    sudo apt-get update
+    sudo apt-get -y install build-essential git make \
+    pkg-config cmake ninja-build gnome-desktop-testing libasound2-dev libpulse-dev \
+    libaudio-dev libfribidi-dev libjack-dev libsndio-dev libx11-dev libxext-dev \
+    libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev \
+    libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev \
+    libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev libthai-dev \
+    ibpipewire-0.3-dev libwayland-dev libdecor-0-dev liburing-dev
+  6. Download and Install fuse for generate .AppImage (pour l exemple du client qui utilise RC2D) :
+    Pour Ubuntu (>= 22.04) :
+      sudo apt update
+      sudo apt install libfuse2 
+    Pour Debian (>= 13) et Ubuntu (>= 24.04) : 
+      sudo apt update
+      sudo apt install -y libfuse2t64
 
 
 
