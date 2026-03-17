@@ -31,10 +31,6 @@ void ClientNetworkIncoming_Event_HandleConnect(
     netToSimQueue.push(message);
 
     // Log l'événement de connexion avec l'identifiant de connexion concerné.
-    RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [CONNECT] Connected from server, ip : %u.%u.%u.%u, port: %u",
-             (event->peer->address.host & 0xFF),
-             ((event->peer->address.host >> 8) & 0xFF),
-             ((event->peer->address.host >> 16) & 0xFF),
-             ((event->peer->address.host >> 24) & 0xFF),
-             event->peer->address.port);
+    RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [CONNECT] Connected from server - address: %s port: %u.",
+             event->peer->address.host, event->peer->address.port);
 }
