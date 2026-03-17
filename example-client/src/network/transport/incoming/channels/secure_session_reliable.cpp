@@ -15,6 +15,7 @@ void ClientNetworkIncoming_Channel_SecureSessionReliable(
             event->packet->dataLength,
             secureSessionHelloResponsePacket))
     {
+        // Si la deserialisation echoue, le packet est invalide ou mal forme.
         RC2D_log(
             RC2D_LOG_WARN,
             "[CLIENT] [NETWORK_IN] [SECURE_SESSION] Failed to deserialize secure-session response (size=%u).",
@@ -22,12 +23,15 @@ void ClientNetworkIncoming_Channel_SecureSessionReliable(
         return;
     }
 
-    // Construire le message destination simulation.
+    // Crée un message destiné au thread simulation.
     NetworkINToSimulationMessage message{};
+
+    // Spécifier le type de message pour que la simulation sache comment le traiter.
     message.type = NetworkINToSimulationMessageType::SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE;
+    // Copier le packet deserialise dans le message.
     message.secureSessionHelloResponsePacket = secureSessionHelloResponsePacket;
 
-    // Push vers la queue simulation.
+    // Envoie le message au thread simulation via la queue thread-safe.
     netToSimQueue.push(message);
 }
 

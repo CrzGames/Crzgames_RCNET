@@ -1,11 +1,11 @@
 #include "network/protocol/secure_session_attestation.h"
 
-#include "network/protocol/secure_session.h"
+#include "network/protocol/secure_session.h" // ClientSecureSession_GetPinnedServerSigningPublicKey
 
-#include <RC2D/RC2D.h>
+#include <RC2D/RC2D.h> // RC2D_log
 
-#include <array>
-#include <vector>
+#include <array>  // std::array
+#include <vector> // std::vector
 
 // Ecrit un uint64 dans le buffer en big-endian.
 // Ce format doit rester strictement identique au serveur pour la signature.

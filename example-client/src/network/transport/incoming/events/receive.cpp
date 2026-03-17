@@ -10,7 +10,7 @@ void ClientNetworkIncoming_Event_HandleReceive(
     NetworkINToSimulationQueue& netToSimQueue)
 {
     // Protection basique sur pointeurs evenements.
-    if (event == nullptr || event->peer == nullptr)
+    if (event == nullptr || event->peer == nullptr || event->packet == nullptr)
     {
         RC2D_log(RC2D_LOG_WARN, "[CLIENT] [NETWORK_IN] [RECEIVE] Invalid receive event.");
         return;

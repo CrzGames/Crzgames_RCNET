@@ -16,8 +16,7 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloR
     const NetworkINToSimulationMessage& networkInToSimMessage)
 {
     // Raccourci vers le packet de reponse secure-session recu du serveur.
-    const ServerSecureSessionHelloResponsePacketReliable& packet =
-        networkInToSimMessage.secureSessionHelloResponsePacket;
+    const ServerSecureSessionHelloResponsePacketReliable& packet = networkInToSimMessage.secureSessionHelloResponsePacket;
 
     // Verrouiller l'etat partage (simulation + reseau).
     std::lock_guard<std::mutex> lock(networkState.cryptoMutex);

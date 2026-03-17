@@ -22,11 +22,10 @@ void ClientNetworkIncoming_Event_HandleDisconnect(
     // Crée un message destiné au thread simulation.
     NetworkINToSimulationMessage message{};
 
-    // Indique que ce message correspond à une déconnexion client.
+    // Spécifier le type de message pour que la simulation sache comment le traiter.
     message.type = NetworkINToSimulationMessageType::SERVER_EVENT_DISCONNECT;
 
-    // Envoie le message au thread simulation via la queue thread-safe. 
-    // Le thread simulation traitera ce message pour mettre à jour son état en conséquence.
+    // Envoie le message au thread simulation via la queue thread-safe.
     netToSimQueue.push(message);
 
     // Log l'événement de déconnexion avec l'identifiant de connexion concerné.

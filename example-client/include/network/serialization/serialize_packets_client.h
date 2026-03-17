@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vector>  // std::vector pour stocker les données sérialisées
+#include <vector>  // std::vector
 #include <cstdint> // uint8_t, uint32_t, etc.
 
 #include "network/packets/client/reliable.h"

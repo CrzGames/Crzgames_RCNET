@@ -28,20 +28,16 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleConnectMessage(
     ClientSecureSessionHelloPacketReliable secureSessionHelloPacket{};
 
     // Renseigner le type du packet reliable client.
-    secureSessionHelloPacket.header.type =
-        ClientReliablePacketType::CLIENT_SECURE_SESSION_HELLO_PACKET_RELIABLE;
+    secureSessionHelloPacket.header.type = ClientReliablePacketType::CLIENT_SECURE_SESSION_HELLO_PACKET_RELIABLE;
 
     // Envoyer la version protocolaire client pour verification serveur.
     secureSessionHelloPacket.networkProtocolVersion = CLIENT_NETWORK_PROTOCOL_VERSION;
 
     // Copier la cle publique KX client dans le packet.
-    secureSessionHelloPacket.clientPublicKey =
-        ClientCryptoKx_GetClientPublicKey(networkState.cryptoKxState);
+    secureSessionHelloPacket.clientPublicKey = ClientCryptoKx_GetClientPublicKey(networkState.cryptoKxState);
 
     // Generer un nonce aleatoire challenge/echo pour lier la reponse serveur.
-    randombytes_buf(
-        secureSessionHelloPacket.clientNonce.data(),
-        secureSessionHelloPacket.clientNonce.size());
+    randombytes_buf(secureSessionHelloPacket.clientNonce.data(), secureSessionHelloPacket.clientNonce.size());
 
     {
         // Reinitialiser l'etat de session avant de lancer un nouveau handshake.
@@ -74,8 +70,7 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleConnectMessage(
     outMessage.type = SimulationToNetworkOUTMessageType::CLIENT_SECURE_SESSION_HELLO_PACKET_RELIABLE;
 
     // Serialiser le packet binaire a envoyer via ENet.
-    outMessage.serializedPacket =
-        serializeClientSecureSessionHelloPacketReliable(secureSessionHelloPacket);
+    outMessage.serializedPacket = serializeClientSecureSessionHelloPacketReliable(secureSessionHelloPacket);
 
     // Pousser le message dans la queue du thread reseau sortant.
     simToNetQueue.push(outMessage);

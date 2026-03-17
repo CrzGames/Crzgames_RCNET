@@ -9,6 +9,7 @@ void ClientNetworkIncoming_Channel_GameUnreliable(
     const ENetEvent* event,
     NetworkINToSimulationQueue& netToSimQueue)
 {
+    // Lire le type de packet unreliable serveur en tete de payload.
     ServerUnreliablePacketType packetType{};
     if (!ClientNetworkIncoming_ReadServerUnreliablePacketType(event, packetType))
     {
@@ -16,6 +17,7 @@ void ClientNetworkIncoming_Channel_GameUnreliable(
         return;
     }
 
+    // Dispatcher vers le handler specialise selon le type de packet.
     switch (packetType)
     {
         case ServerUnreliablePacketType::SERVER_SNAPSHOT_FULL_PACKET_UNRELIABLE:

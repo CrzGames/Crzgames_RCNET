@@ -24,7 +24,7 @@ void ClientNetworkIncoming_Event_HandleConnect(
     // Crée un message destiné au thread simulation.
     NetworkINToSimulationMessage message{};
 
-    // Indique que ce message correspond à un événement de connexion client.
+    // Spécifier le type de message pour que la simulation sache comment le traiter.
     message.type = NetworkINToSimulationMessageType::SERVER_EVENT_CONNECT;
 
     // Envoie le message au thread simulation via la queue thread-safe.

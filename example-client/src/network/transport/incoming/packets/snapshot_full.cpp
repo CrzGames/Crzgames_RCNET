@@ -15,6 +15,7 @@ void ClientNetworkIncoming_HandlePacket_SnapshotFull(
             event->packet->dataLength,
             snapshotFullPacket))
     {
+        // Si la deserialisation echoue, le packet est invalide ou mal forme.
         RC2D_log(
             RC2D_LOG_WARN,
             "[CLIENT] [NETWORK_IN] [SNAPSHOT] Failed to deserialize snapshot full packet (size=%u).",
@@ -22,12 +23,15 @@ void ClientNetworkIncoming_HandlePacket_SnapshotFull(
         return;
     }
 
-    // Construire le message destination simulation.
+    // Crée un message destiné au thread simulation.
     NetworkINToSimulationMessage message{};
+
+    // Spécifier le type de message pour que la simulation sache comment le traiter.
     message.type = NetworkINToSimulationMessageType::SERVER_SNAPSHOT_FULL_PACKET_UNRELIABLE;
+    // Copier le packet deserialise dans le message.
     message.snapshotFullPacket = snapshotFullPacket;
 
-    // Pousser le snapshot dans la queue simulation.
+    // Envoie le message au thread simulation via la queue thread-safe.
     netToSimQueue.push(message);
 }
 

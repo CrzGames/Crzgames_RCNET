@@ -32,9 +32,8 @@ struct NetworkState
     // signature verifiee, et cles de session derivees).
     bool secureSessionEstablished = false;
 
-    // Vrai des que le client recoit une reponse d'auth du serveur
-    // (peu importe SUCCESS ou echec). Ce flag indique que l'etape
-    // d'authentification a ete traitee.
+    // Vrai des que le client recoit une reponse d'authentification du backend web.
+    // Ce flag indique que l'etape d'authentification a ete traitee.
     bool authValidated = false;
 
     // Vrai uniquement si le serveur a valide le token d'authentification

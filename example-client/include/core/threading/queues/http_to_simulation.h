@@ -12,7 +12,6 @@
 
 enum class HttpToSimulationMessageType : uint8_t
 {
-    // Ajouter des types de messages ici si besoin
     AUTH_SIGNUP_RESPONSE = 0,
     AUTH_SIGNIN_RESPONSE = 1,
 };

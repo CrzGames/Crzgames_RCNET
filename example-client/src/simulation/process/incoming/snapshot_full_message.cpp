@@ -8,21 +8,16 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSnapshotFullMessage
     NetworkState& networkState,
     const NetworkINToSimulationMessage& networkInToSimMessage)
 {
-    // Lire le flag authTokenValidated pour contextualiser le log de snapshot.
-    bool authTokenValidated = false;
-    {
-        std::lock_guard<std::mutex> lock(networkState.cryptoMutex);
-        authTokenValidated = networkState.authTokenValidated;
-    }
-
+    // Raccourci vers le packet de snapshot full recu du serveur.
     const ServerSnapshotFullPacketUnreliable& packet = networkInToSimMessage.snapshotFullPacket;
+
+    // Voir ensuite ce qu'ont fait..
+
     RC2D_log(
         RC2D_LOG_DEBUG,
-        "[CLIENT] [SIMULATION] [SNAPSHOT] id=%u tick=%llu serverTimeNs=%llu lastProcessedInput=%u authTokenOk=%u",
+        "[CLIENT] [SIMULATION] [SNAPSHOT] id=%u tick=%llu serverTimeNs=%llu lastProcessedInput=%u",
         packet.snapshotId,
         static_cast<unsigned long long>(packet.serverTick),
         static_cast<unsigned long long>(packet.serverTimeNs),
-        packet.lastProcessedInputSequenceNumber,
-        authTokenValidated ? 1u : 0u);
+        packet.lastProcessedInputSequenceNumber);
 }
-

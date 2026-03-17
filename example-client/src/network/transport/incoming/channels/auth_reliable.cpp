@@ -29,14 +29,15 @@ void ClientNetworkIncoming_Channel_AuthReliable(
         "[CLIENT] [NETWORK_IN] [AUTH] - Packet received from server (size=%u bytes).",
         static_cast<unsigned>(event->packet->dataLength));
 
-    // Creer un message destination simulation.
+    // Crée un message destiné au thread simulation.
     NetworkINToSimulationMessage message{};
 
-    // Le message transporte un packet d'authentification reliable serveur.
+    // Spécifier le type de message pour que la simulation sache comment le traiter.
     message.type = NetworkINToSimulationMessageType::SERVER_AUTH_RESPONSE_PACKET_RELIABLE;
+    // Copier le packet deserialise dans le message.
     message.authResponsePacket = authResponsePacket;
 
-    // Envoyer le message a la simulation via la queue thread-safe.
+    // Envoie le message au thread simulation via la queue thread-safe.
     netToSimQueue.push(message);
 }
 
