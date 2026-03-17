@@ -1,0 +1,34 @@
+#include "network/transport/incoming/events/connect.h"
+
+#include <cstdint> // uintptr_t
+
+void ClientNetworkIncoming_Event_HandleConnect(
+    const ENetEvent* event,
+    NetworkState& networkState,
+    NetworkINToSimulationQueue& netToSimQueue)
+{
+    // Vérifie que le peer associé à l'événement de connexion n'est pas nul.
+    if (event->peer == nullptr)
+    {
+        // Log un avertissement si l'événement de connexion est invalide (peer nul) et retourne sans faire d'autres traitements.
+        RCNET_log(RCNET_LOG_WARN,
+                  "[CLIENT] [NETWORK_IN] [CONNECT] - Invalid connect event: event->peer == nullptr\n");
+        return;
+    }
+
+    // Stocke une référence du peer du serveur dans l'état réseau pour pouvoir l'utiliser ultérieurement 
+    // lors de l'envoi de messages au serveur.
+    networkState.peerServer = event->peer;
+
+    // Crée un message destiné au thread simulation.
+    NetworkINToSimulationMessage message{};
+
+    // Indique que ce message correspond à un événement de connexion client.
+    message.type = NetworkINToSimulationMessageType::SERVER_CONNECT_EVENT;
+
+    // Envoie le message au thread simulation via la queue thread-safe.
+    netToSimQueue.push(message);
+
+    // Log l'événement de connexion avec l'identifiant de connexion concerné.
+    RCNET_log(RCNET_LOG_INFO, "[CLIENT] [NETWORK_IN] [CONNECT] - Connect event received from server\n");
+}

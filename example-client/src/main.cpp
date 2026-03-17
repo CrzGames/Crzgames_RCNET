@@ -13,7 +13,7 @@
 #define SDL_MAIN_USE_CALLBACKS
 #include <SDL3/SDL_main.h>
 
-#include "game.h"
+#include "core/callbacks.h"
 
 #include <RC2D/RC2D.h>
 
