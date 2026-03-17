@@ -29,5 +29,5 @@ void ClientNetworkIncoming_Event_HandleDisconnect(
     netToSimQueue.push(message);
 
     // Log l'événement de déconnexion avec l'identifiant de connexion concerné.
-    RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [DISCONNECT] Disconnect event received from server.");
+    RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [DISCONNECT] Disconnected by the server OR server not responding.");
 }
