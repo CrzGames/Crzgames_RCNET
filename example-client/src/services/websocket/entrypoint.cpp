@@ -7,7 +7,7 @@
 void ClientWebSocket_WaitAndProcessOneSimulationMessage_And_RunWebSocketLogic(void)
 {
     // Recupere la reference vers la queue qui transporte les jobs
-    // envoyes par le thread simulation vers le thread NATS.
+    // envoyes par le thread simulation vers le thread WebSocket.
     SimulationToWebSocketQueue& simulationToWebSocketQueue = GetSimulationToWebSocketQueue();
 
     // Declare l'objet qui recevra le prochain message a traiter.

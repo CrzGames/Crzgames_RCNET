@@ -5,7 +5,7 @@
 #include <vector>  // std::vector
 
 #include <lz4/lz4.h>     // LZ4_compress_default, LZ4_decompress_safe
-#include <RCNET/RCNET.h> // RCNET_log
+#include <RC2D/RC2D.h> // RC2D_log
 
 // Contexte du compresseur LZ4.
 // Pour l'instant nous n'avons pas d'etat mutable a conserver.
@@ -24,8 +24,8 @@ static size_t ClientNetworkCompression_CopyInBuffersToContiguous(
     // Validation de base : sans pointeur d'entree, impossible de copier.
     if (inBuffers == nullptr)
     {
-        RCNET_log(
-            RCNET_LOG_ERROR,
+        RC2D_log(
+            RC2D_LOG_ERROR,
             "[CLIENT] [NETWORK_COMPRESSION] [COPY] - inBuffers is null");
         return 0;
     }
@@ -55,8 +55,8 @@ static size_t ClientNetworkCompression_CopyInBuffersToContiguous(
         // Si le pointeur de donnees du fragment est invalide, echec.
         if (inBuffers[i].data == nullptr)
         {
-            RCNET_log(
-                RCNET_LOG_ERROR,
+            RC2D_log(
+                RC2D_LOG_ERROR,
                 "[CLIENT] [NETWORK_COMPRESSION] [COPY] - inBuffers[%u].data is null",
                 static_cast<unsigned>(i));
             return 0;
@@ -73,22 +73,19 @@ static size_t ClientNetworkCompression_CopyInBuffersToContiguous(
 
 // Callback ENet appele pour tenter de compresser un datagramme sortant.
 static size_t ENET_CALLBACK ClientNetworkCompression_Lz4CompressCallback(
-    void* context,
+    void* /*context*/,
     const ENetBuffer* inBuffers,
     size_t inBufferCount,
     size_t inLimit,
     enet_uint8* outData,
     size_t outLimit)
 {
-    // Context non utilise pour le moment.
-    (void)context;
-
     // Verification des pointeurs obligatoires.
     if (inBuffers == nullptr || outData == nullptr)
     {
-        RCNET_log(
-            RCNET_LOG_ERROR,
-            "[SERVER] [NETWORK_COMPRESSION] [COMPRESS] - invalid pointers (inBuffers=%p outData=%p)",
+        RC2D_log(
+            RC2D_LOG_ERROR,
+            "[CLIENT] [NETWORK_COMPRESSION] [COMPRESS] - invalid pointers (inBuffers=%p outData=%p)",
             inBuffers,
             outData);
         return 0;
@@ -97,9 +94,9 @@ static size_t ENET_CALLBACK ClientNetworkCompression_Lz4CompressCallback(
     // Cas invalides : rien a compresser, ou sortie trop petite.
     if (inLimit == 0 || inLimit > outLimit)
     {
-        RCNET_log(
-            RCNET_LOG_WARN,
-            "[SERVER] [NETWORK_COMPRESSION] [COMPRESS] - invalid sizes (inLimit=%zu outLimit=%zu)",
+        RC2D_log(
+            RC2D_LOG_WARN,
+            "[CLIENT] [NETWORK_COMPRESSION] [COMPRESS] - invalid sizes (inLimit=%zu outLimit=%zu)",
             inLimit,
             outLimit);
         return 0;
@@ -110,9 +107,9 @@ static size_t ENET_CALLBACK ClientNetworkCompression_Lz4CompressCallback(
     if (inLimit > static_cast<size_t>((std::numeric_limits<int>::max)()) ||
         outLimit > static_cast<size_t>((std::numeric_limits<int>::max)()))
     {
-        RCNET_log(
-            RCNET_LOG_ERROR,
-            "[SERVER] [NETWORK_COMPRESSION] [COMPRESS] - size overflow for LZ4 int API (inLimit=%zu outLimit=%zu)",
+        RC2D_log(
+            RC2D_LOG_ERROR,
+            "[CLIENT] [NETWORK_COMPRESSION] [COMPRESS] - size overflow for LZ4 int API (inLimit=%zu outLimit=%zu)",
             inLimit,
             outLimit);
         return 0;
@@ -127,8 +124,8 @@ static size_t ENET_CALLBACK ClientNetworkCompression_Lz4CompressCallback(
         input);
     if (copied != inLimit)
     {
-        RCNET_log(
-            RCNET_LOG_ERROR,
+        RC2D_log(
+            RC2D_LOG_ERROR,
             "[CLIENT] [NETWORK_COMPRESSION] [COMPRESS] - failed to linearize buffers (copied=%zu expected=%zu)",
             copied,
             inLimit);
@@ -146,8 +143,8 @@ static size_t ENET_CALLBACK ClientNetworkCompression_Lz4CompressCallback(
 
     if (compressedSize <= 0)
     {
-        RCNET_log(
-            RCNET_LOG_WARN,
+        RC2D_log(
+            RC2D_LOG_WARN,
             "[CLIENT] [NETWORK_COMPRESSION] [COMPRESS] - LZ4_compress_default failed (inLimit=%zu outLimit=%zu)",
             inLimit,
             outLimit);
@@ -158,8 +155,8 @@ static size_t ENET_CALLBACK ClientNetworkCompression_Lz4CompressCallback(
     // ENet enverra alors le paquet non compresse.
     if (static_cast<size_t>(compressedSize) >= inLimit)
     {
-        RCNET_log(
-            RCNET_LOG_DEBUG,
+        RC2D_log(
+            RC2D_LOG_DEBUG,
             "[CLIENT] [NETWORK_COMPRESSION] [COMPRESS] - skipped: compressed size not smaller (compressed=%d original=%zu)",
             compressedSize,
             inLimit);
@@ -172,20 +169,17 @@ static size_t ENET_CALLBACK ClientNetworkCompression_Lz4CompressCallback(
 
 // Callback ENet appele pour decompresser un datagramme entrant marque comme compresse.
 static size_t ENET_CALLBACK ClientNetworkCompression_Lz4DecompressCallback(
-    void* context,
+    void* /*context*/,
     const enet_uint8* inData,
     size_t inLimit,
     enet_uint8* outData,
     size_t outLimit)
 {
-    // Context non utilise pour le moment.
-    (void)context;
-
     // Verification des pointeurs obligatoires.
     if (inData == nullptr || outData == nullptr)
     {
-        RCNET_log(
-            RCNET_LOG_ERROR,
+        RC2D_log(
+            RC2D_LOG_ERROR,
             "[CLIENT] [NETWORK_COMPRESSION] [DECOMPRESS] - invalid pointers (inData=%p outData=%p)",
             inData,
             outData);
@@ -195,8 +189,8 @@ static size_t ENET_CALLBACK ClientNetworkCompression_Lz4DecompressCallback(
     // Cas invalides : pas d'entree ou pas d'espace de sortie.
     if (inLimit == 0 || outLimit == 0)
     {
-        RCNET_log(
-            RCNET_LOG_WARN,
+        RC2D_log(
+            RC2D_LOG_WARN,
             "[CLIENT] [NETWORK_COMPRESSION] [DECOMPRESS] - invalid sizes (inLimit=%zu outLimit=%zu)",
             inLimit,
             outLimit);
@@ -208,8 +202,8 @@ static size_t ENET_CALLBACK ClientNetworkCompression_Lz4DecompressCallback(
     if (inLimit > static_cast<size_t>((std::numeric_limits<int>::max)()) ||
         outLimit > static_cast<size_t>((std::numeric_limits<int>::max)()))
     {
-        RCNET_log(
-            RCNET_LOG_ERROR,
+        RC2D_log(
+            RC2D_LOG_ERROR,
             "[CLIENT] [NETWORK_COMPRESSION] [DECOMPRESS] - size overflow for LZ4 int API (inLimit=%zu outLimit=%zu)",
             inLimit,
             outLimit);
@@ -227,8 +221,8 @@ static size_t ENET_CALLBACK ClientNetworkCompression_Lz4DecompressCallback(
 
     if (decompressedSize < 0)
     {
-        RCNET_log(
-            RCNET_LOG_WARN,
+        RC2D_log(
+            RC2D_LOG_WARN,
             "[CLIENT] [NETWORK_COMPRESSION] [DECOMPRESS] - LZ4_decompress_safe failed (inLimit=%zu outLimit=%zu)",
             inLimit,
             outLimit);
@@ -243,8 +237,8 @@ void ClientNetworkCompression_EnsureHostCompressorInstalled(ENetHost* host)
     // Guard : host invalide => rien a faire.
     if (host == nullptr)
     {
-        RCNET_log(
-            RCNET_LOG_ERROR,
+        RC2D_log(
+            RC2D_LOG_ERROR,
             "[CLIENT] [NETWORK_COMPRESSION] - host is null, compressor install skipped");
         return;
     }
@@ -270,5 +264,5 @@ void ClientNetworkCompression_EnsureHostCompressorInstalled(ENetHost* host)
     enet_host_compress(host, &compressor);
 
     // Log d'information pour faciliter le diagnostic runtime.
-    RCNET_log(RCNET_LOG_INFO, "[CLIENT] [NETWORK_COMPRESSION] - ENet host LZ4 compressor installed");
+    RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_COMPRESSION] - ENet host LZ4 compressor installed");
 }

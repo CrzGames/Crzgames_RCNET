@@ -14,11 +14,11 @@
  * réseau -> simulation puis dispatch le traitement en fonction du type
  * de message reçu.
  *
- * @param networkState État réseau global du serveur.
+ * @param networkState Etat reseau global du client.
  * @param simToNetQueue Queue simulation -> réseau utilisée pour préparer
- *        les réponses à envoyer aux clients.
+ *        les messages reseau sortants du client vers le serveur.
  * @param simToHttpQueue Queue simulation -> HTTP utilisée pour déléguer
- *        certaines opérations backend, comme la validation de token.
+ *        les operations HTTP client (signup/signin).
  * @param messages Messages entrants réseau déjà drainés pour le tick courant.
  */
 void ClientSimulation_ProcessNetworkIncomingDispatcher(

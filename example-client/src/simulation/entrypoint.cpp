@@ -18,7 +18,6 @@ void ClientSimulation_DrainNetworkIncomingAndHttpAndWebSocketMessages_And_RunSim
     NetworkINToSimulationQueue& networkInToSimulationQueue = GetNetworkINToSimulationQueue();
     SimulationToNetworkOUTQueue& simulationToNetworkOUTQueue = GetSimulationToNetworkOUTQueue();
     SimulationToHttpQueue& simulationToHttpQueue = GetSimulationToHttpQueue();
-    SimulationToWebSocketQueue& simulationToWebSocketQueue = GetSimulationToWebSocketQueue();
     HttpToSimulationQueue& httpToSimulationQueue = GetHttpToSimulationQueue();
     WebSocketToSimulationQueue& websocketToSimulationQueue = GetWebSocketToSimulationQueue();
 
@@ -46,9 +45,6 @@ void ClientSimulation_DrainNetworkIncomingAndHttpAndWebSocketMessages_And_RunSim
         websocketToSimulationQueue,
         websocketToSimulationMessages);
 
-    // Recuperer l'etat global du jeu.
-    GameState& gameState = GetGameState();
-
     // Recuperer l'etat global du reseau.
     NetworkState& networkState = GetNetworkState();
 
@@ -70,6 +66,10 @@ void ClientSimulation_DrainNetworkIncomingAndHttpAndWebSocketMessages_And_RunSim
         networkState,
         simulationToNetworkOUTQueue,
         websocketToSimulationMessages);
+
+    (void)currentTick;
+    (void)dtNs;
+    (void)dt;
 
     // Simuler le monde gameplay pour le tick courant.
     /*ClientWorld_Simulate(

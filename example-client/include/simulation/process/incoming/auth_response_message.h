@@ -2,21 +2,14 @@
 
 #include "network/state.h"
 #include "core/threading/queues/network_incoming_to_simulation.h"
-#include "core/threading/queues/simulation_to_http.h"
 
 /**
- * @brief Traite un message d'authentification provenant du thread réseau entrant.
+ * @brief Traite la reponse d'authentification envoyee par le serveur.
  *
- * Cette fonction vérifie l'état d'authentification courant de la session,
- * prépare une requête de validation backend si nécessaire, puis l'envoie
- * au thread HTTP.
- *
- * @param networkState État réseau global du serveur.
- * @param simToHttpQueue Queue simulation -> HTTP utilisée pour demander
- *        la validation du token d'authentification.
- * @param networkInToSimMessage Message réseau entrant transportant un token d'authentification.
+ * Met a jour deux flags distincts:
+ * - `authValidated`       : on a bien recu/traite une reponse d'auth serveur.
+ * - `authTokenValidated`  : le serveur a accepte le token (status SUCCESS).
  */
 void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleAuthResponseMessage(
     NetworkState& networkState,
-    SimulationToHttpQueue& simToHttpQueue,
     const NetworkINToSimulationMessage& networkInToSimMessage);

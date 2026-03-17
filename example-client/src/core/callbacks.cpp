@@ -1,6 +1,7 @@
 #include "core/callbacks.h"
 
 #include "core/context.h"
+#include "network/transport/compression/enet_host_lz4_compressor.h"
 #include "network/transport/encryption/enet_host_xchacha20poly1305_encryptor.h"
 #include "network/transport/incoming/entrypoint.h"
 #include "network/transport/outgoing/entrypoint.h"
@@ -70,8 +71,10 @@ void rc2d_network_host_setup(ENetHost* host)
         return;
     }
 
+    // Installe le compresseur au niveau host une seule fois juste après enet_host_create.
+    ClientNetworkCompression_EnsureHostCompressorInstalled(host);
+
     // Installe l'encryptor au niveau host une seule fois juste après enet_host_create.
-    // Le chiffrement effectif reste piloté peer par peer via isPacketEncryptionEnabled.
     ClientNetworkEncryption_EnsureHostEncryptorInstalled(host);
 }
 
@@ -97,7 +100,6 @@ void rc2d_simulation_update(uint64_t currentTick, uint64_t dtNs, double dt)
     // - puis on exécute la logique de simulation pour le tick courant
     ClientSimulation_DrainNetworkIncomingAndHttpAndWebSocketMessages_And_RunSimulationLogic(
         currentTick,
-        serverTimeNs,
         dtNs,
         dt
     );

@@ -6,7 +6,7 @@
 
 #include <sodium.h> // crypto_kx_PUBLICKEYBYTES
 
-#include "network/protocol/secure_session.h" // SERVER_SECURE_SESSION_CLIENT_NONCE_BYTES
+#include "network/protocol/secure_session.h" // CLIENT_SECURE_SESSION_CLIENT_NONCE_BYTES
 
 // ======================================================================================
 // ClientReliablePacketType
@@ -49,7 +49,7 @@ struct ClientSecureSessionHelloPacketReliable
     // Le serveur doit renvoyer EXACTEMENT cette valeur dans
     // ServerSecureSessionHelloResponsePacketReliable::clientNonceEcho
     // avant verification de la signature cote client.
-    std::array<uint8_t, SERVER_SECURE_SESSION_CLIENT_NONCE_BYTES> clientNonce{};
+    std::array<uint8_t, CLIENT_SECURE_SESSION_CLIENT_NONCE_BYTES> clientNonce{};
 };
 
 struct ClientAuthPacketReliable

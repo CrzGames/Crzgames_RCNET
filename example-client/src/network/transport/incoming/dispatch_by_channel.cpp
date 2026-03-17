@@ -6,6 +6,8 @@
 #include "network/transport/incoming/channels/game_reliable.h"
 #include "network/transport/incoming/channels/game_unreliable.h"
 
+#include <RC2D/RC2D.h>
+
 void ClientNetworkIncoming_DispatchByChannel(const ENetEvent* event, NetworkINToSimulationQueue& netToSimQueue)
 {
     // Récupère le channel sur lequel le packet est arrivé.
@@ -31,9 +33,10 @@ void ClientNetworkIncoming_DispatchByChannel(const ENetEvent* event, NetworkINTo
             break;
 
         default:
-            RCNET_log(RCNET_LOG_WARN,
-                      "[CLIENT] [NETWORK_IN] [RECEIVE] - Unknown channel=%u from server\n",
-                      (unsigned)channel);
+            RC2D_log(
+                RC2D_LOG_WARN,
+                "[CLIENT] [NETWORK_IN] [RECEIVE] Unknown channel=%u from server.",
+                static_cast<unsigned>(channel));
             break;
     }
 }

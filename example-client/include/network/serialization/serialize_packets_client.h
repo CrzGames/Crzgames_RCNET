@@ -6,4 +6,8 @@
 #include "network/packets/client/reliable.h"
 #include "network/packets/client/unreliable.h"
 
-// Ajouter ici les fonctions de sérialisation pour les paquets clients, par exemple :
+std::vector<uint8_t> serializeClientSecureSessionHelloPacketReliable(const ClientSecureSessionHelloPacketReliable& packet);
+std::vector<uint8_t> serializeClientAuthPacketReliable(const ClientAuthPacketReliable& packet);
+std::vector<uint8_t> serializeClientReadyForMatchPacketReliable(const ClientReadyForMatchPacketReliable& packet);
+std::vector<uint8_t> serializeClientInputPacketUnreliable(const ClientInputPacketUnreliable& packet);
+std::vector<uint8_t> serializeClientClockSyncPacketUnreliable(const ClientClockSyncPacketUnreliable& packet);

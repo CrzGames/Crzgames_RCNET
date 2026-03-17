@@ -1,6 +1,7 @@
 #include "network/transport/incoming/events/connect.h"
 
 #include <cstdint> // uintptr_t
+#include <RC2D/RC2D.h>
 
 void ClientNetworkIncoming_Event_HandleConnect(
     const ENetEvent* event,
@@ -11,8 +12,8 @@ void ClientNetworkIncoming_Event_HandleConnect(
     if (event->peer == nullptr)
     {
         // Log un avertissement si l'événement de connexion est invalide (peer nul) et retourne sans faire d'autres traitements.
-        RCNET_log(RCNET_LOG_WARN,
-                  "[CLIENT] [NETWORK_IN] [CONNECT] - Invalid connect event: event->peer == nullptr\n");
+        RC2D_log(RC2D_LOG_WARN,
+                 "[CLIENT] [NETWORK_IN] [CONNECT] Invalid connect event: event->peer == nullptr.");
         return;
     }
 
@@ -24,11 +25,11 @@ void ClientNetworkIncoming_Event_HandleConnect(
     NetworkINToSimulationMessage message{};
 
     // Indique que ce message correspond à un événement de connexion client.
-    message.type = NetworkINToSimulationMessageType::SERVER_CONNECT_EVENT;
+    message.type = NetworkINToSimulationMessageType::SERVER_EVENT_CONNECT;
 
     // Envoie le message au thread simulation via la queue thread-safe.
     netToSimQueue.push(message);
 
     // Log l'événement de connexion avec l'identifiant de connexion concerné.
-    RCNET_log(RCNET_LOG_INFO, "[CLIENT] [NETWORK_IN] [CONNECT] - Connect event received from server\n");
+    RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [CONNECT] Connect event received from server.");
 }

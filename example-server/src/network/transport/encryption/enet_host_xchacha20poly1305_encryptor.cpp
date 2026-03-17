@@ -17,13 +17,13 @@
 
 // Signature de format placee en tete des paquets applicatifs chiffres.
 // Permet de detecter rapidement qu'on lit bien un datagramme attendu.
-constexpr enet_uint8 kEncryptedPacketMagic[4] = {'R', 'C', 'N', '1'};
+static constexpr enet_uint8 kEncryptedPacketMagic[4] = {'R', 'C', 'N', '1'};
 
 // Tailles fixes utilisees dans le format de paquet chiffre.
-constexpr size_t kEncryptedPacketMagicSize = sizeof(kEncryptedPacketMagic);
-constexpr size_t kEncryptedPacketNonceSize = crypto_aead_xchacha20poly1305_ietf_NPUBBYTES;
-constexpr size_t kEncryptedPacketTagSize = crypto_aead_xchacha20poly1305_ietf_ABYTES;
-constexpr size_t kEncryptedPacketHeaderSize = kEncryptedPacketMagicSize + kEncryptedPacketNonceSize;
+static constexpr size_t kEncryptedPacketMagicSize = sizeof(kEncryptedPacketMagic);
+static constexpr size_t kEncryptedPacketNonceSize = crypto_aead_xchacha20poly1305_ietf_NPUBBYTES;
+static constexpr size_t kEncryptedPacketTagSize = crypto_aead_xchacha20poly1305_ietf_ABYTES;
+static constexpr size_t kEncryptedPacketHeaderSize = kEncryptedPacketMagicSize + kEncryptedPacketNonceSize;
 
 // Contexte ENet encryptor.
 // Pour l'instant, aucun etat mutable n'est requis.

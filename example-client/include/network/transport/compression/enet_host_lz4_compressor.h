@@ -2,4 +2,4 @@
 
 #include <rcenet/RCENET_enet.h> // ENetHost
 
-void ClientNetworkEncryption_EnsureHostEncryptorInstalled(ENetHost* host);
+void ClientNetworkCompression_EnsureHostCompressorInstalled(ENetHost* host);

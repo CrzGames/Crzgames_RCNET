@@ -1,8 +1,13 @@
 #pragma once
 
+#include <array> // std::array
+#include <mutex> // std::mutex
+
 #include <rcenet/RCENET_enet.h> // ENetPeer
+#include <sodium.h>             // crypto_kx_SESSIONKEYBYTES
 
 #include "crypto/kx.h"          // ClientCryptoKxState
+#include "network/protocol/secure_session.h" // CLIENT_SECURE_SESSION_CLIENT_NONCE_BYTES
 
 struct NetworkState
 {
@@ -10,15 +15,53 @@ struct NetworkState
     // Connections - ATTENTION: thread reseau UNIQUEMENT
     // ------------------------------------------------------------------------
 
-    ENetPeer* peerServer;   // ENetPeer* du serveur (cible reseau ENet)
-    bool encryptionEnabled; // false tant que la secure-session n'est pas validee (ACK cote reseau)
+    // ENetPeer* du serveur, initialement nullptr, valide apres connexion reussie.
+    ENetPeer* peerServer = nullptr;
 
     // ------------------------------------------------------------------------
-    // Crypto - ATTENTION: thread simulation UNIQUEMENT
+    // Crypto - protegee par mutex (thread reseau + simulation)
     // ------------------------------------------------------------------------
 
     // Etat KX (X25519/libsodium crypto_kx):
     // - contient la cle KX client (publique/privee) utilisee pour derivation rx/tx
     // - generee au boot du client
-    ClientCryptoKxState cryptoKxState;
+    ClientCryptoKxState cryptoKxState{};
+
+    // Vrai une fois la secure-session validee cote client
+    // (hello response avec status SUCCESS, nonce verifie,
+    // signature verifiee, et cles de session derivees).
+    bool secureSessionEstablished = false;
+
+    // Vrai des que le client recoit une reponse d'auth du serveur
+    // (peu importe SUCCESS ou echec). Ce flag indique que l'etape
+    // d'authentification a ete traitee.
+    bool authValidated = false;
+
+    // Vrai uniquement si le serveur a valide le token d'authentification
+    // (AuthResponse status == SUCCESS). Ce flag represente le resultat
+    // metier de l'auth.
+    bool authTokenValidated = false;
+
+    // Vrai quand le chiffrement transport ENet est actif pour le peer serveur
+    // (peerServer). Dans le flux actuel ce flag passe a true juste apres
+    // secureSessionEstablished.
+    bool encryptionEnabled = false;
+
+    // Vrai apres envoi du packet CLIENT_SECURE_SESSION_HELLO_PACKET_RELIABLE
+    // et avant reception du packet
+    // SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE.
+    bool hasPendingSecureSessionHello = false;
+
+    // Nonce envoye dans le dernier hello secure-session.
+    std::array<uint8_t, CLIENT_SECURE_SESSION_CLIENT_NONCE_BYTES> pendingClientNonce{};
+
+    // Cles derivees cote client:
+    // - clientTxKey: utilisee pour chiffrer les paquets sortants client->serveur
+    // - clientRxKey: utilisee pour dechiffrer les paquets entrants serveur->client
+    std::array<uint8_t, crypto_kx_SESSIONKEYBYTES> clientTxKey{};
+    std::array<uint8_t, crypto_kx_SESSIONKEYBYTES> clientRxKey{};
+
+    // Mutex de protection des champs crypto/session utilises
+    // depuis plusieurs threads (reseau + simulation).
+    std::mutex cryptoMutex;
 };

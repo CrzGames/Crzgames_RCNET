@@ -1,29 +1,50 @@
-﻿#include "simulation/process/websocket_dispatcher.h"
+#include "simulation/process/websocket_dispatcher.h"
 
-void ClientSimulation_ProcessWebsocketDispatcher(
+#include <RC2D/RC2D.h>
+
+#include <mutex>
+
+void ClientSimulation_ProcessWebSocketDispatcher(
     NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,
-    const std::deque<WebsocketToSimulationMessage>& websocketToSimulationMessages)
+    const std::deque<WebSocketToSimulationMessage>& websocketToSimulationMessages)
 {
-    // Parcourir tous les messages provenant du thread WebSocket entrants
-    // qui ont Ã©tÃ© drainÃ©s pendant ce tick.
-    for (std::deque<NatsToSimulationMessage>::const_iterator it = natsToSimulationMessages.begin();
-         it != natsToSimulationMessages.end();
+    // Lire un snapshot des flags reseau pour enrichir les logs de debug.
+    bool secureSessionEstablished = false;
+    bool authValidated = false;
+    bool authTokenValidated = false;
+    bool encryptionEnabled = false;
+    {
+        std::lock_guard<std::mutex> lock(networkState.cryptoMutex);
+        secureSessionEstablished = networkState.secureSessionEstablished;
+        authValidated = networkState.authValidated;
+        authTokenValidated = networkState.authTokenValidated;
+        encryptionEnabled = networkState.encryptionEnabled;
+    }
+
+    // Lire la taille de queue OUT a titre indicatif.
+    size_t pendingOutMessages = 0;
+    {
+        std::lock_guard<std::mutex> lock(simToNetQueue.mtx);
+        pendingOutMessages = simToNetQueue.q.size();
+    }
+
+    // Pour l'instant aucun message websocket->simulation metier n'est implemente.
+    // On journalise simplement ce qui arrive pour faciliter l'integration future.
+    for (std::deque<WebSocketToSimulationMessage>::const_iterator it = websocketToSimulationMessages.begin();
+         it != websocketToSimulationMessages.end();
          ++it)
     {
-        // Réference directe vers le message WebSocket courant.
-        const WebsocketToSimulationMessage& msg = *it;   
-
-        // Dispatch du traitement selon le type de message WebSocket reçu.
-        switch (msg.type)
-        {
-            // 
-
-            default:
-                RCNET_log(RCNET_LOG_ERROR, "Received unknown WebsocketToSimulationMessageType: %d", static_cast<uint8_t>(msg.type));
-                break;
-        }
+        const WebSocketToSimulationMessage& msg = *it;
+        RC2D_log(
+            RC2D_LOG_DEBUG,
+            "[CLIENT] [SIMULATION] [WEBSOCKET] Received type=%u (secure=%u authHandled=%u authTokenOk=%u enc=%u pendingOut=%llu).",
+            static_cast<unsigned>(msg.type),
+            secureSessionEstablished ? 1u : 0u,
+            authValidated ? 1u : 0u,
+            authTokenValidated ? 1u : 0u,
+            encryptionEnabled ? 1u : 0u,
+            static_cast<unsigned long long>(pendingOutMessages));
     }
 }
-
 

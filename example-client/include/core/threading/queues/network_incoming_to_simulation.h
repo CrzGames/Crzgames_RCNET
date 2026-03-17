@@ -4,8 +4,8 @@
 #include <deque>   // std::deque
 #include <cstdint> // uint16_t, uint32_t, etc.
 
-#include "network/packets/client/unreliable.h"
-#include "network/packets/client/reliable.h"
+#include "network/packets/server/unreliable.h"
+#include "network/packets/server/reliable.h"
 
 // ======================================================================================
 // Queues de messages entre le réseau et la simulation (Network IN -> Simulation)

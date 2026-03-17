@@ -4,10 +4,10 @@
 
 #include <cJSON.h>
 
-AuthSigninHTTPResponse ClientHttp_Auth_SigninRequest(const AuthSigninHTTPRequest& request)
+AuthSignInHTTPResponse ClientHttp_Auth_SignInRequest(const AuthSignInHTTPRequest& request)
 {
     // Réponse finale renvoyée au thread HTTP appelant.
-    AuthSigninHTTPResponse response{};
+    AuthSignInHTTPResponse response{};
 
     // ... Ici, on ferait la logique réelle de signin, par exemple en envoyant une requête
 

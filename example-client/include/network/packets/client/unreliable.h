@@ -113,3 +113,14 @@ struct ClientInputPacketUnreliable
     // Peut être omis si ton gameplay ne l’utilise pas.
     uint8_t actionReleasedFlags = 0;
 };
+
+struct ClientClockSyncPacketUnreliable
+{
+    ClientUnreliablePacketHeader header;
+
+    // Temps monotone local du client (ns) au moment de l'envoi.
+    uint64_t clientTimeNs = 0;
+
+    // Dernier snapshot serveur reçu au moment de l'envoi.
+    uint32_t lastReceivedSnapshotId = 0;
+};

@@ -22,10 +22,10 @@ struct SimulationToHttpMessage
     SimulationToHttpMessageType type;
 
     // Pour le type AUTH_SIGNUP_REQUEST
-    AuthSignupHTTPRequest authSignupRequest;
+    AuthSignUpHTTPRequest authSignUpRequest;
 
     // Pour le type AUTH_SIGNIN_REQUEST
-    AuthSigninHTTPRequest authSigninRequest;
+    AuthSignInHTTPRequest authSignInRequest;
 };
 
 struct SimulationToHttpQueue

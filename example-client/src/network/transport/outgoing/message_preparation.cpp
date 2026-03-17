@@ -23,11 +23,13 @@ void ClientNetworkOutgoing_SplitReliableAndCoalesceUnreliableMessages(
         else if (msg.type == SimulationToNetworkOUTMessageType::CLIENT_INPUT_PACKET_UNRELIABLE)
         {
             // Pour les unreliable, ne garder que le dernier message pendant ce tick réseau sortant.
+            preparedMessages.hasInputUnreliable = true;
             preparedMessages.lastInputUnreliable = msg;
         }
         else if (msg.type == SimulationToNetworkOUTMessageType::CLIENT_CLOCK_SYNC_PACKET_UNRELIABLE)
         {
             // Pour les unreliable, ne garder que le dernier message pendant ce tick réseau sortant.
+            preparedMessages.hasClockSyncUnreliable = true;
             preparedMessages.lastClockSyncUnreliable = msg;
         }
     }

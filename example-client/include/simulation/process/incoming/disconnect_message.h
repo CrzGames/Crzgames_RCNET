@@ -6,10 +6,9 @@
 /**
  * @brief Traite un message de déconnexion provenant du thread réseau entrant.
  *
- * Cette fonction supprime la session associée à la connexion si elle existe
- * encore dans l'état réseau global.
+ * Cette fonction nettoie l'etat secure-session/auth/chiffrement du client.
  *
- * @param networkState État réseau global du serveur.
+ * @param networkState Etat reseau global du client.
  * @param networkInToSimMessage Message réseau entrant de type déconnexion.
  */
 void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleDisconnectMessage(

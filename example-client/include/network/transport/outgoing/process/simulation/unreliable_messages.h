@@ -1,26 +1,22 @@
 #pragma once
 
-#include <cstdint>       // uint32_t
-#include <unordered_map> // std::unordered_map
-
 #include "network/state.h"
 #include "core/threading/queues/simulation_to_network_outgoing.h"
 
 /**
  * @brief Traite les messages unreliable issus de la simulation.
  *
- * Cette fonction reçoit les messages unreliable coalescés par connectionId,
- * applique les patchs de dernière minute nécessaires (ex: assignation d'un
- * identifiant de snapshot au moment de l'envoi), puis envoie les packets
- * correspondants à chaque client.
+ * Cette fonction envoie les derniers messages unreliable retenus pour le tick.
  *
- * @param networkState État réseau global du client, utilisé pour accéder aux sessions clients.
- * @param lastInputUnreliable Dernier message input unreliable retenu
- *        pour chaque connectionId, à traiter et envoyer.
- * @param lastClockSyncUnreliable Dernier message clock sync unreliable retenu
- *        pour chaque connectionId, à traiter et envoyer.
+ * @param networkState État réseau global du client.
+ * @param hasInputUnreliable Indique si un message input unreliable est disponible.
+ * @param lastInputUnreliable Dernier message input unreliable retenu.
+ * @param hasClockSyncUnreliable Indique si un message clock sync unreliable est disponible.
+ * @param lastClockSyncUnreliable Dernier message clock sync unreliable retenu.
  */
 void ClientNetworkOutgoing_ProcessSimulationDispatcher_HandleUnreliableMessages(
-    NetworkState& networkState,
-    const std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastInputUnreliable,
-    const std::unordered_map<uint32_t, SimulationToNetworkOUTMessage>& lastClockSyncUnreliable);
+    const NetworkState& networkState,
+    bool hasInputUnreliable,
+    const SimulationToNetworkOUTMessage& lastInputUnreliable,
+    bool hasClockSyncUnreliable,
+    const SimulationToNetworkOUTMessage& lastClockSyncUnreliable);

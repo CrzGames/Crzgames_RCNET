@@ -1,7 +1,9 @@
 #include "simulation/process/http_dispatcher.h"
 
-#include "simulation/process/http/auth_signup_response_message.h"
-#include "simulation/process/http/auth_signin_response_message.h"
+#include "simulation/process/http/auth_signupresponse_message.h"
+#include "simulation/process/http/auth_signinresponse_message.h"
+
+#include <RC2D/RC2D.h>
 
 void ClientSimulation_ProcessHttpDispatcher(
     NetworkState& networkState,
@@ -21,7 +23,7 @@ void ClientSimulation_ProcessHttpDispatcher(
         if (msg.type == HttpToSimulationMessageType::AUTH_SIGNUP_RESPONSE)
         {
             // Traiter la réponse du backend à notre requête d'inscription.
-            ClientSimulation_ProcessHttpDispatcher_HandleAuthSignupResponseMessage(
+            ClientSimulation_ProcessHttpDispatcher_HandleAuthSignUpResponseMessage(
                 networkState,
                 simToNetQueue,
                 msg);
@@ -29,14 +31,14 @@ void ClientSimulation_ProcessHttpDispatcher(
         else if (msg.type == HttpToSimulationMessageType::AUTH_SIGNIN_RESPONSE)
         {
             // Traiter la réponse du backend à notre requête de connexion.
-            ClientSimulation_ProcessHttpDispatcher_HandleAuthSigninResponseMessage(
+            ClientSimulation_ProcessHttpDispatcher_HandleAuthSignInResponseMessage(
                 networkState,
                 simToNetQueue,
                 msg);
         }
         else
         {
-            RCNET_log(RCNET_LOG_ERROR, "Received unknown HttpToSimulationMessageType: %d\n", static_cast<uint8_t>(msg.type));
+            RC2D_log(RC2D_LOG_ERROR, "[CLIENT] [SIMULATION] Unknown HttpToSimulationMessageType=%u", static_cast<uint8_t>(msg.type));
         }
     }
 }

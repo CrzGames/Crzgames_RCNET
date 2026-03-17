@@ -1,33 +1,52 @@
 #include "network/transport/incoming/channels/game_reliable.h"
 
 #include "network/transport/incoming/packet_type_reader.h"
+#include "network/transport/incoming/packets/match_end.h"
+#include "network/transport/incoming/packets/match_init.h"
+#include "network/transport/incoming/packets/match_start.h"
+#include "network/transport/incoming/packets/world_static_state_init.h"
+
+#include <RC2D/RC2D.h>
 
 void ClientNetworkIncoming_Channel_GameReliable(
     const ENetEvent* event,
-    uint32_t connectionId,
     NetworkINToSimulationQueue& netToSimQueue)
 {
-    // Tente de lire le type de packet fiable envoyé par le serveur.
+    // Lire le type de packet reliable serveur en tete de payload.
     ServerReliablePacketType packetType{};
     if (!ClientNetworkIncoming_ReadServerReliablePacketType(event, packetType))
     {
-        // Si la désérialisation échoue, le packet est invalide ou mal formé.
-        // Log d’avertissement indiquant que le packet fiable est invalide.
-        RCNET_log(RCNET_LOG_WARN,
-                  "[SERVER] [NETWORK_IN] [RELIABLE] - Failed to read reliable packet type from server\n");
+        RC2D_log(
+            RC2D_LOG_WARN,
+            "[CLIENT] [NETWORK_IN] [RELIABLE] Failed to read packet type.");
         return;
     }
 
-    // Dispatch le traitement selon le type de packet fiable reçu.
+    // Dispatcher vers le handler specialise selon le type de packet.
     switch (packetType)
     {
-        // Ajouter ici les cas pour les différents types de packets fiables attendus sur ce channel.
+        case ServerReliablePacketType::SERVER_MATCH_INIT_PACKET_RELIABLE:
+            ClientNetworkIncoming_HandlePacket_MatchInit(event, netToSimQueue);
+            break;
+
+        case ServerReliablePacketType::SERVER_WORLD_STATIC_STATE_INIT_PACKET_RELIABLE:
+            ClientNetworkIncoming_HandlePacket_WorldStaticStateInit(event, netToSimQueue);
+            break;
+
+        case ServerReliablePacketType::SERVER_MATCH_START_PACKET_RELIABLE:
+            ClientNetworkIncoming_HandlePacket_MatchStart(event, netToSimQueue);
+            break;
+
+        case ServerReliablePacketType::SERVER_MATCH_END_PACKET_RELIABLE:
+            ClientNetworkIncoming_HandlePacket_MatchEnd(event, netToSimQueue);
+            break;
 
         default:
-            // Si le type de packet est inconnu ou inattendu, log d’avertissement.
-            RCNET_log(RCNET_LOG_WARN,
-                      "[SERVER] [NETWORK_IN] [RELIABLE] - Unknown or unexpected reliable packet type=%u from server\n",
-                      static_cast<unsigned>(packetType));
+            RC2D_log(
+                RC2D_LOG_WARN,
+                "[CLIENT] [NETWORK_IN] [RELIABLE] Unknown packet type=%u from server.",
+                static_cast<unsigned>(packetType));
             break;
     }
 }
+

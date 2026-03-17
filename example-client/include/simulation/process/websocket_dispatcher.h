@@ -13,9 +13,9 @@
  * WebSocket -> simulation puis dispatch le traitement en fonction du type
  * de message reçu.
  *
- * @param networkState État réseau global du serveur.
+ * @param networkState Etat reseau global du client.
  * @param simToNetQueue Queue simulation -> réseau utilisée pour préparer
- *        les réponses réseau envoyées aux clients.
+ *        les reponses reseau envoyees au serveur.
  * @param websocketToSimMessages Messages entrants WebSocket déjà drainés pour le tick courant.
  */
 void ClientSimulation_ProcessWebSocketDispatcher(

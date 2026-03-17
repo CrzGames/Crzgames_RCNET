@@ -1,16 +1,12 @@
 #include "services/websocket/process/simulation_dispatcher.h"
 
+#include <RC2D/RC2D.h>
+
 void ClientWebSocket_ProcessSimulationDispatcher(const SimulationToWebSocketMessage& simToWebSocketMessage)
 {
-    switch (simToWebSocketMessage.type)
-    {
-        // Ajoutez ici les cases pour chaque type de message simulation -> WebSocket que vous souhaitez traiter.
-
-        default:
-            RCNET_log(
-                RCNET_LOG_ERROR,
-                "[SERVER] [WEBSOCKET] - Received unknown SimulationToWebSocketMessageType: %d",
-                static_cast<uint8_t>(simToWebSocketMessage.type));
-            break;
-    }
+    // Aucun message simulation->websocket defini pour le moment.
+    RC2D_log(
+        RC2D_LOG_ERROR,
+        "[CLIENT] [WEBSOCKET] - Received unsupported SimulationToWebSocketMessageType: %u",
+        static_cast<unsigned>(simToWebSocketMessage.type));
 }

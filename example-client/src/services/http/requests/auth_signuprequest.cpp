@@ -4,10 +4,10 @@
 
 #include <cJSON.h>
 
-AuthSignupHTTPResponse ClientHttp_Auth_SignupRequest(const AuthSignupHTTPRequest& request)
+AuthSignUpHTTPResponse ClientHttp_Auth_SignUpRequest(const AuthSignUpHTTPRequest& request)
 {
     // Réponse finale renvoyée au thread HTTP appelant.
-    AuthSignupHTTPResponse response{};
+    AuthSignUpHTTPResponse response{};
 
     // ... Ici, on ferait la logique réelle de signup, par exemple en envoyant une requête
 

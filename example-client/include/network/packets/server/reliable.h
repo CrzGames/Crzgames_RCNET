@@ -138,7 +138,7 @@ struct ServerSecureSessionHelloResponsePacketReliable
     // Copie exacte de la valeur reçue dans
     // ClientSecureSessionHelloPacketReliable::clientNonce.
     // Le client doit vérifier que cette valeur == son nonce local envoyé.
-    std::array<uint8_t, SERVER_SECURE_SESSION_CLIENT_NONCE_BYTES> clientNonceEcho{};
+    std::array<uint8_t, CLIENT_SECURE_SESSION_CLIENT_NONCE_BYTES> clientNonceEcho{};
 
     // Signature Ed25519 detached calculée côté serveur sur le payload:
     // [serverPublicKey, issuedAtUnixSeconds, expiresAtUnixSeconds, clientNonceEcho]
