@@ -16,19 +16,6 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher(
     SimulationToHttpQueue& simToHttpQueue,
     const std::deque<NetworkINToSimulationMessage>& networkInToSimulationMessages)
 {
-    // Info debug: nombre de jobs HTTP en attente avant traitement du tick.
-    size_t pendingHttpJobs = 0;
-    {
-        std::lock_guard<std::mutex> lock(simToHttpQueue.mtx);
-        pendingHttpJobs = simToHttpQueue.q.size();
-    }
-
-    RC2D_log(
-        RC2D_LOG_DEBUG,
-        "[CLIENT] [SIMULATION] [NET_DISPATCH] incoming=%llu pendingHttpJobs=%llu",
-        static_cast<unsigned long long>(networkInToSimulationMessages.size()),
-        static_cast<unsigned long long>(pendingHttpJobs));
-
     // Parcourir tous les messages reseau entrants draines pendant ce tick.
     for (std::deque<NetworkINToSimulationMessage>::const_iterator it = networkInToSimulationMessages.begin();
          it != networkInToSimulationMessages.end();
