@@ -21,7 +21,7 @@ static constexpr size_t CLIENT_SECURE_SESSION_CLIENT_NONCE_BYTES = 16;
 static constexpr char CLIENT_SECURE_SESSION_SIGNING_DOMAIN[] =
     "SERVER_ED25519_DOMAIN_SECURE_SESSION_ATTESTATION_V1";
 
-// Cle publique Ed25519 pinnee cote client.
+// Cle publique Ed25519 pinnee cote client pour l'environnement DEV.
 // Cette valeur est derivee de la seed serveur (DEV) et sert a verifier
 // ServerSecureSessionHelloResponsePacketReliable::signature.
 // La seed privee serveur NE DOIT JAMAIS etre presente cote client.

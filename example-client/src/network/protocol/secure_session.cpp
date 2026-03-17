@@ -2,6 +2,7 @@
 
 #include <RC2D/RC2D.h>
 
+#include <cstdlib> // std::getenv
 #include <cstring> // std::strlen
 
 static bool gClientSecureSessionPinnedServerPublicKeyInitialized = false;
@@ -30,6 +31,38 @@ static bool ClientSecureSession_TryDecodeHexNibble(char c, uint8_t& outValue)
     return false;
 }
 
+static bool ClientSecureSession_TryResolvePinnedServerSigningPublicKeyHex(
+    const char*& outHexKey,
+    const char*& outSourceLabel)
+{
+#if GAME_ENV_DEV
+    outHexKey = CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX;
+    outSourceLabel = "hardcoded-dev";
+    return true;
+#elif GAME_ENV_STAGING || GAME_ENV_PRODUCTION
+    // STAGING et PRODUCTION utilisent la meme source runtime.
+    // Valeur attendue: cle Ed25519 publique HEX (64 caracteres).
+    outHexKey = std::getenv("CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX");
+    outSourceLabel = "CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX";
+    if (outHexKey == nullptr || outHexKey[0] == '\0')
+    {
+        RC2D_log(
+            RC2D_LOG_ERROR,
+            "[CLIENT] [SECURE_SESSION] Missing env var '%s' for staging/production pinned signing key.",
+            outSourceLabel);
+        return false;
+    }
+    return true;
+#else
+    outHexKey = nullptr;
+    outSourceLabel = "unknown";
+    RC2D_log(
+        RC2D_LOG_ERROR,
+        "[CLIENT] [SECURE_SESSION] Invalid GAME_ENV compile-time configuration.");
+    return false;
+#endif
+}
+
 bool ClientSecureSession_InitializePinnedServerSigningPublicKey()
 {
     if (gClientSecureSessionPinnedServerPublicKeyInitialized)
@@ -37,13 +70,21 @@ bool ClientSecureSession_InitializePinnedServerSigningPublicKey()
         return true;
     }
 
+    const char* selectedHexKey = nullptr;
+    const char* selectedSourceLabel = nullptr;
+    if (!ClientSecureSession_TryResolvePinnedServerSigningPublicKeyHex(selectedHexKey, selectedSourceLabel))
+    {
+        return false;
+    }
+
     constexpr size_t kExpectedHexLength = crypto_sign_PUBLICKEYBYTES * 2;
-    const size_t actualHexLength = std::strlen(CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX);
+    const size_t actualHexLength = std::strlen(selectedHexKey);
     if (actualHexLength != kExpectedHexLength)
     {
         RC2D_log(
             RC2D_LOG_ERROR,
-            "[CLIENT] [SECURE_SESSION] Invalid pinned Ed25519 public key hex length (actual=%u expected=%u).",
+            "[CLIENT] [SECURE_SESSION] Invalid pinned Ed25519 public key hex length (source=%s actual=%u expected=%u).",
+            selectedSourceLabel,
             static_cast<unsigned>(actualHexLength),
             static_cast<unsigned>(kExpectedHexLength));
         return false;
@@ -51,8 +92,8 @@ bool ClientSecureSession_InitializePinnedServerSigningPublicKey()
 
     for (size_t i = 0; i < crypto_sign_PUBLICKEYBYTES; ++i)
     {
-        const char hiChar = CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX[i * 2];
-        const char loChar = CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX[i * 2 + 1];
+        const char hiChar = selectedHexKey[i * 2];
+        const char loChar = selectedHexKey[i * 2 + 1];
 
         uint8_t hiNibble = 0;
         uint8_t loNibble = 0;
@@ -61,7 +102,8 @@ bool ClientSecureSession_InitializePinnedServerSigningPublicKey()
         {
             RC2D_log(
                 RC2D_LOG_ERROR,
-                "[CLIENT] [SECURE_SESSION] Invalid pinned Ed25519 public key hex at byte index=%u.",
+                "[CLIENT] [SECURE_SESSION] Invalid pinned Ed25519 public key hex (source=%s index=%u).",
+                selectedSourceLabel,
                 static_cast<unsigned>(i));
             return false;
         }
@@ -72,7 +114,10 @@ bool ClientSecureSession_InitializePinnedServerSigningPublicKey()
 
     gClientSecureSessionPinnedServerPublicKeyInitialized = true;
 
-    RC2D_log(RC2D_LOG_INFO, "[CLIENT] [SECURE_SESSION] Pinned server Ed25519 public key initialized.");
+    RC2D_log(
+        RC2D_LOG_INFO,
+        "[CLIENT] [SECURE_SESSION] Pinned server Ed25519 public key initialized (source=%s).",
+        selectedSourceLabel);
     return true;
 }
 
