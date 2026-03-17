@@ -30,7 +30,23 @@ void ClientNetworkIncoming_Event_HandleConnect(
     // Envoie le message au thread simulation via la queue thread-safe.
     netToSimQueue.push(message);
 
-    // Log l'événement de connexion avec l'identifiant de connexion concerné.
-    RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [CONNECT] Connected from server - address: %s port: %u.",
-             event->peer->address.host, event->peer->address.port);
+    // Log des informations sur la connexion entrante, y compris l'adresse IP et le port du serveur. 
+    // Si l'adresse IP ne peut pas être récupérée, affiche "<unknown>" à la place.
+    char hostName[64] = {0};
+    if (enet_address_get_host_ip(&event->peer->address, hostName, sizeof(hostName)) == 0)
+    {
+        RC2D_log(
+            RC2D_LOG_INFO,
+            "[CLIENT] [NETWORK_IN] [CONNECT] Connected from server - address: %s",
+            hostName
+        );
+    }
+    else
+    {
+        RC2D_log(
+            RC2D_LOG_INFO,
+            "[CLIENT] [NETWORK_IN] [CONNECT] Connected from server - address: <unknown> port: %u.",
+            (unsigned) event->peer->address.port
+        );
+    }
 }
