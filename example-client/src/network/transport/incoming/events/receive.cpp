@@ -10,7 +10,7 @@ void ClientNetworkIncoming_Event_HandleReceive(
     NetworkINToSimulationQueue& netToSimQueue)
 {
     // Protection basique sur pointeurs evenements.
-    if (event == nullptr || event->peer == nullptr || event->packet == nullptr)
+    if (event == nullptr || event->peer == nullptr)
     {
         RC2D_log(RC2D_LOG_WARN, "[CLIENT] [NETWORK_IN] [RECEIVE] Invalid receive event.");
         return;
@@ -22,6 +22,13 @@ void ClientNetworkIncoming_Event_HandleReceive(
         RC2D_log(
             RC2D_LOG_WARN,
             "[CLIENT] [NETWORK_IN] [RECEIVE] Packet ignored from unknown peer.");
+        return;
+    }
+
+    // Checker la validité du packet reçu.
+    if (event->packet == nullptr || event->packet->dataLength == 0)
+    {
+        RC2D_log(RC2D_LOG_WARN, "[CLIENT] [NETWORK_IN] [RECEIVE] Received empty or null packet.");
         return;
     }
 
