@@ -145,36 +145,6 @@ static size_t ServerNetworkEncryption_CopyInBuffersToOutData(
     return copied == inLimit ? copied : 0;
 }
 
-// Copie simple inData -> outData.
-// Utilisee en mode passthrough (pas de chiffrement).
-static size_t ServerNetworkEncryption_CopyInDataToOutData(
-    const enet_uint8* inData,
-    size_t inLimit,
-    enet_uint8* outData,
-    size_t outLimit)
-{
-    // Validation de base.
-    if (inData == nullptr || outData == nullptr || inLimit > outLimit)
-    {
-        RCNET_log(
-            RCNET_LOG_ERROR,
-            "[SERVER] [NETWORK_ENCRYPTION] [COPY_DATA] - invalid input (inData=%p outData=%p inLimit=%zu outLimit=%zu)",
-            inData,
-            outData,
-            inLimit,
-            outLimit);
-        return 0;
-    }
-
-    // Copier seulement si inLimit > 0.
-    if (inLimit > 0)
-    {
-        std::memcpy(outData, inData, inLimit);
-    }
-
-    return inLimit;
-}
-
 // Callback ENet appele pour chiffrer un datagramme sortant.
 static size_t ENET_CALLBACK ServerNetworkEncryption_EncryptCallback(
     void* context,
@@ -188,32 +158,24 @@ static size_t ENET_CALLBACK ServerNetworkEncryption_EncryptCallback(
     // Contexte non utilise pour le moment.
     (void)context;
 
-    // Si aucun peer associe (ex: bas niveau ENet), on laisse passer en clair.
+    // ENet6: peer peut etre NULL pendant la phase de connexion.
+    // Dans ce cas (ou sans connectionId valide), ne pas chiffrer.
     uint32_t connectionId = 0;
     if (!ServerNetworkEncryption_TryGetConnectionIdFromPeer(peer, connectionId))
     {
-        return ServerNetworkEncryption_CopyInBuffersToOutData(
-            inBuffers,
-            inBufferCount,
-            inLimit,
-            outData,
-            outLimit);
+        return 0;
     }
 
     // Recuperer l'etat reseau global.
     const NetworkState& networkState = GetNetworkState();
 
-    // Tenter de charger la cle TX de session si le chiffrement est active.
+    // Tant que le chiffrement n'est pas active pour ce peer:
+    // - on ne chiffre pas ce paquet (return 0),
+    // - ENet enverra le paquet en clair (sans flag encrypted).
     std::array<uint8_t, crypto_kx_SESSIONKEYBYTES> txKey{};
     if (!ServerNetworkEncryption_TryLoadSessionKeyIfEnabled(networkState, connectionId, true, txKey))
     {
-        // Chiffrement non actif pour ce peer -> passthrough.
-        return ServerNetworkEncryption_CopyInBuffersToOutData(
-            inBuffers,
-            inBufferCount,
-            inLimit,
-            outData,
-            outLimit);
+        return 0;
     }
 
     // Calcul de la taille minimale requise :
@@ -299,22 +261,23 @@ static size_t ENET_CALLBACK ServerNetworkEncryption_DecryptCallback(
     // Contexte non utilise pour le moment.
     (void)context;
 
-    // Si aucun peer associe (ex: bas niveau ENet), on laisse passer tel quel.
+    // Si peer est NULL / invalide, on ne peut pas resoudre la cle de ce paquet.
+    // En mode "encrypted packet", cela doit etre rejete.
     uint32_t connectionId = 0;
     if (!ServerNetworkEncryption_TryGetConnectionIdFromPeer(peer, connectionId))
     {
-        return ServerNetworkEncryption_CopyInDataToOutData(inData, inLimit, outData, outLimit);
+        return 0;
     }
 
     // Recuperer l'etat reseau global.
     const NetworkState& networkState = GetNetworkState();
 
-    // Tenter de charger la cle RX de session si le chiffrement est active.
+    // Si le chiffrement n'est pas actif pour ce peer, on rejette ce paquet
+    // marque "encrypted" (pas de passthrough aveugle).
     std::array<uint8_t, crypto_kx_SESSIONKEYBYTES> rxKey{};
     if (!ServerNetworkEncryption_TryLoadSessionKeyIfEnabled(networkState, connectionId, false, rxKey))
     {
-        // Chiffrement non actif pour ce peer -> passthrough.
-        return ServerNetworkEncryption_CopyInDataToOutData(inData, inLimit, outData, outLimit);
+        return 0;
     }
 
     // Validation minimale de format : header + tag obligatoires.

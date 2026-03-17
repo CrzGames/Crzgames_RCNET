@@ -1497,6 +1497,13 @@ static void rcnet_engine_networkThreadMain(void)
                   (unsigned)g_serverChannelCount);
     }
 
+    // Execute une passe OUT immediate apres creation du host, avant le
+    // premier enet_host_service().
+    //
+    // Cela permet aux callbacks utilisateurs d'installer des hooks host-level
+    // (ex: enet_host_encrypt) des le demarrage reseau.
+    rcnet_engine_networkOutgoingUpdate(g_enetServerHost);
+
     // ------------------------------------------------------------------------
     // B) Préparation du timing réseau OUT
     // ------------------------------------------------------------------------
