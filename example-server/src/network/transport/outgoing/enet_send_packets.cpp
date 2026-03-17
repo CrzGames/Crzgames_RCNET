@@ -402,40 +402,40 @@ static bool ServerNetworkOutgoing_SendPacket(
     return true;
 }
 
-bool ServerNetworkOutgoing_SendMatchInitPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes, bool disconnectAfterAck)
+bool ServerNetworkOutgoing_SendMatchInitPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes)
 {
     return ServerNetworkOutgoing_SendPacket(
         peer,
         NetworkChannel::GAME_RELIABLE,
         bytes,
         ENET_PACKET_FLAG_RELIABLE,
-        disconnectAfterAck,
+        false,
         false,
         true
     );
 }
 
-bool ServerNetworkOutgoing_SendWorldStaticStateInitPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes, bool disconnectAfterAck)
+bool ServerNetworkOutgoing_SendWorldStaticStateInitPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes)
 {
     return ServerNetworkOutgoing_SendPacket(
         peer,
         NetworkChannel::GAME_RELIABLE,
         bytes,
         ENET_PACKET_FLAG_RELIABLE,
-        disconnectAfterAck,
+        false,
         false,
         true
     );
 }
 
-bool ServerNetworkOutgoing_SendMatchStartPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes, bool disconnectAfterAck)
+bool ServerNetworkOutgoing_SendMatchStartPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes)
 {
     return ServerNetworkOutgoing_SendPacket(
         peer,
         NetworkChannel::GAME_RELIABLE,
         bytes,
         ENET_PACKET_FLAG_RELIABLE,
-        disconnectAfterAck,
+        false,
         false,
         true
     );

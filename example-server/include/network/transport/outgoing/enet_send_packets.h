@@ -13,9 +13,9 @@
 // éviter les problèmes liés à la fragmentation.
 static constexpr std::size_t kServerNetworkOutgoingPayloadMaxBytes = 508u;
 
-bool ServerNetworkOutgoing_SendMatchInitPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes, bool disconnectAfterAck);
-bool ServerNetworkOutgoing_SendWorldStaticStateInitPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes, bool disconnectAfterAck);
-bool ServerNetworkOutgoing_SendMatchStartPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes, bool disconnectAfterAck);
+bool ServerNetworkOutgoing_SendMatchInitPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes);
+bool ServerNetworkOutgoing_SendWorldStaticStateInitPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes);
+bool ServerNetworkOutgoing_SendMatchStartPacketReliable(ENetPeer* peer, const std::vector<uint8_t>& bytes);
 bool ServerNetworkOutgoing_SendSnapshotFullPacketUnreliable(ENetPeer* peer, const std::vector<uint8_t>& bytes);
 bool ServerNetworkOutgoing_SendSecureSessionHelloResponsePacketReliable(
     ENetPeer* peer,

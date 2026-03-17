@@ -31,11 +31,11 @@ void ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleReliableMessages(
         // Envoyer le message avec la routine correspondant à son type.
         if (msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_INIT_PACKET_RELIABLE)
         {
-            ServerNetworkOutgoing_SendMatchInitPacketReliable(peer, msg.serializedPacket, msg.disconnectAfterAck);
+            ServerNetworkOutgoing_SendMatchInitPacketReliable(peer, msg.serializedPacket);
         }
         else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_WORLD_STATIC_STATE_INIT_PACKET_RELIABLE)
         {
-            ServerNetworkOutgoing_SendWorldStaticStateInitPacketReliable(peer, msg.serializedPacket, msg.disconnectAfterAck);
+            ServerNetworkOutgoing_SendWorldStaticStateInitPacketReliable(peer, msg.serializedPacket);
         }
         else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE)
         {
@@ -51,7 +51,7 @@ void ServerNetworkOutgoing_ProcessSimulationDispatcher_HandleReliableMessages(
         }
         else if (msg.type == SimulationToNetworkOUTMessageType::SERVER_MATCH_START_PACKET_RELIABLE)
         {
-            ServerNetworkOutgoing_SendMatchStartPacketReliable(peer, msg.serializedPacket, msg.disconnectAfterAck);
+            ServerNetworkOutgoing_SendMatchStartPacketReliable(peer, msg.serializedPacket);
         }
         else
         {
