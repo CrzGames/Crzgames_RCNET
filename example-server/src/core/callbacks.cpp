@@ -2,6 +2,7 @@
 
 #include "core/context.h"
 #include "network/transport/incoming/entrypoint.h"
+#include "network/transport/encryption/enet_host_xchacha20poly1305_encryptor.h"
 #include "network/transport/outgoing/entrypoint.h"
 #include "simulation/entrypoint.h"
 #include "services/http/entrypoint.h"
@@ -68,6 +69,18 @@ void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
 {
     // Délègue tout le traitement des événements ENet entrants à la couche réseau applicative.
     ServerNetworkIncoming_ProcessENetEvent(host, event);
+}
+
+void rcnet_network_host_setup(ENetHost* host)
+{
+    if (host == nullptr)
+    {
+        return;
+    }
+
+    // Installe l'encryptor au niveau host une seule fois juste après enet_host_create.
+    // Le chiffrement effectif reste piloté peer par peer via isPacketEncryptionEnabled.
+    ServerNetworkEncryption_EnsureHostEncryptorInstalled(host);
 }
 
 void rcnet_network_outgoing_update(ENetHost* host)

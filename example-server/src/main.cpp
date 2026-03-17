@@ -18,6 +18,7 @@ int main(int argc, char* argv[])
     myServerCallbacks.rcnet_unload = rcnet_unload;
     myServerCallbacks.rcnet_load = rcnet_load;
     myServerCallbacks.rcnet_network_incoming_update = rcnet_network_incoming_update;
+    myServerCallbacks.rcnet_network_host_setup = rcnet_network_host_setup;
     myServerCallbacks.rcnet_network_outgoing_update = rcnet_network_outgoing_update;
     myServerCallbacks.rcnet_simulation_update = rcnet_simulation_update;
     myServerCallbacks.rcnet_http_update = rcnet_http_update;

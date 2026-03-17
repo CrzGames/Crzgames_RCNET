@@ -615,6 +615,10 @@ static void rcnet_engine_setCallbacks(RCNET_Callbacks* callbacksUser)
     if (callbacksUser->rcnet_network_incoming_update)
         callbacksServerEngine.rcnet_network_incoming_update = callbacksUser->rcnet_network_incoming_update;
 
+    // Si le callback setup host réseau existe, on l'enregistre.
+    if (callbacksUser->rcnet_network_host_setup)
+        callbacksServerEngine.rcnet_network_host_setup = callbacksUser->rcnet_network_host_setup;
+
     // Si le callback réseau sortant existe, on l'enregistre.
     if (callbacksUser->rcnet_network_outgoing_update)
         callbacksServerEngine.rcnet_network_outgoing_update = callbacksUser->rcnet_network_outgoing_update;
@@ -759,6 +763,15 @@ static inline void rcnet_engine_networkIncomingUpdate(ENetHost* host, const ENet
     {
         callbacksServerEngine.rcnet_network_incoming_update(host, event);
     }
+}
+
+/**
+ * \brief Exécute le setup host réseau one-shot.
+ */
+static inline void rcnet_engine_networkHostSetup(ENetHost* host)
+{
+    if (callbacksServerEngine.rcnet_network_host_setup != nullptr)
+        callbacksServerEngine.rcnet_network_host_setup(host);
 }
 
 /**
@@ -1497,12 +1510,12 @@ static void rcnet_engine_networkThreadMain(void)
                   (unsigned)g_serverChannelCount);
     }
 
-    // Execute une passe OUT immediate apres creation du host, avant le
+    // Execute un setup host one-shot immediat apres creation du host, avant le
     // premier enet_host_service().
     //
     // Cela permet aux callbacks utilisateurs d'installer des hooks host-level
-    // (ex: enet_host_encrypt) des le demarrage reseau.
-    rcnet_engine_networkOutgoingUpdate(g_enetServerHost);
+    // (ex: enet_host_encrypt / enet_host_compress) des le demarrage reseau.
+    rcnet_engine_networkHostSetup(g_enetServerHost);
 
     // ------------------------------------------------------------------------
     // B) Préparation du timing réseau OUT

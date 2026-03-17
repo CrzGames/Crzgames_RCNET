@@ -1,8 +1,6 @@
 #include "network/transport/outgoing/entrypoint.h"
 
 #include "core/context.h"
-#include "network/transport/compression/enet_host_lz4_compressor.h"
-#include "network/transport/encryption/enet_host_xchacha20poly1305_encryptor.h"
 #include "network/transport/outgoing/message_preparation.h"
 #include "network/transport/outgoing/queue_draining.h"
 #include "network/transport/outgoing/process/simulation_dispatcher.h"
@@ -16,16 +14,6 @@ void ServerNetworkOutgoing_DrainSimulationMessages_And_RunOutgoingNetworkLogic(E
     {
         return;
     }
-
-    // Installer le compresseur LZ4 au niveau host.
-    // Cette fonction est idempotente : si déjà installé, elle ne fait rien.
-    // La compression et la décompression seront appliquées par ENet sur le trafic UDP du host.
-    //ServerNetworkCompression_EnsureHostLz4CompressorInstalled(host);
-
-    // Installer l'encryptor ENet au demarrage pour activer le protocole etendu
-    // des deux cotes (pattern ENet6). Le chiffrement effectif reste pilote
-    // peer par peer par isPacketEncryptionEnabled.
-    ServerNetworkEncryption_EnsureHostEncryptorInstalled(host);
 
     // Récupérer une référence vers la queue simulation -> réseau sortant.
     SimulationToNetworkOUTQueue& simToNetQueue = GetSimulationToNetworkOUTQueue();

@@ -73,6 +73,7 @@ typedef struct RCNET_ServerConfig
  * - rcnet_unload                   : nettoyage utilisateur
  * - rcnet_simulation_update        : logique de simulation
  * - rcnet_network_incoming_update  : traitement des événements réseau entrants
+ * - rcnet_network_host_setup       : setup host réseau one-shot (encrypt/compress...)
  * - rcnet_network_outgoing_update  : envoi des données réseau sortantes
  * - rcnet_http_update              : logique de traitement HTTP (ex: pour l'API du jeu, etc.)
  * - rcnet_nats_update              : logique de traitement NATS (ex: pour la communication inter-serveurs, etc.)
@@ -81,6 +82,8 @@ typedef struct RCNET_ServerConfig
  * IMPORTANT :
  * - rcnet_simulation_update() tourne dans le thread simulation
  * - rcnet_network_incoming_update() tourne dans le thread réseau
+ * - rcnet_network_host_setup() tourne dans le thread réseau, une seule fois
+ *   juste après enet_host_create()
  * - rcnet_network_outgoing_update() tourne dans le thread réseau
  * - rcnet_http_update() tourne dans le thread HTTP
  * - rcnet_nats_update() tourne dans le thread NATS
@@ -91,6 +94,7 @@ typedef struct RCNET_Callbacks
     void (*rcnet_unload)(void);
     void (*rcnet_simulation_update)(uint64_t currentTick, uint64_t serverTimeNs, uint64_t dtNs, double dt);
     void (*rcnet_network_incoming_update)(ENetHost* host, const ENetEvent* event);
+    void (*rcnet_network_host_setup)(ENetHost* host);
     void (*rcnet_network_outgoing_update)(ENetHost* host);
     void (*rcnet_http_update)(void);
     void (*rcnet_nats_update)(RCNET_NATSContext* natsContext);

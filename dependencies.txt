@@ -7,4 +7,4 @@ cpp-httplib=https://github.com/yhirose/cpp-httplib.git:v0.37.2
 cJSON=https://github.com/DaveGamble/cJSON:v1.7.19
 
 # Dependencies for executable example client :
-Crzgames_RC2D=https://github.com/CrzGames/Crzgames_RC2D.git:12fc72fae5394378c2b7117a21d8983b07c84950
+Crzgames_RC2D=https://github.com/CrzGames/Crzgames_RC2D.git:e47d10f06ed21de4733eed2a142560d5cf3c52eb
