@@ -205,16 +205,85 @@ static void ENET_CALLBACK ServerNetworkOutgoing_OnReliablePacketAcknowledged_Run
     }
 }
 
+// Verifie si ce peer a une session autorisee pour envoyer du trafic gameplay.
+//
+// Lorsque requireValidatedSession == true, on exige:
+// - transport connecte
+// - secure session etablie
+// - chiffrement paquet actif
+// - authStatus == Valid
+//
+// Lorsque requireValidatedSession == false, aucun blocage n'est applique.
+static bool ServerNetworkOutgoing_IsPeerAllowedToSendPacket(
+    ENetPeer* peer,
+    bool requireValidatedSession)
+{
+    if (!requireValidatedSession)
+    {
+        return true;
+    }
+
+    uint32_t connectionId = 0;
+    if (!ServerNetworkOutgoing_TryGetConnectionIdFromPeer(peer, connectionId))
+    {
+        RCNET_log(
+            RCNET_LOG_WARN,
+            "[SERVER] [NETWORK_OUT] [GUARD] - blocked send: missing connectionId in peer->data");
+        return false;
+    }
+
+    const NetworkState& networkState = GetNetworkState();
+    std::lock_guard<std::mutex> lock(networkState.sessionsMutex);
+
+    std::unordered_map<uint32_t, ClientSession>::const_iterator sit =
+        networkState.sessions.find(connectionId);
+    if (sit == networkState.sessions.end())
+    {
+        RCNET_log(
+            RCNET_LOG_WARN,
+            "[SERVER] [NETWORK_OUT] [GUARD] - blocked send: session not found for connectionId=%u",
+            connectionId);
+        return false;
+    }
+
+    const ClientSession& session = sit->second;
+    const bool allowed =
+        session.isTransportConnected &&
+        session.isSecureSessionEstablished &&
+        session.isPacketEncryptionEnabled &&
+        session.authStatus == AuthStatus::Valid;
+
+    if (!allowed)
+    {
+        RCNET_log(
+            RCNET_LOG_DEBUG,
+            "[SERVER] [NETWORK_OUT] [GUARD] - blocked send for connectionId=%u (transport=%u secure=%u enc=%u auth=%u)",
+            connectionId,
+            session.isTransportConnected ? 1u : 0u,
+            session.isSecureSessionEstablished ? 1u : 0u,
+            session.isPacketEncryptionEnabled ? 1u : 0u,
+            static_cast<unsigned>(session.authStatus));
+    }
+
+    return allowed;
+}
+
 static bool ServerNetworkOutgoing_SendPacket(
     ENetPeer* peer,
     NetworkChannel channel,
     const std::vector<uint8_t>& bytes,
     enet_uint32 flags,
     bool disconnectAfterAck,
-    bool enableEncryptionAfterAck)
+    bool enableEncryptionAfterAck,
+    bool requireValidatedSession)
 {
     // Le peer doit etre valide avant de creer/envoyer un paquet.
     if (peer == nullptr)
+    {
+        return false;
+    }
+
+    if (!ServerNetworkOutgoing_IsPeerAllowedToSendPacket(peer, requireValidatedSession))
     {
         return false;
     }
@@ -341,7 +410,8 @@ bool ServerNetworkOutgoing_SendMatchInitPacketReliable(ENetPeer* peer, const std
         bytes,
         ENET_PACKET_FLAG_RELIABLE,
         disconnectAfterAck,
-        false
+        false,
+        true
     );
 }
 
@@ -353,7 +423,8 @@ bool ServerNetworkOutgoing_SendWorldStaticStateInitPacketReliable(ENetPeer* peer
         bytes,
         ENET_PACKET_FLAG_RELIABLE,
         disconnectAfterAck,
-        false
+        false,
+        true
     );
 }
 
@@ -365,7 +436,8 @@ bool ServerNetworkOutgoing_SendMatchStartPacketReliable(ENetPeer* peer, const st
         bytes,
         ENET_PACKET_FLAG_RELIABLE,
         disconnectAfterAck,
-        false
+        false,
+        true
     );
 }
 
@@ -377,7 +449,8 @@ bool ServerNetworkOutgoing_SendSnapshotFullPacketUnreliable(ENetPeer* peer, cons
         bytes,
         0, // 0 = paquet non fiable
         false,
-        false
+        false,
+        true
     );
 }
 
@@ -399,7 +472,8 @@ bool ServerNetworkOutgoing_SendSecureSessionHelloResponsePacketReliable(
         bytes,
         ENET_PACKET_FLAG_RELIABLE,
         disconnectAfterAck,
-        enableEncryptionAfterAck
+        enableEncryptionAfterAck,
+        false
     );
 }
 
@@ -411,6 +485,7 @@ bool ServerNetworkOutgoing_SendAuthResponsePacketReliable(ENetPeer* peer, const 
         bytes,
         ENET_PACKET_FLAG_RELIABLE,
         disconnectAfterAck,
+        false,
         false
     );
 }
