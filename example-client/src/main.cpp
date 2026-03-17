@@ -56,6 +56,7 @@ const RC2D_EngineConfig* rc2d_engine_setup(int argc, char* argv[])
     config->callbacks->rc2d_mousepressed = rc2d_mousepressed;
     config->callbacks->rc2d_keypressed = rc2d_keypressed;
     config->callbacks->rc2d_simulation_update = rc2d_simulation_update;
+    config->callbacks->rc2d_network_host_setup = rc2d_network_host_setup;
     config->callbacks->rc2d_network_incoming_update = rc2d_network_incoming_update;
     config->callbacks->rc2d_network_outgoing_update = rc2d_network_outgoing_update;
     config->callbacks->rc2d_http_update = rc2d_http_update;

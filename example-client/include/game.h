@@ -6,6 +6,7 @@ void rc2d_unload(void);
 void rc2d_load(void);
 void rc2d_update(double dt);
 void rc2d_simulation_update(uint64_t currentTick, uint64_t dtNs, double dt);
+void rc2d_network_host_setup(ENetHost* host);
 void rc2d_network_incoming_update(ENetHost* host, const ENetEvent* event);
 void rc2d_network_outgoing_update(ENetHost* host);
 void rc2d_http_update(void);
