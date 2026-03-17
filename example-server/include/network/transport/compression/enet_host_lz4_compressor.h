@@ -12,4 +12,4 @@
 // - la fonction est idempotente.
 // - si le même compresseur est déjà attaché au host, elle ne fait rien.
 // - sinon, elle appelle enet_host_compress avec les callbacks serveur.
-void ServerNetworkCompression_EnsureHostLz4CompressorInstalled(ENetHost* host);
+void ServerNetworkCompression_EnsureHostCompressorInstalled(ENetHost* host);

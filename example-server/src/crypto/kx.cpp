@@ -2,11 +2,6 @@
 
 bool ServerCryptoKx_Initialize(ServerCryptoKxState& state)
 {
-    if (sodium_init() < 0)
-    {
-        return false;
-    }
-
     crypto_kx_keypair(
         state.serverPublicKey.data(),
         state.serverSecretKey.data());

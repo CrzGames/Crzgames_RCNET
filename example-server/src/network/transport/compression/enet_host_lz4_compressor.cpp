@@ -238,7 +238,7 @@ static size_t ENET_CALLBACK ServerNetworkCompression_Lz4DecompressCallback(
     // Retourner la taille de sortie decompressee.
     return static_cast<size_t>(decompressedSize);
 }
-void ServerNetworkCompression_EnsureHostLz4CompressorInstalled(ENetHost* host)
+void ServerNetworkCompression_EnsureHostCompressorInstalled(ENetHost* host)
 {
     // Guard : host invalide => rien a faire.
     if (host == nullptr)
