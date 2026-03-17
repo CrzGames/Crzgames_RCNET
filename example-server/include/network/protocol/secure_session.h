@@ -14,4 +14,4 @@ static constexpr size_t SERVER_SECURE_SESSION_CLIENT_NONCE_BYTES = 16;
 // ServerSecureSessionHelloResponsePacketReliable.
 // Cote serveur: expiresAtUnixSeconds = issuedAtUnixSeconds + TTL.
 // Cote client: refuser la reponse si now > expiresAtUnixSeconds.
-static constexpr uint64_t SERVER_SECURE_SESSION_SIGNATURE_TTL_SECONDS = 20;
+static constexpr uint64_t SERVER_SECURE_SESSION_SIGNATURE_TTL_SECONDS = 10;
