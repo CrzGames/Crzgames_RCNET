@@ -8,8 +8,6 @@
 
 #include <RC2D/RC2D.h>
 
-#include <mutex>
-
 void ClientSimulation_ProcessNetworkIncomingDispatcher(
     NetworkState& networkState,
     SimulationToNetworkOUTQueue& simToNetQueue,
