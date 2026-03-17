@@ -2,6 +2,7 @@
 
 #include "crypto/kx.h"
 #include "network/protocol/secure_session.h"
+#include "network/protocol/secure_session_attestation.h"
 
 #include <RC2D/RC2D.h>
 
@@ -9,69 +10,6 @@
 #include <cstring>
 #include <ctime>
 #include <mutex>
-#include <vector>
-
-// Encode un uint64 en big-endian pour reconstruire le payload signe.
-static void ClientSecureSession_WriteU64Be(std::vector<uint8_t>& out, uint64_t value)
-{
-    out.push_back(static_cast<uint8_t>((value >> 56) & 0xFF));
-    out.push_back(static_cast<uint8_t>((value >> 48) & 0xFF));
-    out.push_back(static_cast<uint8_t>((value >> 40) & 0xFF));
-    out.push_back(static_cast<uint8_t>((value >> 32) & 0xFF));
-    out.push_back(static_cast<uint8_t>((value >> 24) & 0xFF));
-    out.push_back(static_cast<uint8_t>((value >> 16) & 0xFF));
-    out.push_back(static_cast<uint8_t>((value >> 8) & 0xFF));
-    out.push_back(static_cast<uint8_t>(value & 0xFF));
-}
-
-// Reconstruit le message canonique signe cote serveur:
-// [domain][server_kx_pub][issued_at_be64][expires_at_be64][client_nonce_echo]
-static void ClientSecureSession_BuildSignedMessage(
-    const ServerSecureSessionHelloResponsePacketReliable& packet,
-    std::vector<uint8_t>& outMessage)
-{
-    outMessage.clear();
-    outMessage.reserve(
-        (sizeof(CLIENT_SECURE_SESSION_SIGNING_DOMAIN) - 1) +
-        packet.serverPublicKey.size() +
-        sizeof(uint64_t) +
-        sizeof(uint64_t) +
-        packet.clientNonceEcho.size());
-
-    outMessage.insert(
-        outMessage.end(),
-        CLIENT_SECURE_SESSION_SIGNING_DOMAIN,
-        CLIENT_SECURE_SESSION_SIGNING_DOMAIN + (sizeof(CLIENT_SECURE_SESSION_SIGNING_DOMAIN) - 1));
-
-    outMessage.insert(
-        outMessage.end(),
-        packet.serverPublicKey.begin(),
-        packet.serverPublicKey.end());
-
-    ClientSecureSession_WriteU64Be(outMessage, packet.issuedAtUnixSeconds);
-    ClientSecureSession_WriteU64Be(outMessage, packet.expiresAtUnixSeconds);
-
-    outMessage.insert(
-        outMessage.end(),
-        packet.clientNonceEcho.begin(),
-        packet.clientNonceEcho.end());
-}
-
-// Verifie la signature Ed25519 de l'attestation secure-session avec la cle publique pinnee.
-static bool ClientSecureSession_VerifyAttestationSignature(
-    const ServerSecureSessionHelloResponsePacketReliable& packet)
-{
-    std::vector<uint8_t> message;
-    ClientSecureSession_BuildSignedMessage(packet, message);
-
-    const int verifyResult = crypto_sign_verify_detached(
-        packet.signature.data(),
-        message.data(),
-        static_cast<unsigned long long>(message.size()),
-        CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY.data());
-
-    return verifyResult == 0;
-}
 
 void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloResponseMessage(
     NetworkState& networkState,
@@ -128,7 +66,7 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloR
     }
 
     // Verifier la signature Ed25519 de l'attestation secure-session.
-    if (!ClientSecureSession_VerifyAttestationSignature(packet))
+    if (!ClientSecureSession_VerifyServerHelloResponseAttestation(packet))
     {
         networkState.secureSessionEstablished = false;
         networkState.encryptionEnabled = false;

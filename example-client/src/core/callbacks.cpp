@@ -1,20 +1,21 @@
 #include "core/callbacks.h"
 
 #include "core/context.h"
-#include "network/transport/compression/enet_host_lz4_compressor.h"
-#include "network/transport/encryption/enet_host_xchacha20poly1305_encryptor.h"
-#include "network/transport/incoming/entrypoint.h"
-#include "network/transport/outgoing/entrypoint.h"
-#include "simulation/entrypoint.h"
-#include "services/http/entrypoint.h"
-#include "services/websocket/entrypoint.h"
 #include "crypto/kx.h"
+#include "game/game_screen.h"
 #include "game/scenes/scene-editormap.h"
 #include "game/scenes/scene-game.h"
 #include "game/scenes/scene-manager.h"
 #include "game/scenes/scene-menu.h"
 #include "game/scenes/scene-splashscreen.h"
-#include "game/game_screen.h"
+#include "network/protocol/secure_session.h"
+#include "network/transport/compression/enet_host_lz4_compressor.h"
+#include "network/transport/encryption/enet_host_xchacha20poly1305_encryptor.h"
+#include "network/transport/incoming/entrypoint.h"
+#include "network/transport/outgoing/entrypoint.h"
+#include "services/http/entrypoint.h"
+#include "services/websocket/entrypoint.h"
+#include "simulation/entrypoint.h"
 
 SceneManager sceneManager;
 GameScreen gameScreen;
@@ -40,6 +41,15 @@ void rc2d_load(void)
         RC2D_log(RC2D_LOG_ERROR, "Failed to initialize client crypto KX state");
 
         // Sort de la fonction de callback pour éviter de continuer l'initialisation du client dans un état potentiellement instable.
+        return;
+    }
+
+    // Convertir la clé publique Ed25519 épinglée du format hexadécimal une seule fois au démarrage.
+    // Si le format hexadécimal est invalide, arrêter immédiatement le client.
+    if (!ClientSecureSession_InitializePinnedServerSigningPublicKey())
+    {
+        rc2d_event_quit();
+        RC2D_log(RC2D_LOG_ERROR, "Failed to initialize pinned server signing public key");
         return;
     }
 

@@ -617,6 +617,38 @@ if(RCNET_BUILD_EXAMPLE)
   set(RCNET_EXAMPLE_CLIENT_TARGET_NAME rcnet_example_client)
 
   # ============================================================
+  # Environnement de build pour l’exemple client
+  # ============================================================
+  set(GAME_ENV "dev" CACHE STRING "Environment for the example client (dev, staging, production)")
+
+  # ============================================================
+  # client example compile definitions
+  # ============================================================
+  function(client_example_compile_definitions target_name)
+    # Environement de build (dev/staging/production) : ajoute des macros préprocesseur pour différencier les builds
+    # dans le code source, par exemple pour activer des logs de debug en dev mais pas en production.
+    if(GAME_ENV STREQUAL "dev")
+      target_compile_definitions(${target_name} PRIVATE
+        GAME_ENV_DEV=1
+        GAME_ENV_STAGING=0
+        GAME_ENV_PRODUCTION=0
+      )
+    elseif(GAME_ENV STREQUAL "staging")
+      target_compile_definitions(${target_name} PRIVATE
+        GAME_ENV_DEV=0
+        GAME_ENV_STAGING=1
+        GAME_ENV_PRODUCTION=0
+      )
+    else() # production
+      target_compile_definitions(${target_name} PRIVATE
+        GAME_ENV_DEV=0
+        GAME_ENV_STAGING=0
+        GAME_ENV_PRODUCTION=1
+      )
+    endif()
+  endfunction()
+
+  # ============================================================
   # Fichiers source de l’exemple
   #
   # Récupère automatiquement tous les fichiers sources .cpp de manière récursive 
@@ -643,6 +675,11 @@ if(RCNET_BUILD_EXAMPLE)
     ${EXAMPLE_SOURCES} 
     ${EXAMPLE_HEADERS}
   )
+
+  # ============================================================
+  # Compile Definitions
+  # ============================================================
+  client_example_compile_definitions(${RCNET_EXAMPLE_CLIENT_TARGET_NAME})
 
   # ============================================================
   # Include directories pour l’exemple

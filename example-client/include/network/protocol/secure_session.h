@@ -28,14 +28,17 @@ static constexpr char CLIENT_SECURE_SESSION_SIGNING_DOMAIN[] =
 static constexpr char CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX[] =
     "af110dde7833e9aa3784e6b44af5754a67b659a09dd85877bdc0330c79e7e02f";
 
-static constexpr std::array<uint8_t, crypto_sign_PUBLICKEYBYTES>
-    CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY = {
-        0xaf, 0x11, 0x0d, 0xde, 0x78, 0x33, 0xe9, 0xaa,
-        0x37, 0x84, 0xe6, 0xb4, 0x4a, 0xf5, 0x75, 0x4a,
-        0x67, 0xb6, 0x59, 0xa0, 0x9d, 0xd8, 0x58, 0x77,
-        0xbd, 0xc0, 0x33, 0x0c, 0x79, 0xe7, 0xe0, 0x2f};
-
 // Duree maximale attendue pour une attestation secure-session (en secondes).
 // Le client peut refuser une attestation dont la fenetre de validite est
 // anormalement longue.
 static constexpr uint64_t CLIENT_SECURE_SESSION_SIGNATURE_TTL_SECONDS = 10;
+
+// Initialise (une seule fois) la cle publique pinnee binaire a partir de
+// CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX.
+// Retourne false si la valeur HEX est invalide.
+bool ClientSecureSession_InitializePinnedServerSigningPublicKey();
+
+// Copie la cle publique pinnee binaire (32 bytes) dans outPublicKey.
+// Retourne false si l'initialisation n'a pas encore ete faite.
+bool ClientSecureSession_GetPinnedServerSigningPublicKey(
+    std::array<uint8_t, crypto_sign_PUBLICKEYBYTES>& outPublicKey);
