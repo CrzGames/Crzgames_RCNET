@@ -10,7 +10,6 @@ struct AuthSignUpHTTPRequest
     std::string username;
     std::string email;
     std::string password;
-    std::string passwordConfirm;
 };
 
 // ============================================================================

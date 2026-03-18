@@ -112,7 +112,7 @@ AuthSignUpHTTPResponse ClientHttp_Auth_SignUpRequest(const AuthSignUpHTTPRequest
     const NetworkState& networkState = GetNetworkState();
 
     // Construit l'URL complete du endpoint signup.
-    const std::string url = std::string(networkState.baseUrlApi) + "/auth/signup";
+    const std::string url = std::string(networkState.baseUrlApi) + "/auth/sign-up";
 
     // Cree un objet JSON vide pour le payload POST.
     cJSON* jsonBody = cJSON_CreateObject();
@@ -132,12 +132,6 @@ AuthSignUpHTTPResponse ClientHttp_Auth_SignUpRequest(const AuthSignUpHTTPRequest
 
     // Ajoute le mot de passe dans le payload JSON.
     cJSON_AddStringToObject(jsonBody, "password", request.password.c_str());
-
-    // Ajoute une forme camelCase de confirmation.
-    cJSON_AddStringToObject(jsonBody, "passwordConfirm", request.passwordConfirm.c_str());
-
-    // Ajoute aussi la forme snake_case souvent attendue par les frameworks backend.
-    cJSON_AddStringToObject(jsonBody, "password_confirmation", request.passwordConfirm.c_str());
 
     // Serialize l'objet JSON en texte compact.
     char* jsonBodyText = cJSON_PrintUnformatted(jsonBody);

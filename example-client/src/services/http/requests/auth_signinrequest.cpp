@@ -112,7 +112,7 @@ AuthSignInHTTPResponse ClientHttp_Auth_SignInRequest(const AuthSignInHTTPRequest
     const NetworkState& networkState = GetNetworkState();
 
     // Construit l'URL complete du endpoint signin.
-    const std::string url = std::string(networkState.baseUrlApi) + "/auth/signin";
+    const std::string url = std::string(networkState.baseUrlApi) + "/auth/sign-in";
 
     // Cree un objet JSON vide pour le payload POST.
     cJSON* jsonBody = cJSON_CreateObject();
