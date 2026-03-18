@@ -36,11 +36,30 @@ void ServerNetworkIncoming_Channel_SecureSessionReliable(
     if (secureSessionHelloPacket.networkProtocolVersion != SERVER_NETWORK_PROTOCOL_VERSION)
     {
         // Log d’erreur indiquant un mismatch de version.
-        RCNET_log(RCNET_LOG_ERROR,
-                  "[SERVER] [NETWORK_IN] [SECURE_SESSION] - Network protocol version mismatch with connectionId=%u: client=%u vs server=%u. Disconnecting client.\n",
-                  connectionId,
-                  secureSessionHelloPacket.networkProtocolVersion,
-                  SERVER_NETWORK_PROTOCOL_VERSION);
+        const uint16_t clientVersionMajor =
+            static_cast<uint16_t>((secureSessionHelloPacket.networkProtocolVersion >> 16) & 0xFFFFu);
+        const uint8_t clientVersionMinor =
+            static_cast<uint8_t>((secureSessionHelloPacket.networkProtocolVersion >> 8) & 0xFFu);
+        const uint8_t clientVersionPatch =
+            static_cast<uint8_t>(secureSessionHelloPacket.networkProtocolVersion & 0xFFu);
+
+        const uint16_t serverVersionMajor =
+            static_cast<uint16_t>((SERVER_NETWORK_PROTOCOL_VERSION >> 16) & 0xFFFFu);
+        const uint8_t serverVersionMinor =
+            static_cast<uint8_t>((SERVER_NETWORK_PROTOCOL_VERSION >> 8) & 0xFFu);
+        const uint8_t serverVersionPatch =
+            static_cast<uint8_t>(SERVER_NETWORK_PROTOCOL_VERSION & 0xFFu);
+
+        RCNET_log(
+            RCNET_LOG_ERROR,
+            "[SERVER] [NETWORK_IN] [SECURE_SESSION] - Network protocol version mismatch with connectionId=%u: client=%u.%u.%u vs server=%u.%u.%u. Disconnecting client.\n",
+            connectionId,
+            static_cast<unsigned>(clientVersionMajor),
+            static_cast<unsigned>(clientVersionMinor),
+            static_cast<unsigned>(clientVersionPatch),
+            static_cast<unsigned>(serverVersionMajor),
+            static_cast<unsigned>(serverVersionMinor),
+            static_cast<unsigned>(serverVersionPatch));
 
         // Déconnecte immédiatement le client.
         enet_peer_disconnect(event->peer, 0);
