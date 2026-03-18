@@ -38,9 +38,8 @@ struct NetworkState
     // Ce flag indique que l'etape d'authentification a ete traitee.
     bool authValidated = false;
 
-    // Vrai uniquement si le serveur a valide le token d'authentification
-    // (AuthResponse status == SUCCESS). Ce flag represente le resultat
-    // metier de l'auth.
+    // Vrai uniquement si le serveur du jeu a valide le token d'authentification
+    // (AuthResponse status == SUCCESS).
     bool authTokenValidated = false;
 
     // Vrai quand le chiffrement transport ENet est actif pour le peer serveur
@@ -68,7 +67,7 @@ struct NetworkState
 
 
     // --------------------------------------------------------------------------
-    // API externe (backend d'authentification, pour signup/signin)
+    // API externe (backend web d'authentification, pour signup/signin)
     // --------------------------------------------------------------------------
 
 #if GAME_ENV_DEV
