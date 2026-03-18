@@ -164,11 +164,6 @@ static size_t ENET_CALLBACK ServerNetworkCompression_Lz4CompressCallback(
     // ENet enverra alors le paquet non compresse.
     if (static_cast<size_t>(compressedSize) >= inLimit)
     {
-        RCNET_log(
-            RCNET_LOG_DEBUG,
-            "[SERVER] [NETWORK_COMPRESSION] [COMPRESS] - skipped: compressed size not smaller (compressed=%d original=%zu)",
-            compressedSize,
-            inLimit);
         return 0;
     }
 
