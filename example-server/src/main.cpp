@@ -22,7 +22,6 @@ int main(int argc, char* argv[])
     myServerCallbacks.rcnet_network_outgoing_update = rcnet_network_outgoing_update;
     myServerCallbacks.rcnet_simulation_update = rcnet_simulation_update;
     myServerCallbacks.rcnet_http_update = rcnet_http_update;
-    myServerCallbacks.rcnet_nats_update = rcnet_nats_update;
     myServerCallbacks.rcnet_wake_blocking_threads = rcnet_wake_blocking_threads;
 
     // Construire la config serveur

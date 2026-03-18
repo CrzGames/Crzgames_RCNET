@@ -18,7 +18,7 @@ struct ServerConfig
     static constexpr uint8_t channelCount = static_cast<uint8_t>(NetworkChannel::COUNT);
 
     // Nombre maximum de clients connectés
-    static constexpr uint32_t maxClientsConnected = 2;
+    static constexpr uint32_t maxClientsConnected = 4000;
 
     // ------------------------------------------------------------------------
     // Configuration des tick rates du moteur

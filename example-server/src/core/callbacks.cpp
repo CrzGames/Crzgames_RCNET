@@ -115,13 +115,6 @@ void rcnet_simulation_update(uint64_t currentTick, uint64_t serverTimeNs, uint64
     );
 }
 
-void rcnet_nats_update(RCNET_NATSContext* natsContext)
-{
-    // Exécute une unité de travail du thread NATS.
-    // Cette fonction peut bloquer en attendant un job depuis la queue Simulation -> NATS.
-    ServerNats_WaitAndProcessOneSimulationMessage_And_RunNatsLogic(natsContext);
-}
-
 void rcnet_wake_blocking_threads(void)
 {
     // Demande aux threads bloqués sur les queues Simulation -> HTTP 
