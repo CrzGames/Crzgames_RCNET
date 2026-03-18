@@ -18,6 +18,8 @@
 
 #include <RC2D/RC2D.h>
 
+#include <cstdint> // uint16_t, uint32_t, etc.
+
 /**
  * \brief Fonction de configuration du moteur RC2D.
  * 
@@ -63,7 +65,7 @@ const RC2D_EngineConfig* rc2d_engine_setup(int argc, char* argv[])
     config->callbacks->rc2d_http_update = rc2d_http_update;
     config->callbacks->rc2d_websocket_update = rc2d_websocket_update;
     config->callbacks->rc2d_wake_blocking_threads = rc2d_wake_blocking_threads;
-    config->networkClientConfig->channelCount = NetworkChannel::COUNT;
+    config->networkClientConfig->channelCount = static_cast<uint32_t>(NetworkChannel::COUNT);
     config->logicalPresentationMode = RC2D_LOGICAL_PRESENTATION_OVERSCAN;
     config->pixelartMode = true;
     config->appInfo->name = "Aether Royale";
