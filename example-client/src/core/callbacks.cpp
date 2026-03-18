@@ -60,12 +60,30 @@ void rc2d_load(void)
     sceneManager.addScene("game", new GameScene());
     sceneManager.changeScene("splashscreen");
 
-    // Connecte le client au serveur de jeu.
-    rc2d_engine_networkConnectToServer("localhost", 12345);
-
     // À ce stade, l'initialisation applicative est terminée.
     // Le client peut commencer à accepter et traiter son activité normale.
     RC2D_log(RC2D_LOG_INFO, "Client is ready");
+
+    // --------------------------------------------------------------------
+    // Bootstrap temporaire (DEV):
+    // - en attendant l'UI de login, on envoie un signup puis un signin
+    //   hardcodes au thread HTTP.
+    // - le signin reussi declenchera ensuite la connexion reseau jeu.
+    // --------------------------------------------------------------------
+    SimulationToHttpQueue& simToHttpQueue = GetSimulationToHttpQueue();
+
+    SimulationToHttpMessage signUpMessage{};
+    signUpMessage.type = SimulationToHttpMessageType::AUTH_SIGNUP_REQUEST;
+    signUpMessage.authSignUpRequest.username = "coco";
+    signUpMessage.authSignUpRequest.email = "coco@orangexxx.fr";
+    signUpMessage.authSignUpRequest.password = "toto35000!xx";
+    simToHttpQueue.push(signUpMessage);
+
+    SimulationToHttpMessage signInMessage{};
+    signInMessage.type = SimulationToHttpMessageType::AUTH_SIGNIN_REQUEST;
+    signInMessage.authSignInRequest.email = "coco@orangexxx.fr";
+    signInMessage.authSignInRequest.password = "toto35000!xx";
+    simToHttpQueue.push(signInMessage);
 }
 
 void rc2d_update(double dt)
