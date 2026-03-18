@@ -2,10 +2,11 @@
 
 #include "core/context.h"
 #include "crypto/kx.h"
+#include "network/packets/client/reliable.h"
 #include "network/protocol/secure_session.h"
 #include "network/protocol/secure_session_attestation.h"
 
-#include <RC2D/RC2D.h>
+#include <RC2D/RC2D.h> // RC2D_log
 
 #include <array>   // std::array
 #include <cstring> // std::memcmp
