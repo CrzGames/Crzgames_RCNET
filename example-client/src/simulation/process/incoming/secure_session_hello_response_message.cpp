@@ -5,6 +5,7 @@
 #include "network/packets/client/reliable.h"
 #include "network/protocol/secure_session.h"
 #include "network/protocol/secure_session_attestation.h"
+#include "network/serialization/serialize_packets_client.h"
 
 #include <RC2D/RC2D.h> // RC2D_log
 
@@ -130,7 +131,7 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloR
         
         // Créer le packet ClientAuthPacketReliable avec le token d'authentification du client.
         ClientAuthPacketReliable authPacket{};
-        authPacket.header.type = ClientReliablePacketHeader::CLIENT_AUTH_PACKET_RELIABLE;
+        authPacket.header.type = ClientReliablePacketType::CLIENT_AUTH_PACKET_RELIABLE;
         authPacket.authToken = networkState.authToken;
 
         // Sérialiser le packet d'authentification et l'envoyer au thread réseau via la queue simulationToNetworkOUTQueue.
