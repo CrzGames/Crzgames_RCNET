@@ -2,6 +2,8 @@
 
 #include "core/config/server.h"
 
+#include <RCNET/RCNET.h>
+
 std::unique_ptr<httplib::Client> g_httpClient = nullptr;
 
 bool ServerHttp_InitializeClient(void)
@@ -11,13 +13,7 @@ bool ServerHttp_InitializeClient(void)
     g_httpClient->set_connection_timeout(0, 300000);
     g_httpClient->set_read_timeout(5, 0);
     g_httpClient->set_write_timeout(5, 0);
-
-#if SERVER_ENV_DEV
-        g_httpClient->enable_server_certificate_verification(false);
-#else
-        g_httpClient->enable_server_certificate_verification(true);
-#endif
-
+    g_httpClient->enable_server_certificate_verification(false);
     return true;
 }
 
