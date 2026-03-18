@@ -18,7 +18,7 @@ void ClientNetworkIncoming_Channel_AuthReliable(
         // Si la deserialisation echoue, le packet est invalide ou mal forme.
         RC2D_log(
             RC2D_LOG_WARN,
-            "[CLIENT] [NETWORK_IN] [AUTH] - Failed to deserialize auth response packet from server (size=%u bytes).",
+            "[CLIENT] [NETWORK_IN] [AUTH] - Failed to deserialize auth response packet from server (size: %u bytes).",
             static_cast<unsigned>(event->packet->dataLength));
         return;
     }
@@ -26,7 +26,7 @@ void ClientNetworkIncoming_Channel_AuthReliable(
     // Log d'information indiquant que le packet d'authentification est bien recu.
     RC2D_log(
         RC2D_LOG_INFO,
-        "[CLIENT] [NETWORK_IN] [AUTH] - Packet received from server (size=%u bytes).",
+        "[CLIENT] [NETWORK_IN] [AUTH] - Auth response packet received from server (size: %u bytes).",
         static_cast<unsigned>(event->packet->dataLength));
 
     // Crée un message destiné au thread simulation.
@@ -40,4 +40,3 @@ void ClientNetworkIncoming_Channel_AuthReliable(
     // Envoie le message au thread simulation via la queue thread-safe.
     netToSimQueue.push(message);
 }
-

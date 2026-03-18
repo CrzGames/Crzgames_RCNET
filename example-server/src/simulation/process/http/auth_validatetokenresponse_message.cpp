@@ -32,7 +32,7 @@ void ServerSimulation_ProcessHttpDispatcher_HandleAuthValidateTokenResponseMessa
         {
             // Log d'avertissement indiquant une réponse orpheline.
             RCNET_log(RCNET_LOG_WARN,
-                      "[SERVER] [SIMULATION] [AUTH] - Received auth validation response for unknown connectionId=%u\n",
+                      "[SERVER] [SIMULATION] [AUTH] - connectionId: %u - Auth validation response received for unknown session\n",
                       httpMessage.connectionId);
 
             // Abandon du traitement.
@@ -62,7 +62,7 @@ void ServerSimulation_ProcessHttpDispatcher_HandleAuthValidateTokenResponseMessa
 
             // Log de succès d'authentification.
             RCNET_log(RCNET_LOG_INFO,
-                      "[SERVER] [SIMULATION] [AUTH] - connectionId=%u authenticated successfully with accountId=%llu username=%s\n",
+                      "[SERVER] [SIMULATION] [AUTH] - connectionId: %u - Token validated (accountId: %llu, username: %s)\n",
                       httpMessage.connectionId,
                       (unsigned long long)session.accountIdDatabase,
                       session.accountUsernameDatabase.c_str());
@@ -84,7 +84,7 @@ void ServerSimulation_ProcessHttpDispatcher_HandleAuthValidateTokenResponseMessa
 
             // Log d'échec d'authentification.
             RCNET_log(RCNET_LOG_INFO,
-                      "[SERVER] [SIMULATION] [AUTH] - connectionId=%u token validation failed (%s)\n",
+                      "[SERVER] [SIMULATION] [AUTH] - connectionId: %u - Token validation failed (reason=%s)\n",
                       httpMessage.connectionId,
                       authFailureReason);
         }

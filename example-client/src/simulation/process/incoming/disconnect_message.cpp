@@ -17,6 +17,5 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleDisconnectMessage(
     // Le token n'est plus considere valide apres deconnexion.
     networkState.authTokenValidated = false;
 
-    RC2D_log(RC2D_LOG_INFO, "[CLIENT] [SIMULATION] [DISCONNECT] Session state reset.");
+    RC2D_log(RC2D_LOG_INFO, "[CLIENT] [SIMULATION] [DISCONNECT] - Session state reset.");
 }
-

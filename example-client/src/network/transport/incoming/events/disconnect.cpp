@@ -12,7 +12,7 @@ void ClientNetworkIncoming_Event_HandleDisconnect(
     if (event->peer == nullptr)
     {
         RC2D_log(RC2D_LOG_WARN,
-                 "[CLIENT] [NETWORK_IN] [DISCONNECT] Invalid disconnect event: event->peer == nullptr.");
+                 "[CLIENT] [NETWORK_IN] [DISCONNECT] - Invalid disconnect event (event->peer == nullptr).");
         return;
     }
 
@@ -29,5 +29,7 @@ void ClientNetworkIncoming_Event_HandleDisconnect(
     netToSimQueue.push(message);
 
     // Log l'événement de déconnexion avec l'identifiant de connexion concerné.
-    RC2D_log(RC2D_LOG_INFO, "[CLIENT] [NETWORK_IN] [DISCONNECT] Disconnected by the server OR server not responding.");
+    RC2D_log(
+        RC2D_LOG_INFO,
+        "[CLIENT] [NETWORK_IN] [DISCONNECT] - Transport disconnected (server closed connection or timed out).");
 }

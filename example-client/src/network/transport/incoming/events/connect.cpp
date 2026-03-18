@@ -13,7 +13,7 @@ void ClientNetworkIncoming_Event_HandleConnect(
     {
         // Log un avertissement si l'événement de connexion est invalide (peer nul) et retourne sans faire d'autres traitements.
         RC2D_log(RC2D_LOG_WARN,
-                 "[CLIENT] [NETWORK_IN] [CONNECT] Invalid connect event: event->peer == nullptr.");
+                 "[CLIENT] [NETWORK_IN] [CONNECT] - Invalid connect event (event->peer == nullptr).");
         return;
     }
 
@@ -37,15 +37,16 @@ void ClientNetworkIncoming_Event_HandleConnect(
     {
         RC2D_log(
             RC2D_LOG_INFO,
-            "[CLIENT] [NETWORK_IN] [CONNECT] Connected from server - address: %s",
-            hostName
+            "[CLIENT] [NETWORK_IN] [CONNECT] - Connected to server (address: %s, port: %u).",
+            hostName,
+            static_cast<unsigned>(event->peer->address.port)
         );
     }
     else
     {
         RC2D_log(
             RC2D_LOG_INFO,
-            "[CLIENT] [NETWORK_IN] [CONNECT] Connected from server - address: <unknown> port: %u.",
+            "[CLIENT] [NETWORK_IN] [CONNECT] - Connected to server (address: <unknown>, port: %u).",
             (unsigned) event->peer->address.port
         );
     }

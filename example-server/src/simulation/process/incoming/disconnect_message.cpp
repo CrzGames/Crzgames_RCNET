@@ -20,7 +20,7 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleDisconnectMessage(
         {
             // Log d'avertissement pour signaler une déconnexion inconnue.
             RCNET_log(RCNET_LOG_WARN,
-                      "[SERVER] [SIMULATION] [DISCONNECT] - Received disconnect for unknown connectionId=%u (ignoring)\n",
+                      "[SERVER] [SIMULATION] [DISCONNECT] - connectionId: %u - Disconnect received for unknown session (ignored)\n",
                       msg.connectionId);
 
             // Abandon du traitement.

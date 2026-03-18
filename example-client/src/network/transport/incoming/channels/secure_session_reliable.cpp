@@ -18,7 +18,7 @@ void ClientNetworkIncoming_Channel_SecureSessionReliable(
         // Si la deserialisation echoue, le packet est invalide ou mal forme.
         RC2D_log(
             RC2D_LOG_WARN,
-            "[CLIENT] [NETWORK_IN] [SECURE_SESSION] Failed to deserialize secure-session response (size=%u).",
+            "[CLIENT] [NETWORK_IN] [SECURE_SESSION] - Failed to deserialize secure-session hello response (size: %u bytes).",
             static_cast<unsigned>(event->packet->dataLength));
         return;
     }
@@ -26,7 +26,7 @@ void ClientNetworkIncoming_Channel_SecureSessionReliable(
     // Log d'information indiquant que le packet de secure-session est bien recu.
     RC2D_log(
         RC2D_LOG_INFO,
-        "[CLIENT] [NETWORK_IN] [SECURE_SESSION] Packet received from server (size=%u bytes).",
+        "[CLIENT] [NETWORK_IN] [SECURE_SESSION] - Secure-session hello response received from server (size: %u bytes).",
         static_cast<unsigned>(event->packet->dataLength));
 
     // Crée un message destiné au thread simulation.
@@ -40,4 +40,3 @@ void ClientNetworkIncoming_Channel_SecureSessionReliable(
     // Envoie le message au thread simulation via la queue thread-safe.
     netToSimQueue.push(message);
 }
-

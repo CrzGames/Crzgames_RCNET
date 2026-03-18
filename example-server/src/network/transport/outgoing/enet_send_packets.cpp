@@ -106,7 +106,7 @@ static void ServerNetworkOutgoing_SetPeerEncryptionEnabled(ENetPeer* peer, bool 
     uint32_t connectionId = 0;
     if (!ServerNetworkOutgoing_TryGetConnectionIdFromPeer(peer, connectionId))
     {
-        RCNET_log(RCNET_LOG_WARN, "[SERVER] [NETWORK_OUT] [ENCRYPTION] - Cannot toggle encryption: peer->data is null");
+        RCNET_log(RCNET_LOG_WARN, "[SERVER] [NETWORK_OUT] [ENCRYPTION] - Cannot toggle packet encryption: missing connectionId in peer->data");
         return;
     }
     NetworkState& networkState = GetNetworkState();
@@ -117,7 +117,7 @@ static void ServerNetworkOutgoing_SetPeerEncryptionEnabled(ENetPeer* peer, bool 
     {
         RCNET_log(
             RCNET_LOG_WARN,
-            "[SERVER] [NETWORK_OUT] [ENCRYPTION] - Cannot toggle encryption: peer mismatch for connectionId=%u",
+            "[SERVER] [NETWORK_OUT] [ENCRYPTION] - connectionId: %u - Cannot toggle packet encryption (peer mismatch)",
             connectionId);
         return;
     }
@@ -138,7 +138,7 @@ static void ServerNetworkOutgoing_SetPeerEncryptionEnabled(ENetPeer* peer, bool 
 
     RCNET_log(
         RCNET_LOG_INFO,
-        "[SERVER] [NETWORK_OUT] [ENCRYPTION] - connectionId=%u encryptionEnabled=%u",
+        "[SERVER] [NETWORK_OUT] [ENCRYPTION] - connectionId: %u - packetEncryptionEnabled: %u",
         connectionId,
         enabled ? 1u : 0u);
 }
@@ -185,7 +185,7 @@ static void ENET_CALLBACK ServerNetworkOutgoing_OnReliablePacketAcknowledged_Run
     {
         RCNET_log(
             RCNET_LOG_WARN,
-            "[SERVER] [NETWORK_OUT] [RELIABLE_ACK] - Ignored stale ACK action for connectionId=%u",
+            "[SERVER] [NETWORK_OUT] [RELIABLE_ACK] - connectionId: %u - Ignored stale ACK action",
             context->connectionId);
         return;
     }
@@ -199,8 +199,8 @@ static void ENET_CALLBACK ServerNetworkOutgoing_OnReliablePacketAcknowledged_Run
     {
         RCNET_log(
             RCNET_LOG_INFO,
-            "[SERVER] [NETWORK_OUT] [RELIABLE_ACK] - ACK received, disconnecting peer=%p\n",
-            static_cast<void*>(context->peer));
+            "[SERVER] [NETWORK_OUT] [RELIABLE_ACK] - connectionId: %u - ACK received, scheduling disconnect\n",
+            context->connectionId);
         enet_peer_disconnect_later(context->peer, 0);
     }
 }

@@ -45,7 +45,7 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloM
         {
             RCNET_log(
                 RCNET_LOG_WARN,
-                "[SERVER] [SIMULATION] [SECURE_SESSION] - Unknown connectionId: %u",
+                "[SERVER] [SIMULATION] [SECURE_SESSION] - connectionId: %u - Session not found",
                 msg.connectionId);
             return;
         }
@@ -114,7 +114,7 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloM
 
                 RCNET_log(
                     RCNET_LOG_ERROR,
-                    "[SERVER] [SIMULATION] [SECURE_SESSION] - Failed to sign secure-session attestation for connectionId: %u",
+                    "[SERVER] [SIMULATION] [SECURE_SESSION] - connectionId: %u - Failed to sign secure-session attestation",
                     msg.connectionId);
             }
         }
@@ -151,9 +151,8 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloM
 
     RCNET_log(
         RCNET_LOG_INFO,
-        "[SERVER] [SIMULATION] [SECURE_SESSION] - connectionId: %u - accepted: %u secureSessionEstablished: %u keyExchangeOk: %u",
+        "[SERVER] [SIMULATION] [SECURE_SESSION] - connectionId: %u - Secure-session response queued (secureSessionEstablished: %u, responseStatus: %u)",
         msg.connectionId,
-        secureSessionAccepted ? 1u : 0u,
         secureSessionEstablishedForLog ? 1u : 0u,
-        keyExchangeOk ? 1u : 0u);
+        static_cast<unsigned>(secureSessionHelloResponsePacket.status));
 }

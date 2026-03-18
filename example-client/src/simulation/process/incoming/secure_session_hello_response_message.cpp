@@ -30,7 +30,7 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloR
         networkState.secureSessionEstablished = false;
         RC2D_log(
             RC2D_LOG_WARN,
-            "[CLIENT] [SIMULATION] [SECURE_SESSION] Rejected by server (status=%u).",
+            "[CLIENT] [SIMULATION] [SECURE_SESSION] - Secure-session rejected by server (status=%u).",
             static_cast<unsigned>(packet.status));
         return;
     }
@@ -45,7 +45,7 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloR
         networkState.secureSessionEstablished = false;
         RC2D_log(
             RC2D_LOG_WARN,
-            "[CLIENT] [SIMULATION] [SECURE_SESSION] Nonce mismatch in hello response.");
+            "[CLIENT] [SIMULATION] [SECURE_SESSION] - Nonce mismatch in secure-session hello response.");
         return;
     }
 
@@ -55,7 +55,7 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloR
         networkState.secureSessionEstablished = false;
         RC2D_log(
             RC2D_LOG_ERROR,
-            "[CLIENT] [SIMULATION] [SECURE_SESSION] Invalid server attestation signature.");
+            "[CLIENT] [SIMULATION] [SECURE_SESSION] - Invalid server attestation signature.");
         return;
     }
 
@@ -65,7 +65,7 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloR
         networkState.secureSessionEstablished = false;
         RC2D_log(
             RC2D_LOG_ERROR,
-            "[CLIENT] [SIMULATION] [SECURE_SESSION] Invalid attestation time window.");
+            "[CLIENT] [SIMULATION] [SECURE_SESSION] - Invalid attestation time window.");
         return;
     }
 
@@ -75,7 +75,7 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloR
         networkState.secureSessionEstablished = false;
         RC2D_log(
             RC2D_LOG_ERROR,
-            "[CLIENT] [SIMULATION] [SECURE_SESSION] Attestation TTL too large (window=%llu).",
+            "[CLIENT] [SIMULATION] [SECURE_SESSION] - Attestation TTL too large (window=%llu).",
             static_cast<unsigned long long>(validityWindow));
         return;
     }
@@ -87,7 +87,7 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloR
         networkState.secureSessionEstablished = false;
         RC2D_log(
             RC2D_LOG_WARN,
-            "[CLIENT] [SIMULATION] [SECURE_SESSION] Attestation expired (now=%llu, exp=%llu).",
+            "[CLIENT] [SIMULATION] [SECURE_SESSION] - Attestation expired (now=%llu, exp=%llu).",
             static_cast<unsigned long long>(nowUnixSeconds),
             static_cast<unsigned long long>(packet.expiresAtUnixSeconds));
         return;
@@ -105,7 +105,7 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloR
         networkState.secureSessionEstablished = false;
         RC2D_log(
             RC2D_LOG_ERROR,
-            "[CLIENT] [SIMULATION] [SECURE_SESSION] Failed to derive session keys.");
+            "[CLIENT] [SIMULATION] [SECURE_SESSION] - Failed to derive session keys.");
         return;
     }
 
@@ -119,7 +119,7 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloR
     // Log de succes.
     RC2D_log(
         RC2D_LOG_INFO,
-        "[CLIENT] [SIMULATION] [SECURE_SESSION] Established: nonceEcho=ok signature=ok ttl=ok keysDerived=ok encryptionEnabled=1 (issuedAt=%llu expiresAt=%llu).",
+        "[CLIENT] [SIMULATION] [SECURE_SESSION] - Secure-session established (nonceEcho=ok, signature=ok, ttl=ok, keysDerived=ok, encryption=enabled, issuedAt=%llu, expiresAt=%llu).",
         static_cast<unsigned long long>(packet.issuedAtUnixSeconds),
         static_cast<unsigned long long>(packet.expiresAtUnixSeconds));
 

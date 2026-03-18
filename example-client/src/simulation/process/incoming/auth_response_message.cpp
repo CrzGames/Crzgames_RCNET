@@ -18,15 +18,14 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleAuthResponseMessage
         networkState.authTokenValidated = true;
         RC2D_log(
             RC2D_LOG_INFO,
-            "[CLIENT] [SIMULATION] [AUTH] Auth response processed: token accepted.");
+            "[CLIENT] [SIMULATION] [AUTH] - Auth response processed: token accepted.");
     }
     else
     {
         networkState.authTokenValidated = false;
         RC2D_log(
             RC2D_LOG_WARN,
-            "[CLIENT] [SIMULATION] [AUTH] Auth response processed: token rejected (status=%u).",
+            "[CLIENT] [SIMULATION] [AUTH] - Auth response processed: token rejected (status=%u).",
             static_cast<unsigned>(networkInToSimMessage.authResponsePacket.status));
     }
 }
-

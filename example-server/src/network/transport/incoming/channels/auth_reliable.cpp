@@ -20,14 +20,14 @@ void ServerNetworkIncoming_Channel_AuthReliable(
         // Si la désérialisation échoue, le packet est invalide ou mal formé.
         // Log d’avertissement indiquant que le packet d’authentification est invalide.
         RCNET_log(RCNET_LOG_WARN,
-                  "[SERVER] [NETWORK_IN] [AUTH] - Failed to deserialize auth packet from connectionId=%u\n",
+                  "[SERVER] [NETWORK_IN] [AUTH] - connectionId: %u - Failed to deserialize auth packet\n",
                   connectionId);
         return;
     }
 
     // Log d’information indiquant que le packet d’authentification a été reçu avec succès.
     RCNET_log(RCNET_LOG_INFO,
-              "[SERVER] [NETWORK_IN] [AUTH] - Packet received from connectionId=%u (size=%u bytes)\n",
+              "[SERVER] [NETWORK_IN] [AUTH] - connectionId: %u - Auth packet received (size: %u bytes)\n",
               connectionId,
               (unsigned)event->packet->dataLength);
 

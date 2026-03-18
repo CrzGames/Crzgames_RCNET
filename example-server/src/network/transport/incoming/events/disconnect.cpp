@@ -51,6 +51,6 @@ void ServerNetworkIncoming_Event_HandleDisconnect(
 
     // Log l'événement de déconnexion avec l'identifiant de connexion concerné.
     RCNET_log(RCNET_LOG_INFO,
-              "[SERVER] [NETWORK_IN] [DISCONNECT] - connectionId=%u\n",
+              "[SERVER] [NETWORK_IN] [DISCONNECT] - connectionId: %u - Transport disconnected\n",
               connectionId);
 }

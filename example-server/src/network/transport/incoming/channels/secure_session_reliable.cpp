@@ -21,14 +21,14 @@ void ServerNetworkIncoming_Channel_SecureSessionReliable(
         // Si la désérialisation échoue, le packet est invalide ou mal formé.
         // Log d’avertissement indiquant que le packet de handshake est invalide.
         RCNET_log(RCNET_LOG_WARN,
-                  "[SERVER] [NETWORK_IN] [SECURE_SESSION] - Failed to deserialize secure session packet from connectionId=%u\n",
+                  "[SERVER] [NETWORK_IN] [SECURE_SESSION] - connectionId: %u - Failed to deserialize secure-session hello packet\n",
                   connectionId);
         return;
     }
 
     // Log d’information indiquant que le packet de session sécurisée a été reçu avec succès.
     RCNET_log(RCNET_LOG_INFO,
-              "[SERVER] [NETWORK_IN] [SECURE_SESSION] - Packet received from connectionId: %u - Packet size: %u bytes\n",
+              "[SERVER] [NETWORK_IN] [SECURE_SESSION] - connectionId: %u - Secure-session hello packet received (size: %u bytes)\n",
               connectionId,
               (unsigned)event->packet->dataLength);
 
@@ -52,7 +52,7 @@ void ServerNetworkIncoming_Channel_SecureSessionReliable(
 
         RCNET_log(
             RCNET_LOG_ERROR,
-            "[SERVER] [NETWORK_IN] [SECURE_SESSION] - Network protocol version mismatch with connectionId: %u - client=%u.%u.%u vs server=%u.%u.%u. Disconnecting client.\n",
+            "[SERVER] [NETWORK_IN] [SECURE_SESSION] - connectionId: %u - Network protocol version mismatch (client=%u.%u.%u, server=%u.%u.%u). Disconnecting client.\n",
             connectionId,
             static_cast<unsigned>(clientVersionMajor),
             static_cast<unsigned>(clientVersionMinor),

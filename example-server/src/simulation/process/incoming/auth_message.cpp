@@ -23,7 +23,7 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleAuthMessage(
         {
             // Log d'avertissement pour signaler une connexion inconnue.
             RCNET_log(RCNET_LOG_WARN,
-                      "[SERVER] [SIMULATION] [AUTH] - Unknown connectionId=%u\n",
+                      "[SERVER] [SIMULATION] [AUTH] - connectionId: %u - Session not found\n",
                       msg.connectionId);
 
             // Abandon du traitement.
@@ -37,7 +37,7 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleAuthMessage(
         if (session.authStatus == AuthStatus::Invalid)
         {
             RCNET_log(RCNET_LOG_INFO,
-                      "[SERVER] [SIMULATION] [AUTH] - connectionId=%u auth already invalid, ignoring new auth request\n",
+                      "[SERVER] [SIMULATION] [AUTH] - connectionId: %u - Auth already invalid, ignoring new request\n",
                       msg.connectionId);
             return;
         }
@@ -47,7 +47,7 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleAuthMessage(
         {
             // Log d'information indiquant que l'auth existe déjà.
             RCNET_log(RCNET_LOG_INFO,
-                      "[SERVER] [SIMULATION] [AUTH] - connectionId=%u already authenticated\n",
+                      "[SERVER] [SIMULATION] [AUTH] - connectionId: %u - Already authenticated\n",
                       msg.connectionId);
 
             // Abandon du traitement.
@@ -59,7 +59,7 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleAuthMessage(
         {
             // Log d'information indiquant qu'une demande est déjà en cours.
             RCNET_log(RCNET_LOG_INFO,
-                      "[SERVER] [SIMULATION] [AUTH] - connectionId=%u auth already pending\n",
+                      "[SERVER] [SIMULATION] [AUTH] - connectionId: %u - Auth already pending\n",
                       msg.connectionId);
 
             // Abandon du traitement.
@@ -87,6 +87,6 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleAuthMessage(
 
     // Log d'information confirmant l'envoi de la demande d'authentification.
     RCNET_log(RCNET_LOG_INFO,
-              "[SERVER] [SIMULATION] [AUTH] - connectionId=%u auth request sent to HTTP thread\n",
+              "[SERVER] [SIMULATION] [AUTH] - connectionId: %u - Auth validation request sent to HTTP thread\n",
               msg.connectionId);
 }

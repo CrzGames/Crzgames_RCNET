@@ -52,6 +52,6 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleConnectMessage(
     // Log.
     RC2D_log(
         RC2D_LOG_INFO,
-        "[CLIENT] [SIMULATION] [CONNECT] Secure-session hello packet queued.");
+        "[CLIENT] [SIMULATION] [CONNECT] - Secure-session hello packet queued for server.");
 }
 
