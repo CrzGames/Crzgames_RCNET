@@ -61,7 +61,7 @@ void rc2d_load(void)
     sceneManager.changeScene("splashscreen");
 
     // Connecte le client au serveur de jeu.
-    rc2d_engine_networkConnectToServer("localhost", 12345);
+    rc2d_engine_networkConnectToServer("51.254.137.3", 12345);
 
     // À ce stade, l'initialisation applicative est terminée.
     // Le client peut commencer à accepter et traiter son activité normale.

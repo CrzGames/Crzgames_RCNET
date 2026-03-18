@@ -255,14 +255,14 @@ static bool ServerNetworkOutgoing_IsPeerAllowedToSendPacket(
 
     if (!allowed)
     {
-        RCNET_log(
+        /*RCNET_log(
             RCNET_LOG_DEBUG,
             "[SERVER] [NETWORK_OUT] [GUARD] - blocked send packet for connectionId=%u (transport=%u secureSession=%u encryptedPacket=%u authTokenVerifiedOrNotValid=%u)",
             connectionId,
             session.isTransportConnected ? 1u : 0u,
             session.isSecureSessionEstablished ? 1u : 0u,
             session.isPacketEncryptionEnabled ? 1u : 0u,
-            static_cast<unsigned>(session.authStatus));
+            static_cast<unsigned>(session.authStatus));*/
     }
 
     return allowed;
