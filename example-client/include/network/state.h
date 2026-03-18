@@ -21,7 +21,7 @@ struct NetworkState
 
 
     // ------------------------------------------------------------------------
-    // Crypto - protegee par mutex (thread reseau + simulation)
+    // Session/Crypto - protegee par mutex (thread reseau + simulation)
     // ------------------------------------------------------------------------
 
     // Etat KX (X25519/libsodium crypto_kx):
@@ -30,27 +30,12 @@ struct NetworkState
     ClientCryptoKxState cryptoKxState{};
 
     // Vrai une fois la secure-session validee cote client
-    // (hello response avec status SUCCESS, nonce verifie,
-    // signature verifiee, et cles de session derivees).
+    // (packet server hello response avec status SUCCESS, nonce verifie, signature verifiee, et cles de session derivees).
     bool secureSessionEstablished = false;
-
-    // Vrai des que le client recoit une reponse d'authentification du backend web.
-    // Ce flag indique que l'etape d'authentification a ete traitee.
-    bool authValidated = false;
 
     // Vrai uniquement si le serveur du jeu a valide le token d'authentification
     // (AuthResponse status == SUCCESS).
     bool authTokenValidated = false;
-
-    // Vrai quand le chiffrement transport ENet est actif pour le peer serveur
-    // (peerServer). Dans le flux actuel ce flag passe a true juste apres
-    // secureSessionEstablished.
-    bool encryptionEnabled = false;
-
-    // Vrai apres envoi du packet CLIENT_SECURE_SESSION_HELLO_PACKET_RELIABLE
-    // et avant reception du packet
-    // SERVER_SECURE_SESSION_HELLO_RESPONSE_PACKET_RELIABLE.
-    bool hasPendingSecureSessionHello = false;
 
     // Nonce envoye dans le dernier hello secure-session.
     std::array<uint8_t, CLIENT_SECURE_SESSION_CLIENT_NONCE_BYTES> pendingClientNonce{};
@@ -61,9 +46,8 @@ struct NetworkState
     std::array<uint8_t, crypto_kx_SESSIONKEYBYTES> clientTxKey{};
     std::array<uint8_t, crypto_kx_SESSIONKEYBYTES> clientRxKey{};
 
-    // Mutex de protection des champs crypto/session utilises
-    // depuis plusieurs threads (reseau + simulation).
-    std::mutex cryptoMutex;
+    // Mutex de protection des champs crypto/session utilises depuis plusieurs threads (reseau + simulation).
+    std::mutex sessionCryptoMutex;
 
 
     // --------------------------------------------------------------------------

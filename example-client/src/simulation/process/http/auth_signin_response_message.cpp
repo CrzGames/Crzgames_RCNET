@@ -13,7 +13,7 @@ void ClientSimulation_ProcessHttpDispatcher_HandleAuthSignInResponseMessage(
     bool authValidated = false;
     bool authTokenValidated = false;
     {
-        std::lock_guard<std::mutex> lock(networkState.cryptoMutex);
+        std::lock_guard<std::mutex> lock(networkState.sessionCryptoMutex);
         secureSessionEstablished = networkState.secureSessionEstablished;
         authValidated = networkState.authValidated;
         authTokenValidated = networkState.authTokenValidated;

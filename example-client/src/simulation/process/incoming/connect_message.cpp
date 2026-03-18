@@ -14,16 +14,6 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleConnectMessage(
     SimulationToNetworkOUTQueue& simToNetQueue,
     const NetworkINToSimulationMessage& networkInToSimMessage)
 {
-    // Ce handler ne doit traiter que les evenements de connexion.
-    if (networkInToSimMessage.type != NetworkINToSimulationMessageType::SERVER_EVENT_CONNECT)
-    {
-        RC2D_log(
-            RC2D_LOG_WARN,
-            "[CLIENT] [SIMULATION] [CONNECT] Ignored message type=%u in connect handler.",
-            static_cast<unsigned>(networkInToSimMessage.type));
-        return;
-    }
-
     // Construire le packet secure-session hello envoye au serveur.
     ClientSecureSessionHelloPacketReliable secureSessionHelloPacket{};
 
@@ -41,23 +31,7 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleConnectMessage(
 
     {
         // Reinitialiser l'etat de session avant de lancer un nouveau handshake.
-        std::lock_guard<std::mutex> lock(networkState.cryptoMutex);
-
-        // La secure-session n'est pas encore etablie.
-        networkState.secureSessionEstablished = false;
-
-        // Aucune reponse d'auth n'a encore ete traitee pour cette connexion.
-        networkState.authValidated = false;
-
-        // Le token n'est pas encore valide.
-        networkState.authTokenValidated = false;
-
-        // Le chiffrement transport est desactive tant que la secure-session
-        // n'est pas acceptee par le serveur.
-        networkState.encryptionEnabled = false;
-
-        // On marque qu'un hello secure-session est en attente de reponse.
-        networkState.hasPendingSecureSessionHello = true;
+        std::lock_guard<std::mutex> lock(networkState.sessionCryptoMutex);
 
         // Memoriser le nonce envoye pour valider clientNonceEcho ensuite.
         networkState.pendingClientNonce = secureSessionHelloPacket.clientNonce;
@@ -75,6 +49,7 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleConnectMessage(
     // Pousser le message dans la queue du thread reseau sortant.
     simToNetQueue.push(outMessage);
 
+    // Log.
     RC2D_log(
         RC2D_LOG_INFO,
         "[CLIENT] [SIMULATION] [CONNECT] Secure-session hello packet queued.");

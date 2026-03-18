@@ -44,8 +44,8 @@ static bool ClientNetworkEncryption_TryLoadTxKey(
         return false;
     }
 
-    std::lock_guard<std::mutex> lock(networkState.cryptoMutex);
-    if (!networkState.encryptionEnabled || !networkState.secureSessionEstablished)
+    std::lock_guard<std::mutex> lock(networkState.sessionCryptoMutex);
+    if (!networkState.secureSessionEstablished)
     {
         return false;
     }
@@ -72,8 +72,8 @@ static bool ClientNetworkEncryption_TryLoadRxKey(
         return false;
     }
 
-    std::lock_guard<std::mutex> lock(networkState.cryptoMutex);
-    if (!networkState.encryptionEnabled || !networkState.secureSessionEstablished)
+    std::lock_guard<std::mutex> lock(networkState.sessionCryptoMutex);
+    if (!networkState.secureSessionEstablished)
     {
         return false;
     }

@@ -19,32 +19,16 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloR
     const ServerSecureSessionHelloResponsePacketReliable& packet = networkInToSimMessage.secureSessionHelloResponsePacket;
 
     // Verrouiller l'etat partage (simulation + reseau).
-    std::lock_guard<std::mutex> lock(networkState.cryptoMutex);
+    std::lock_guard<std::mutex> lock(networkState.sessionCryptoMutex);
 
     // Si le serveur annonce un echec de handshake, on reset l'etat de session.
     if (packet.status != ServerSecureSessionHelloResponseStatus::SUCCESS)
     {
         networkState.secureSessionEstablished = false;
-        networkState.authValidated = false;
-        networkState.authTokenValidated = false;
-        networkState.encryptionEnabled = false;
-        networkState.hasPendingSecureSessionHello = false;
-
         RC2D_log(
             RC2D_LOG_WARN,
             "[CLIENT] [SIMULATION] [SECURE_SESSION] Rejected by server (status=%u).",
             static_cast<unsigned>(packet.status));
-        return;
-    }
-
-    // Le client doit avoir un hello en attente pour accepter cette reponse.
-    if (!networkState.hasPendingSecureSessionHello)
-    {
-        networkState.secureSessionEstablished = false;
-        networkState.encryptionEnabled = false;
-        RC2D_log(
-            RC2D_LOG_WARN,
-            "[CLIENT] [SIMULATION] [SECURE_SESSION] Received response without pending hello.");
         return;
     }
 
@@ -56,8 +40,6 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloR
             networkState.pendingClientNonce.size()) != 0)
     {
         networkState.secureSessionEstablished = false;
-        networkState.encryptionEnabled = false;
-        networkState.hasPendingSecureSessionHello = false;
         RC2D_log(
             RC2D_LOG_WARN,
             "[CLIENT] [SIMULATION] [SECURE_SESSION] Nonce mismatch in hello response.");
@@ -68,8 +50,6 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloR
     if (!ClientSecureSession_VerifyServerHelloResponseAttestation(packet))
     {
         networkState.secureSessionEstablished = false;
-        networkState.encryptionEnabled = false;
-        networkState.hasPendingSecureSessionHello = false;
         RC2D_log(
             RC2D_LOG_ERROR,
             "[CLIENT] [SIMULATION] [SECURE_SESSION] Invalid server attestation signature.");
@@ -80,8 +60,6 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloR
     if (packet.expiresAtUnixSeconds < packet.issuedAtUnixSeconds)
     {
         networkState.secureSessionEstablished = false;
-        networkState.encryptionEnabled = false;
-        networkState.hasPendingSecureSessionHello = false;
         RC2D_log(
             RC2D_LOG_ERROR,
             "[CLIENT] [SIMULATION] [SECURE_SESSION] Invalid attestation time window.");
@@ -92,8 +70,6 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloR
     if (validityWindow > CLIENT_SECURE_SESSION_SIGNATURE_TTL_SECONDS)
     {
         networkState.secureSessionEstablished = false;
-        networkState.encryptionEnabled = false;
-        networkState.hasPendingSecureSessionHello = false;
         RC2D_log(
             RC2D_LOG_ERROR,
             "[CLIENT] [SIMULATION] [SECURE_SESSION] Attestation TTL too large (window=%llu).",
@@ -106,8 +82,6 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloR
     if (nowUnixSeconds > packet.expiresAtUnixSeconds)
     {
         networkState.secureSessionEstablished = false;
-        networkState.encryptionEnabled = false;
-        networkState.hasPendingSecureSessionHello = false;
         RC2D_log(
             RC2D_LOG_WARN,
             "[CLIENT] [SIMULATION] [SECURE_SESSION] Attestation expired (now=%llu, exp=%llu).",
@@ -126,8 +100,6 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloR
             txKey))
     {
         networkState.secureSessionEstablished = false;
-        networkState.encryptionEnabled = false;
-        networkState.hasPendingSecureSessionHello = false;
         RC2D_log(
             RC2D_LOG_ERROR,
             "[CLIENT] [SIMULATION] [SECURE_SESSION] Failed to derive session keys.");
@@ -138,14 +110,8 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloR
     networkState.clientRxKey = rxKey;
     networkState.clientTxKey = txKey;
 
-    // Marquer la secure-session comme etablie.
+    // Marquer la secure-session comme etablie et activer le chiffrement pour le peer serveur.
     networkState.secureSessionEstablished = true;
-
-    // Activer le chiffrement ENet pour le peer serveur.
-    networkState.encryptionEnabled = true;
-
-    // Le hello en attente est maintenant resolu.
-    networkState.hasPendingSecureSessionHello = false;
 
     RC2D_log(
         RC2D_LOG_INFO,

@@ -8,10 +8,7 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleAuthResponseMessage
     const NetworkINToSimulationMessage& networkInToSimMessage)
 {
     // Verrouiller l'etat reseau partage (thread simulation + thread reseau).
-    std::lock_guard<std::mutex> lock(networkState.cryptoMutex);
-
-    // A partir de ce point, on sait qu'une reponse d'auth a ete recue et traitee.
-    networkState.authValidated = true;
+    std::lock_guard<std::mutex> lock(networkState.sessionCryptoMutex);
 
     // Evaluer le statut metier du token:
     // - SUCCESS            => token accepte
