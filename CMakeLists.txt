@@ -619,7 +619,7 @@ if(RCNET_BUILD_EXAMPLE)
   # ============================================================
   # Environnement de build pour l’exemple client
   # ============================================================
-  set(GAME_ENV "dev" CACHE STRING "Environment for the example client (dev, staging, production)")
+  set(GAME_ENV "staging" CACHE STRING "Environment for the example client (dev, staging, production)")
 
   # ============================================================
   # client example compile definitions
