@@ -27,8 +27,8 @@ struct ServerConfig
     // Fréquence de tick de simulation du serveur en Hz (ex: 128)
     static constexpr uint32_t simulationTickRateHz = 128;
 
-    // Fréquence de tick réseau OUT du serveur en Hz (ex: 32)
-    static constexpr uint32_t networkOutgoingTickRateHz = 32;
+    // Fréquence de tick réseau OUT du serveur en Hz (ex: 64)
+    static constexpr uint32_t networkOutgoingTickRateHz = 64;
 
     // Durée de poll réseau entrant en ms (ex: 1)
     static constexpr uint32_t networkIncomingPollTimeoutMs = 1;

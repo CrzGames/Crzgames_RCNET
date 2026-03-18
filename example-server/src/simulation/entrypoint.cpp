@@ -143,10 +143,10 @@ void ServerSimulation_DrainNetworkIncomingAndHttpAndNatsMessages_And_RunSimulati
     }
 
     // Publier les metrics simulation vers NATS selon une cadence temps reel.
-    ServerSimulation_PublishGameserverSimulationEtatMetricsToNatsIfNeeded(
+    /*ServerSimulation_PublishGameserverSimulationEtatMetricsToNatsIfNeeded(
         serverTimeNs,
         gameserverSimulationEtatMetricsPayload,
-        simulationToNatsQueue);
+        simulationToNatsQueue);*/
 
     // Produire les messages de synchronisation d'horloge au rythme de 3 Hz.
     /*if (rcnet_engine_isNetworkOutgoingProductionTick(currentTick, 3))
