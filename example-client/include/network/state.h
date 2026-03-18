@@ -21,6 +21,11 @@ struct NetworkState
     // ENetPeer* du serveur, initialement nullptr, valide apres connexion reussie.
     ENetPeer* peerServer = nullptr;
 
+    // Adresse du serveur de jeu, recuperee depuis la reponse sign-in du backend d'authentification.
+    const char* peerServerAddress = "51.254.137.3";
+
+    // Port du serveur de jeu, recuperee depuis la reponse sign-in du backend d'authentification.
+    uint16_t peerServerPort = 12345;
 
     // ------------------------------------------------------------------------
     // Session/Crypto - protegee par mutex (thread reseau + simulation)

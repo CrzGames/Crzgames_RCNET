@@ -62,8 +62,8 @@ void ClientSimulation_ProcessHttpDispatcher_HandleAuthSignInResponseMessage(
         RC2D_log(
             RC2D_LOG_INFO,
             "[CLIENT] [SIMULATION] [AUTH_SIGNIN] - Connecting to game server (host=%s, port=%u).",
-            "localhost",
-            12345u);
-        rc2d_engine_networkConnectToServer("localhost", 12345);
+            networkState.peerServerAddress,
+            static_cast<unsigned>(networkState.peerServerPort));
+        rc2d_engine_networkConnectToServer(networkState.peerServerAddress, networkState.peerServerPort);
     }
 }

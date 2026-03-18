@@ -69,6 +69,31 @@ static bool ClientHttp_AuthSignUp_ReadRequiredString(
     return true;
 }
 
+// Retourne true si l'URL est en HTTPS.
+static bool ClientHttp_AuthSignUp_IsHttpsUrl(const std::string& url)
+{
+    return url.rfind("https://", 0) == 0;
+}
+
+// Configure les options TLS cURL pour les endpoints HTTPS.
+static void ClientHttp_AuthSignUp_ConfigureTls(CURL* curl, const std::string& url)
+{
+    if (curl == nullptr || !ClientHttp_AuthSignUp_IsHttpsUrl(url))
+    {
+        return;
+    }
+
+    // Exiger la verification TLS du certificat serveur.
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+
+#if defined(CURLSSLOPT_NATIVE_CA)
+    // Demande l'utilisation du magasin de certificats natif si
+    // le backend TLS courant de libcurl le supporte.
+    curl_easy_setopt(curl, CURLOPT_SSL_OPTIONS, static_cast<long>(CURLSSLOPT_NATIVE_CA));
+#endif
+}
+
 AuthSignUpHTTPResponse ClientHttp_Auth_SignUpRequest(const AuthSignUpHTTPRequest& request)
 {
     // Reponse renvoyee au thread HTTP appelant.
@@ -140,6 +165,7 @@ AuthSignUpHTTPResponse ClientHttp_Auth_SignUpRequest(const AuthSignUpHTTPRequest
 
     // Buffer qui accumule le body de reponse HTTP.
     std::string responseBody;
+    char curlErrorBuffer[CURL_ERROR_SIZE] = {0};
 
     // Liste de headers HTTP a envoyer.
     curl_slist* headers = nullptr;
@@ -152,6 +178,9 @@ AuthSignUpHTTPResponse ClientHttp_Auth_SignUpRequest(const AuthSignUpHTTPRequest
 
     // Configure l'URL cible.
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+
+    // Buffer detaille d'erreurs cURL (TLS, DNS, socket...).
+    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, curlErrorBuffer);
 
     // Force la methode HTTP POST.
     curl_easy_setopt(curl, CURLOPT_POST, 1L);
@@ -180,6 +209,9 @@ AuthSignUpHTTPResponse ClientHttp_Auth_SignUpRequest(const AuthSignUpHTTPRequest
     // Timeout global de requete (ms).
     curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 10000L);
 
+    // Configuration TLS pour les URLs HTTPS.
+    ClientHttp_AuthSignUp_ConfigureTls(curl, url);
+
     // Log de debug/trace pour savoir quel endpoint est appele.
     RC2D_log(
         RC2D_LOG_INFO,
@@ -207,8 +239,11 @@ AuthSignUpHTTPResponse ClientHttp_Auth_SignUpRequest(const AuthSignUpHTTPRequest
         // Reponse metier: echec.
         response.success = false;
 
-        // Message detaille base sur le code curl.
-        response.message = std::string("Signup request failed: ") + curl_easy_strerror(curlCode);
+        // Message detaille base sur le buffer d'erreur cURL si disponible.
+        const char* detailedError = (curlErrorBuffer[0] != '\0')
+            ? curlErrorBuffer
+            : curl_easy_strerror(curlCode);
+        response.message = std::string("Signup request failed: ") + detailedError;
 
         // Log technique pour diagnostic.
         RC2D_log(
