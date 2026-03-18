@@ -1,7 +1,8 @@
 #pragma once
 
-#include <array> // std::array
-#include <mutex> // std::mutex
+#include <array>       // std::array
+#include <mutex>       // std::mutex
+#include <string_view> // std::string_view
 
 #include <rcenet/RCENET_enet.h> // ENetPeer
 #include <sodium.h>             // crypto_kx_SESSIONKEYBYTES
@@ -17,6 +18,7 @@ struct NetworkState
 
     // ENetPeer* du serveur, initialement nullptr, valide apres connexion reussie.
     ENetPeer* peerServer = nullptr;
+
 
     // ------------------------------------------------------------------------
     // Crypto - protegee par mutex (thread reseau + simulation)
@@ -63,4 +65,19 @@ struct NetworkState
     // Mutex de protection des champs crypto/session utilises
     // depuis plusieurs threads (reseau + simulation).
     std::mutex cryptoMutex;
+
+
+    // --------------------------------------------------------------------------
+    // API externe (backend d'authentification, pour signup/signin)
+    // --------------------------------------------------------------------------
+
+#if GAME_ENV_DEV
+    static constexpr std::string_view baseUrlApi = "http://localhost:3400";
+#elif GAME_ENV_STAGING
+    static constexpr std::string_view baseUrlApi = "https://staging.api.aetherroyale.crzgames.com";
+#elif GAME_ENV_PRODUCTION
+    static constexpr std::string_view baseUrlApi = "https://api.aetherroyale.crzgames.com";
+#else
+#error "Define one of GAME_ENV_DEV, GAME_ENV_STAGING or GAME_ENV_PRODUCTION"
+#endif
 };
