@@ -3,6 +3,7 @@
 #include "core/context.h"
 #include "network/transport/incoming/entrypoint.h"
 #include "network/transport/encryption/enet_host_xchacha20poly1305_encryptor.h"
+#include "network/transport/compression/enet_host_lz4_compressor.h"
 #include "network/transport/outgoing/entrypoint.h"
 #include "simulation/entrypoint.h"
 #include "services/http/entrypoint.h"
@@ -12,6 +13,12 @@
 #include "services/http/client.h"
 
 #include <RCNET/RCNET.h>
+
+void rcnet_unload(void)
+{
+    // Nettoie le client HTTP global.
+    ServerHttp_ShutdownClient();
+}
 
 void rcnet_load(void)
 {
@@ -59,16 +66,11 @@ void rcnet_load(void)
     RCNET_log(RCNET_LOG_INFO, "Server is ready");
 }
 
-void rcnet_unload(void)
+void rcnet_http_update(void)
 {
-    // Nettoie le client HTTP global.
-    ServerHttp_ShutdownClient();
-}
-
-void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
-{
-    // Délègue tout le traitement des événements ENet entrants à la couche réseau applicative.
-    ServerNetworkIncoming_ProcessENetEvent(host, event);
+    // Exécute une unité de travail du thread HTTP.
+    // Cette fonction peut bloquer en attendant un job depuis la queue Simulation -> HTTP.
+    ServerHttp_WaitAndProcessOneSimulationMessage_And_RunHttpLogic();
 }
 
 void rcnet_network_host_setup(ENetHost* host)
@@ -79,8 +81,16 @@ void rcnet_network_host_setup(ENetHost* host)
     }
 
     // Installe l'encryptor au niveau host une seule fois juste après enet_host_create.
-    // Le chiffrement effectif reste piloté peer par peer via isPacketEncryptionEnabled.
     ServerNetworkEncryption_EnsureHostEncryptorInstalled(host);
+
+    // Installe le compresseur au niveau host une seule fois juste après enet_host_create.
+    ServerNetworkCompression_EnsureHostCompressorInstalled(host);
+}
+
+void rcnet_network_incoming_update(ENetHost* host, const ENetEvent* event)
+{
+    // Délègue tout le traitement des événements ENet entrants à la couche réseau applicative.
+    ServerNetworkIncoming_ProcessENetEvent(host, event);
 }
 
 void rcnet_network_outgoing_update(ENetHost* host)
@@ -105,13 +115,6 @@ void rcnet_simulation_update(uint64_t currentTick, uint64_t serverTimeNs, uint64
     );
 }
 
-void rcnet_http_update(void)
-{
-    // Exécute une unité de travail du thread HTTP.
-    // Cette fonction peut bloquer en attendant un job depuis la queue Simulation -> HTTP.
-    ServerHttp_WaitAndProcessOneSimulationMessage_And_RunHttpLogic();
-}
-
 void rcnet_nats_update(RCNET_NATSContext* natsContext)
 {
     // Exécute une unité de travail du thread NATS.
@@ -121,6 +124,8 @@ void rcnet_nats_update(RCNET_NATSContext* natsContext)
 
 void rcnet_wake_blocking_threads(void)
 {
+    // Demande aux threads bloqués sur les queues Simulation -> HTTP 
+    // et Simulation -> NATS de se réveiller pour terminer proprement.
     GetSimulationToHttpQueue().stop();
     GetSimulationToNatsQueue().stop();
 }

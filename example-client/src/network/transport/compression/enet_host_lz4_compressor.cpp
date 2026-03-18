@@ -4,7 +4,8 @@
 #include <limits>  // std::numeric_limits
 #include <vector>  // std::vector
 
-#include <lz4/lz4.h>     // LZ4_compress_default, LZ4_decompress_safe
+#include <lz4/lz4.h>     // LZ4_decompress_safe
+#include <lz4/lz4hc.h>   // LZ4_compress_HC, LZ4HC_CLEVEL_MAX
 #include <RC2D/RC2D.h> // RC2D_log
 
 // Contexte du compresseur LZ4.
@@ -91,14 +92,21 @@ static size_t ENET_CALLBACK ClientNetworkCompression_Lz4CompressCallback(
         return 0;
     }
 
-    // Cas invalides : rien a compresser, ou sortie trop petite.
-    if (inLimit == 0 || inLimit > outLimit)
+    // Cas invalides : rien a compresser, ou sortie vide.
+    if (inLimit == 0 || outLimit == 0)
     {
         RC2D_log(
             RC2D_LOG_WARN,
             "[CLIENT] [NETWORK_COMPRESSION] [COMPRESS] - invalid sizes (inLimit=%zu outLimit=%zu)",
             inLimit,
             outLimit);
+        return 0;
+    }
+
+    // ENet ne garde la compression que si la sortie est strictement plus petite.
+    // Si le buffer de sortie est plus petit que l'entree, on skip silencieusement.
+    if (inLimit > outLimit)
+    {
         return 0;
     }
 
@@ -132,22 +140,20 @@ static size_t ENET_CALLBACK ClientNetworkCompression_Lz4CompressCallback(
         return 0;
     }
 
-    // Compression LZ4 "one-shot".
-    // Retour > 0 : taille compressee.
-    // Retour <= 0 : echec.
-    const int compressedSize = LZ4_compress_default(
+    // Mode "ratio maximum" avec LZ4HC:
+    // - compression plus couteuse CPU
+    // - meilleur ratio que LZ4 classique
+    // Si outLimit est trop petit, LZ4HC renvoie 0 et ENet enverra en clair non compresse.
+    const int compressedSize = LZ4_compress_HC(
         reinterpret_cast<const char*>(input.data()),
         reinterpret_cast<char*>(outData),
         static_cast<int>(inLimit),
-        static_cast<int>(outLimit));
+        static_cast<int>(outLimit),
+        LZ4HC_CLEVEL_MAX);
 
+    // Retour <= 0: echec de compression dans le budget de sortie.
     if (compressedSize <= 0)
     {
-        RC2D_log(
-            RC2D_LOG_WARN,
-            "[CLIENT] [NETWORK_COMPRESSION] [COMPRESS] - LZ4_compress_default failed (inLimit=%zu outLimit=%zu)",
-            inLimit,
-            outLimit);
         return 0;
     }
 

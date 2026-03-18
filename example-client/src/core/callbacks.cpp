@@ -61,7 +61,7 @@ void rc2d_load(void)
     sceneManager.changeScene("splashscreen");
 
     // Connecte le client au serveur de jeu.
-    rc2d_engine_networkConnectToServer("51.254.137.3", 12345);
+    rc2d_engine_networkConnectToServer("localhost", 12345);
 
     // À ce stade, l'initialisation applicative est terminée.
     // Le client peut commencer à accepter et traiter son activité normale.
@@ -81,11 +81,11 @@ void rc2d_network_host_setup(ENetHost* host)
         return;
     }
 
-    // Installe le compresseur au niveau host une seule fois juste après enet_host_create.
-    //ClientNetworkCompression_EnsureHostCompressorInstalled(host);
-
     // Installe l'encryptor au niveau host une seule fois juste après enet_host_create.
     ClientNetworkEncryption_EnsureHostEncryptorInstalled(host);
+
+    // Installe le compresseur au niveau host une seule fois juste après enet_host_create.
+    ClientNetworkCompression_EnsureHostCompressorInstalled(host);
 }
 
 void rc2d_network_incoming_update(ENetHost* host, const ENetEvent* event)
