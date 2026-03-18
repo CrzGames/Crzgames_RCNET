@@ -14,6 +14,7 @@
 #include <SDL3/SDL_main.h>
 
 #include "core/callbacks.h"
+#include "network/channels/channel.h"
 
 #include <RC2D/RC2D.h>
 
@@ -62,6 +63,7 @@ const RC2D_EngineConfig* rc2d_engine_setup(int argc, char* argv[])
     config->callbacks->rc2d_http_update = rc2d_http_update;
     config->callbacks->rc2d_websocket_update = rc2d_websocket_update;
     config->callbacks->rc2d_wake_blocking_threads = rc2d_wake_blocking_threads;
+    config->networkClientConfig->channelCount = NetworkChannel::COUNT;
     config->logicalPresentationMode = RC2D_LOGICAL_PRESENTATION_OVERSCAN;
     config->pixelartMode = true;
     config->appInfo->name = "Aether Royale";
