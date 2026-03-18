@@ -60,12 +60,12 @@ struct ServerConfig
     static constexpr const char* natsPublicKeyNKey = "UCFS4XRTGO7OUO3GCYYXOU4CYQJRPJ47DKJ2VMPLOX2EFEENU2BG44RW";
     static constexpr const char* natsPrivateKeySeedNKey = "SUAG4ONEN4NCQHDTVEVW4TSYTSTOMSUBI4QOUIBSUQXKAD4HJ5PSK6QLYM";
 #elif SERVER_ENV_STAGING
-    static constexpr const char* natsServerURL = "tls://staging.nats.aetherroyale.crzgames.com:4222";
-    static constexpr bool natsUseTLS = true;
+    static constexpr const char* natsServerURL = "nats://nats.nats.svc.cluster.local:4222";
+    static constexpr bool natsUseTLS = false;
     // En staging, les clés NKey sont fournies via des variables d'environnement pour éviter de les hardcoder dans le code source.
 #elif SERVER_ENV_PRODUCTION
-    static constexpr const char* natsServerURL = "tls://nats.aetherroyale.crzgames.com:4222";
-    static constexpr bool natsUseTLS = true;
+    static constexpr const char* natsServerURL = "nats://nats.nats.svc.cluster.local:4222";
+    static constexpr bool natsUseTLS = false;
     // En production, les clés NKey sont fournies via des variables d'environnement pour éviter de les hardcoder dans le code source.
 #else
 #error "Define one of SERVER_ENV_DEV, SERVER_ENV_STAGING or SERVER_ENV_PRODUCTION"
