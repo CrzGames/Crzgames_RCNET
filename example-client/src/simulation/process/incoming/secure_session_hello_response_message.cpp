@@ -149,5 +149,7 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloR
 
     RC2D_log(
         RC2D_LOG_INFO,
-        "[CLIENT] [SIMULATION] [SECURE_SESSION] Established and packet encryption enabled.");
+        "[CLIENT] [SIMULATION] [SECURE_SESSION] Established: nonceEcho=ok signature=ok ttl=ok keysDerived=ok encryptionEnabled=1 (issuedAt=%llu expiresAt=%llu).",
+        static_cast<unsigned long long>(packet.issuedAtUnixSeconds),
+        static_cast<unsigned long long>(packet.expiresAtUnixSeconds));
 }
