@@ -39,7 +39,7 @@ struct NetworkState
 
     // Token d'authentification récupérer après le signin.
     // au près du backend web d'authentification.
-    std::string authToken;
+    std::string authToken = "";
 
     // Nonce envoye dans le dernier hello secure-session.
     std::array<uint8_t, CLIENT_SECURE_SESSION_CLIENT_NONCE_BYTES> pendingClientNonce{};

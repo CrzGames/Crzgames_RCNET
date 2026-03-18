@@ -78,11 +78,15 @@ void ServerSimulation_ProcessHttpDispatcher_HandleAuthValidateTokenResponseMessa
             // Indiquer l'échec dans la réponse réseau.
             authResponsePacket.status = ServerAuthResponseStatus::INVALID_AUTH_TOKEN;
 
+            // Eviter un log vide si aucune erreur n'a ete fournie.
+            const char* authFailureReason =
+                session.authErrorMessage.empty() ? "unknown reason" : session.authErrorMessage.c_str();
+
             // Log d'échec d'authentification.
             RCNET_log(RCNET_LOG_INFO,
-                      "[SERVER] [SIMULATION] [AUTH] - connectionId=%u token validation failed: %s\n",
+                      "[SERVER] [SIMULATION] [AUTH] - connectionId=%u token validation failed (%s)\n",
                       httpMessage.connectionId,
-                      session.authErrorMessage.c_str());
+                      authFailureReason);
         }
     }
 

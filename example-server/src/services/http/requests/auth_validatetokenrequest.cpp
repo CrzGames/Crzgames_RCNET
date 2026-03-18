@@ -4,6 +4,26 @@
 
 #include <cJSON.h>
 
+// Build a readable transport-level error for auth token validation requests.
+static std::string ServerHttp_BuildValidateTokenTransportErrorMessage(httplib::Error error)
+{
+    switch (error)
+    {
+    case httplib::Error::Connection:
+        return "HTTP transport error (connection failed)";
+    case httplib::Error::ConnectionTimeout:
+    case httplib::Error::Timeout:
+        return "HTTP transport error (request timed out)";
+    case httplib::Error::Read:
+    case httplib::Error::Write:
+        return "HTTP transport error (socket read/write failure)";
+    case httplib::Error::InvalidHeaders:
+        return "HTTP transport error (invalid request headers; check auth token format)";
+    default:
+        return "HTTP transport error (" + httplib::to_string(error) + ")";
+    }
+}
+
 AuthTokenVerificationHTTPResponse ServerHttp_Auth_ValidateTokenRequest(const AuthTokenVerificationHTTPRequest& request)
 {
     // Réponse finale renvoyée au thread HTTP appelant.
@@ -29,7 +49,7 @@ AuthTokenVerificationHTTPResponse ServerHttp_Auth_ValidateTokenRequest(const Aut
     if (!result)
     {
         response.isValid = false;
-        response.errorMessage = "HTTP request failed";
+        response.errorMessage = ServerHttp_BuildValidateTokenTransportErrorMessage(result.error());
         return response;
     }
 
@@ -115,3 +135,4 @@ AuthTokenVerificationHTTPResponse ServerHttp_Auth_ValidateTokenRequest(const Aut
     cJSON_Delete(responseRoot);
     return response;
 }
+
