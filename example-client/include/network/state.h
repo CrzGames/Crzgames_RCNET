@@ -1,7 +1,9 @@
 #pragma once
 
 #include <array>       // std::array
+#include <cstdint>     // uint16_t
 #include <mutex>       // std::mutex
+#include <string>      // std::string
 #include <string_view> // std::string_view
 
 #include <rcenet/RCENET_enet.h> // ENetPeer
@@ -40,6 +42,11 @@ struct NetworkState
     // Token d'authentification récupérer après le signin.
     // au près du backend web d'authentification.
     std::string authToken = "";
+
+    // Endpoint Quilkin recupere depuis la reponse sign-in backend.
+    // Utilisable plus tard pour la connexion reseau du client.
+    std::string quilkinDns = "";
+    uint16_t quilkinPort = 0;
 
     // Nonce envoye dans le dernier hello secure-session.
     std::array<uint8_t, CLIENT_SECURE_SESSION_CLIENT_NONCE_BYTES> pendingClientNonce{};

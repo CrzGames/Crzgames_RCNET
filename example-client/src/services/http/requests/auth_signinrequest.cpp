@@ -44,60 +44,29 @@ static size_t ClientHttp_AuthSignIn_WriteResponseBodyCallback(
     return byteCount;
 }
 
-// Extraction "best effort" d'un message lisible depuis la reponse JSON backend.
-static void ClientHttp_AuthSignIn_ExtractMessageFromJson(cJSON* jsonRoot, std::string& outMessage)
+// Lit un champ string obligatoire dans un objet JSON.
+static bool ClientHttp_AuthSignIn_ReadRequiredString(
+    const cJSON* jsonObject,
+    const char* key,
+    std::string& outValue)
 {
-    // Sans objet JSON, rien a extraire.
-    if (jsonRoot == nullptr)
+    // Sans objet source ni nom de champ, lecture impossible.
+    if (jsonObject == nullptr || key == nullptr)
     {
-        return;
+        return false;
     }
 
-    // 1) Cas nominal: champ "message".
-    const cJSON* messageItem = cJSON_GetObjectItemCaseSensitive(jsonRoot, "message");
-    if (cJSON_IsString(messageItem) && messageItem->valuestring != nullptr)
+    // Chercher le champ cible dans l'objet.
+    const cJSON* valueItem = cJSON_GetObjectItemCaseSensitive(jsonObject, key);
+    if (!cJSON_IsString(valueItem) || valueItem->valuestring == nullptr)
     {
-        // Copie le message dans la sortie.
-        outMessage = messageItem->valuestring;
-        // Message trouve, fin de la fonction.
-        return;
+        // Echec si le champ est absent ou n'est pas une string valide.
+        return false;
     }
 
-    // 2) Fallback: champ "error".
-    const cJSON* errorItem = cJSON_GetObjectItemCaseSensitive(jsonRoot, "error");
-    if (cJSON_IsString(errorItem) && errorItem->valuestring != nullptr)
-    {
-        // Copie l'erreur dans la sortie.
-        outMessage = errorItem->valuestring;
-        // Message trouve, fin de la fonction.
-        return;
-    }
-
-    // 3) Fallback: tableau "errors".
-    const cJSON* errorsItem = cJSON_GetObjectItemCaseSensitive(jsonRoot, "errors");
-    if (cJSON_IsArray(errorsItem) && cJSON_GetArraySize(errorsItem) > 0)
-    {
-        // Recupere la premiere entree d'erreur.
-        const cJSON* firstError = cJSON_GetArrayItem(errorsItem, 0);
-
-        // Si la premiere entree est une string, on la prend directement.
-        if (cJSON_IsString(firstError) && firstError->valuestring != nullptr)
-        {
-            outMessage = firstError->valuestring;
-            return;
-        }
-
-        // Si la premiere entree est un objet, on tente "message".
-        if (cJSON_IsObject(firstError))
-        {
-            const cJSON* firstErrorMessage = cJSON_GetObjectItemCaseSensitive(firstError, "message");
-            if (cJSON_IsString(firstErrorMessage) && firstErrorMessage->valuestring != nullptr)
-            {
-                outMessage = firstErrorMessage->valuestring;
-                return;
-            }
-        }
-    }
+    // Copier la valeur string en sortie.
+    outValue = valueItem->valuestring;
+    return true;
 }
 
 AuthSignInHTTPResponse ClientHttp_Auth_SignInRequest(const AuthSignInHTTPRequest& request)
@@ -249,68 +218,122 @@ AuthSignInHTTPResponse ClientHttp_Auth_SignInRequest(const AuthSignInHTTPRequest
         return response;
     }
 
-    // Indique si le status HTTP est dans la plage 2xx.
-    const bool httpSuccess = (httpStatusCode >= 200 && httpStatusCode < 300);
-
-    // Pointeur JSON pour parser la reponse, null par defaut.
-    cJSON* responseJson = nullptr;
+    // Memorise le status HTTP dans la reponse metier.
+    response.httpStatusCode = httpStatusCode;
 
     // Parse JSON uniquement si le body n'est pas vide.
+    cJSON* responseJson = nullptr;
     if (!responseBody.empty())
     {
         responseJson = cJSON_Parse(responseBody.c_str());
     }
 
-    // Si parse JSON reussi, essaie de lire success/message depuis le JSON.
+    // ---------------------------------------------------------------------
+    // Cas succes attendu: HTTP 200
+    // Payload:
+    // {
+    //   "token": { "type": "...", "value": "...", "expiresAt": "..." },
+    //   "quilkin_dns": "...",
+    //   "quilkin_port": 7777
+    // }
+    // ---------------------------------------------------------------------
+    if (httpStatusCode == 200)
+    {
+        // Sans JSON valide, payload invalide.
+        if (responseJson == nullptr)
+        {
+            response.success = false;
+            response.message = "Sign-in succeeded with invalid JSON payload.";
+        }
+        else
+        {
+            // Extraire l'objet token.
+            const cJSON* tokenItem = cJSON_GetObjectItemCaseSensitive(responseJson, "token");
+            const cJSON* quilkinPortItem = cJSON_GetObjectItemCaseSensitive(responseJson, "quilkin_port");
+
+            // Lire les champs string obligatoires.
+            const bool tokenTypeOk = cJSON_IsObject(tokenItem) &&
+                ClientHttp_AuthSignIn_ReadRequiredString(tokenItem, "type", response.tokenType);
+            const bool tokenValueOk = cJSON_IsObject(tokenItem) &&
+                ClientHttp_AuthSignIn_ReadRequiredString(tokenItem, "value", response.tokenValue);
+            const bool tokenExpiresAtOk = cJSON_IsObject(tokenItem) &&
+                ClientHttp_AuthSignIn_ReadRequiredString(tokenItem, "expiresAt", response.tokenExpiresAt);
+            const bool quilkinDnsOk =
+                ClientHttp_AuthSignIn_ReadRequiredString(responseJson, "quilkin_dns", response.quilkinDns);
+
+            // Lire quilkin_port (doit etre un entier valide dans [1..65535]).
+            bool quilkinPortOk = false;
+            if (cJSON_IsNumber(quilkinPortItem))
+            {
+                const int port = quilkinPortItem->valueint;
+                if (port > 0 && port <= 65535)
+                {
+                    response.quilkinPort = static_cast<uint16_t>(port);
+                    quilkinPortOk = true;
+                }
+            }
+
+            // Valider completude du payload succes.
+            response.success = tokenTypeOk && tokenValueOk && tokenExpiresAtOk && quilkinDnsOk && quilkinPortOk;
+
+            if (response.success)
+            {
+                response.message = "Sign-in succeeded.";
+            }
+            else
+            {
+                response.message = "Sign-in response payload is missing required fields.";
+            }
+        }
+
+        // Nettoyer l'arbre JSON parse.
+        if (responseJson != nullptr)
+        {
+            cJSON_Delete(responseJson);
+        }
+
+        RC2D_log(
+            response.success ? RC2D_LOG_INFO : RC2D_LOG_ERROR,
+            "[CLIENT] [HTTP] [AUTH_SIGNIN] HTTP status=%ld success=%u message=%s",
+            response.httpStatusCode,
+            response.success ? 1u : 0u,
+            response.message.c_str());
+        return response;
+    }
+
+    // ---------------------------------------------------------------------
+    // Cas echec (ex: HTTP 500)
+    // Payload attendu:
+    // {
+    //   "code": "E_INTERNAL_SERVER_ERROR",
+    //   "message": "Failed to authenticate"
+    // }
+    // ---------------------------------------------------------------------
+    response.success = false;
+
     if (responseJson != nullptr)
     {
-        // Cherche un champ bool "success".
-        const cJSON* successItem = cJSON_GetObjectItemCaseSensitive(responseJson, "success");
+        // Lire les champs d'erreur quand presents.
+        ClientHttp_AuthSignIn_ReadRequiredString(responseJson, "code", response.code);
+        ClientHttp_AuthSignIn_ReadRequiredString(responseJson, "message", response.message);
 
-        // Si le champ success existe et est bien un bool, on l'utilise.
-        if (cJSON_IsBool(successItem))
-        {
-            response.success = cJSON_IsTrue(successItem);
-        }
-        else
-        {
-            // Sinon fallback: derive success depuis code HTTP.
-            response.success = httpSuccess;
-        }
-
-        // Essaie d'extraire un message lisible depuis plusieurs formats backend.
-        ClientHttp_AuthSignIn_ExtractMessageFromJson(responseJson, response.message);
-
-        // Libere l'arbre JSON parse.
+        // Nettoyer l'arbre JSON parse.
         cJSON_Delete(responseJson);
     }
-    else
-    {
-        // Si pas de JSON valide, fallback sur succes HTTP brut.
-        response.success = httpSuccess;
-    }
 
-    // Si aucun message n'a ete recupere, fabrique un message par defaut.
+    // Message fallback si le backend ne fournit pas de message.
     if (response.message.empty())
     {
-        // Message par defaut quand tout est OK.
-        if (response.success)
-        {
-            response.message = "Signin succeeded.";
-        }
-        else
-        {
-            // Message par defaut quand echec HTTP/metier.
-            response.message = std::string("Signin failed (HTTP ") + std::to_string(httpStatusCode) + ").";
-        }
+        response.message = std::string("Sign-in failed (HTTP ") + std::to_string(httpStatusCode) + ").";
     }
 
     // Log final de resultat metier.
     RC2D_log(
-        response.success ? RC2D_LOG_INFO : RC2D_LOG_WARN,
-        "[CLIENT] [HTTP] [AUTH_SIGNIN] HTTP status=%ld success=%u message=%s",
-        httpStatusCode,
+        RC2D_LOG_WARN,
+        "[CLIENT] [HTTP] [AUTH_SIGNIN] HTTP status=%ld success=%u code=%s message=%s",
+        response.httpStatusCode,
         response.success ? 1u : 0u,
+        response.code.empty() ? "<none>" : response.code.c_str(),
         response.message.c_str());
 
     // Retourne la reponse finale au dispatcher HTTP.

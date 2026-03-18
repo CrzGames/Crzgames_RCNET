@@ -44,60 +44,29 @@ static size_t ClientHttp_AuthSignUp_WriteResponseBodyCallback(
     return byteCount;
 }
 
-// Extraction "best effort" d'un message lisible depuis la reponse JSON backend.
-static void ClientHttp_AuthSignUp_ExtractMessageFromJson(cJSON* jsonRoot, std::string& outMessage)
+// Lit un champ string obligatoire dans un objet JSON.
+static bool ClientHttp_AuthSignUp_ReadRequiredString(
+    const cJSON* jsonObject,
+    const char* key,
+    std::string& outValue)
 {
-    // Sans objet JSON, rien a extraire.
-    if (jsonRoot == nullptr)
+    // Sans objet source ni nom de champ, lecture impossible.
+    if (jsonObject == nullptr || key == nullptr)
     {
-        return;
+        return false;
     }
 
-    // 1) Cas nominal: champ "message".
-    const cJSON* messageItem = cJSON_GetObjectItemCaseSensitive(jsonRoot, "message");
-    if (cJSON_IsString(messageItem) && messageItem->valuestring != nullptr)
+    // Chercher le champ cible dans l'objet.
+    const cJSON* valueItem = cJSON_GetObjectItemCaseSensitive(jsonObject, key);
+    if (!cJSON_IsString(valueItem) || valueItem->valuestring == nullptr)
     {
-        // Copie le message dans la sortie.
-        outMessage = messageItem->valuestring;
-        // Message trouve, fin de la fonction.
-        return;
+        // Echec si le champ est absent ou n'est pas une string valide.
+        return false;
     }
 
-    // 2) Fallback: champ "error".
-    const cJSON* errorItem = cJSON_GetObjectItemCaseSensitive(jsonRoot, "error");
-    if (cJSON_IsString(errorItem) && errorItem->valuestring != nullptr)
-    {
-        // Copie l'erreur dans la sortie.
-        outMessage = errorItem->valuestring;
-        // Message trouve, fin de la fonction.
-        return;
-    }
-
-    // 3) Fallback: tableau "errors".
-    const cJSON* errorsItem = cJSON_GetObjectItemCaseSensitive(jsonRoot, "errors");
-    if (cJSON_IsArray(errorsItem) && cJSON_GetArraySize(errorsItem) > 0)
-    {
-        // Recupere la premiere entree d'erreur.
-        const cJSON* firstError = cJSON_GetArrayItem(errorsItem, 0);
-
-        // Si la premiere entree est une string, on la prend directement.
-        if (cJSON_IsString(firstError) && firstError->valuestring != nullptr)
-        {
-            outMessage = firstError->valuestring;
-            return;
-        }
-
-        // Si la premiere entree est un objet, on tente "message".
-        if (cJSON_IsObject(firstError))
-        {
-            const cJSON* firstErrorMessage = cJSON_GetObjectItemCaseSensitive(firstError, "message");
-            if (cJSON_IsString(firstErrorMessage) && firstErrorMessage->valuestring != nullptr)
-            {
-                outMessage = firstErrorMessage->valuestring;
-                return;
-            }
-        }
-    }
+    // Copier la valeur string en sortie.
+    outValue = valueItem->valuestring;
+    return true;
 }
 
 AuthSignUpHTTPResponse ClientHttp_Auth_SignUpRequest(const AuthSignUpHTTPRequest& request)
@@ -252,68 +221,74 @@ AuthSignUpHTTPResponse ClientHttp_Auth_SignUpRequest(const AuthSignUpHTTPRequest
         return response;
     }
 
-    // Indique si le status HTTP est dans la plage 2xx.
-    const bool httpSuccess = (httpStatusCode >= 200 && httpStatusCode < 300);
-
-    // Pointeur JSON pour parser la reponse, null par defaut.
-    cJSON* responseJson = nullptr;
+    // Memorise le status HTTP dans la reponse metier.
+    response.httpStatusCode = httpStatusCode;
 
     // Parse JSON uniquement si le body n'est pas vide.
+    cJSON* responseJson = nullptr;
     if (!responseBody.empty())
     {
         responseJson = cJSON_Parse(responseBody.c_str());
     }
 
-    // Si parse JSON reussi, essaie de lire success/message depuis le JSON.
+    // ---------------------------------------------------------------------
+    // Cas succes attendu: HTTP 201
+    // Payload:
+    // { "message": "Account created successfully" }
+    // ---------------------------------------------------------------------
+    if (httpStatusCode == 201)
+    {
+        response.success = true;
+
+        if (responseJson != nullptr)
+        {
+            ClientHttp_AuthSignUp_ReadRequiredString(responseJson, "message", response.message);
+            cJSON_Delete(responseJson);
+        }
+
+        if (response.message.empty())
+        {
+            response.message = "Account created successfully";
+        }
+
+        RC2D_log(
+            RC2D_LOG_INFO,
+            "[CLIENT] [HTTP] [AUTH_SIGNUP] HTTP status=%ld success=%u message=%s",
+            response.httpStatusCode,
+            response.success ? 1u : 0u,
+            response.message.c_str());
+        return response;
+    }
+
+    // ---------------------------------------------------------------------
+    // Cas echec (ex: HTTP 500)
+    // Payload attendu:
+    // {
+    //   "code": "E_INTERNAL_SERVER_ERROR",
+    //   "message": "Failed to create account"
+    // }
+    // ---------------------------------------------------------------------
+    response.success = false;
+
     if (responseJson != nullptr)
     {
-        // Cherche un champ bool "success".
-        const cJSON* successItem = cJSON_GetObjectItemCaseSensitive(responseJson, "success");
-
-        // Si le champ success existe et est bien un bool, on l'utilise.
-        if (cJSON_IsBool(successItem))
-        {
-            response.success = cJSON_IsTrue(successItem);
-        }
-        else
-        {
-            // Sinon fallback: derive success depuis code HTTP.
-            response.success = httpSuccess;
-        }
-
-        // Essaie d'extraire un message lisible depuis plusieurs formats backend.
-        ClientHttp_AuthSignUp_ExtractMessageFromJson(responseJson, response.message);
-
-        // Libere l'arbre JSON parse.
+        ClientHttp_AuthSignUp_ReadRequiredString(responseJson, "code", response.code);
+        ClientHttp_AuthSignUp_ReadRequiredString(responseJson, "message", response.message);
         cJSON_Delete(responseJson);
     }
-    else
-    {
-        // Si pas de JSON valide, fallback sur succes HTTP brut.
-        response.success = httpSuccess;
-    }
 
-    // Si aucun message n'a ete recupere, fabrique un message par defaut.
     if (response.message.empty())
     {
-        // Message par defaut quand tout est OK.
-        if (response.success)
-        {
-            response.message = "Signup succeeded.";
-        }
-        else
-        {
-            // Message par defaut quand echec HTTP/metier.
-            response.message = std::string("Signup failed (HTTP ") + std::to_string(httpStatusCode) + ").";
-        }
+        response.message = std::string("Signup failed (HTTP ") + std::to_string(httpStatusCode) + ").";
     }
 
     // Log final de resultat metier.
     RC2D_log(
-        response.success ? RC2D_LOG_INFO : RC2D_LOG_WARN,
-        "[CLIENT] [HTTP] [AUTH_SIGNUP] HTTP status=%ld success=%u message=%s",
-        httpStatusCode,
+        RC2D_LOG_WARN,
+        "[CLIENT] [HTTP] [AUTH_SIGNUP] HTTP status=%ld success=%u code=%s message=%s",
+        response.httpStatusCode,
         response.success ? 1u : 0u,
+        response.code.empty() ? "<none>" : response.code.c_str(),
         response.message.c_str());
 
     // Retourne la reponse finale au dispatcher HTTP.
