@@ -38,6 +38,6 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleDisconnectMessage(
 
     // Log d'information confirmant la déconnexion.
     RCNET_log(RCNET_LOG_INFO,
-              "[SERVER] [SIMULATION] [DISCONNECT] - connectionId=%u\n",
+              "[SERVER] [SIMULATION] [DISCONNECT] - connectionId=%u (deleted session)\n",
               msg.connectionId);
 }
