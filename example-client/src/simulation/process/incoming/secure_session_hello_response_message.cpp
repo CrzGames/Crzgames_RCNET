@@ -1,15 +1,16 @@
 #include "simulation/process/incoming/secure_session_hello_response_message.h"
 
+#include "core/context.h"
 #include "crypto/kx.h"
 #include "network/protocol/secure_session.h"
 #include "network/protocol/secure_session_attestation.h"
 
 #include <RC2D/RC2D.h>
 
-#include <array>
-#include <cstring>
-#include <ctime>
-#include <mutex>
+#include <array>   // std::array
+#include <cstring> // std::memcmp
+#include <ctime>   // std::time
+#include <mutex>   // std::lock_guard, std::mutex
 
 void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloResponseMessage(
     NetworkState& networkState,
@@ -113,9 +114,28 @@ void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleSecureSessionHelloR
     // Marquer la secure-session comme etablie et activer le chiffrement pour le peer serveur.
     networkState.secureSessionEstablished = true;
 
+    // Log de succes.
     RC2D_log(
         RC2D_LOG_INFO,
         "[CLIENT] [SIMULATION] [SECURE_SESSION] Established: nonceEcho=ok signature=ok ttl=ok keysDerived=ok encryptionEnabled=1 (issuedAt=%llu expiresAt=%llu).",
         static_cast<unsigned long long>(packet.issuedAtUnixSeconds),
         static_cast<unsigned long long>(packet.expiresAtUnixSeconds));
+
+    // Si la session secure-session est etablie, on peut à présent
+    // envoyer le token d'authentification du client pour que le serveur puisse verifier l'identite du client.
+    // On envoie un message du thread simulation vers le thread réseau pour que ce dernier puisse envoyer le packet d'authentification correspondant.
+    if (networkState.secureSessionEstablished)
+    {
+        
+        // Créer le packet ClientAuthPacketReliable avec le token d'authentification du client.
+        ClientAuthPacketReliable authPacket{};
+        authPacket.header.type = ClientReliablePacketHeader::CLIENT_AUTH_PACKET_RELIABLE;
+        authPacket.authToken = networkState.authToken;
+
+        // Sérialiser le packet d'authentification et l'envoyer au thread réseau via la queue simulationToNetworkOUTQueue.
+        SimulationToNetworkOUTMessage simToNetMessage{};
+        simToNetMessage.type = SimulationToNetworkOUTMessageType::CLIENT_AUTH_PACKET_RELIABLE;
+        simToNetMessage.serializedPacket = serializeClientAuthPacketReliable(authPacket);
+        GetSimulationToNetworkOUTQueue().push(simToNetMessage);
+    }
 }
