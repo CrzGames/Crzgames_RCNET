@@ -7,7 +7,6 @@
  * @brief Traite la reponse d'authentification envoyee par le serveur.
  *
  * Met a jour deux flags distincts:
- * - `authValidated`       : on a bien recu/traite une reponse d'auth serveur.
  * - `authTokenValidated`  : le serveur a accepte le token (status SUCCESS).
  */
 void ClientSimulation_ProcessNetworkIncomingDispatcher_HandleAuthResponseMessage(
