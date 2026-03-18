@@ -129,12 +129,13 @@ void rc2d_websocket_update(void)
     ClientWebSocket_WaitAndProcessOneSimulationMessage_And_RunWebSocketLogic();
 }
 
-/*void rc2d_wake_blocking_threads(void)
+void rc2d_wake_blocking_threads(void)
 {
+    // Reveille les waits bloquants des workers HTTP/WebSocket pour permettre
+    // a rc2d_engine_stop_worker_threads() de joindre proprement les threads.
     GetSimulationToHttpQueue().stop();
     GetSimulationToWebSocketQueue().stop();
 }
-*/
 
 void rc2d_draw(void)
 {
