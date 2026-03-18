@@ -5,7 +5,7 @@
 // Version protocole réseau client -> serveur
 static constexpr uint16_t CLIENT_NETWORK_PROTOCOL_VERSION_MAJOR = 1;
 static constexpr uint16_t CLIENT_NETWORK_PROTOCOL_VERSION_MINOR = 2;
-static constexpr uint16_t CLIENT_NETWORK_PROTOCOL_VERSION_PATCH = 4;
+static constexpr uint16_t CLIENT_NETWORK_PROTOCOL_VERSION_PATCH = 5;
 
 static constexpr uint32_t CLIENT_NETWORK_PROTOCOL_VERSION = (
     (static_cast<uint32_t>(CLIENT_NETWORK_PROTOCOL_VERSION_MAJOR) << 16) |
