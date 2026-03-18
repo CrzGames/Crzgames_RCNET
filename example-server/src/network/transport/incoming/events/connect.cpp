@@ -45,6 +45,6 @@ void ServerNetworkIncoming_Event_HandleConnect(
 
     // Log l'événement de connexion avec l'identifiant de connexion concerné.
     RCNET_log(RCNET_LOG_INFO,
-              "[SERVER] [NETWORK_IN] [CONNECT] - connectionId=%u\n",
+              "[SERVER] [NETWORK_IN] [CONNECT] - connectionId: %u\n",
               connectionId);
 }

@@ -27,6 +27,6 @@ void ServerSimulation_ProcessNetworkIncomingDispatcher_HandleConnectMessage(
 
     // Log d'information pour indiquer que la session a bien été créée.
     RCNET_log(RCNET_LOG_INFO,
-              "[SERVER] [SIMULATION] [CONNECT] - connectionId=%u (session created)\n",
+              "[SERVER] [SIMULATION] [CONNECT] - connectionId: %u - Session created\n",
               msg.connectionId);
 }

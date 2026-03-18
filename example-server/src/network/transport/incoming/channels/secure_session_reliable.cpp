@@ -28,7 +28,7 @@ void ServerNetworkIncoming_Channel_SecureSessionReliable(
 
     // Log d’information indiquant que le packet de session sécurisée a été reçu avec succès.
     RCNET_log(RCNET_LOG_INFO,
-              "[SERVER] [NETWORK_IN] [SECURE_SESSION] - Packet received from connectionId=%u (size=%u bytes)\n",
+              "[SERVER] [NETWORK_IN] [SECURE_SESSION] - Packet received from connectionId: %u - Packet size: %u bytes\n",
               connectionId,
               (unsigned)event->packet->dataLength);
 
@@ -52,7 +52,7 @@ void ServerNetworkIncoming_Channel_SecureSessionReliable(
 
         RCNET_log(
             RCNET_LOG_ERROR,
-            "[SERVER] [NETWORK_IN] [SECURE_SESSION] - Network protocol version mismatch with connectionId=%u: client=%u.%u.%u vs server=%u.%u.%u. Disconnecting client.\n",
+            "[SERVER] [NETWORK_IN] [SECURE_SESSION] - Network protocol version mismatch with connectionId: %u - client=%u.%u.%u vs server=%u.%u.%u. Disconnecting client.\n",
             connectionId,
             static_cast<unsigned>(clientVersionMajor),
             static_cast<unsigned>(clientVersionMinor),
