@@ -1,7 +1,7 @@
 #include "services/http/requests/auth_signinrequest.h"
 
 #include "core/context.h"
-#include "services/http/tls/ca_bundle_pem.h"
+#include "services/http/requests/common.h"
 
 #include <RC2D/RC2D.h>
 #include <curl/curl.h>
@@ -9,118 +9,6 @@
 
 #include <limits>  // std::numeric_limits
 #include <string>  // std::string
-
-// Callback libcurl:
-// - appelee par libcurl pour chaque chunk recu
-// - copie le chunk dans la string de sortie
-static size_t ClientHttp_AuthSignIn_WriteResponseBodyCallback(
-    void* contents,
-    size_t size,
-    size_t nmemb,
-    void* userData)
-{
-    // Securite: sans buffer source ou destination, impossible de copier.
-    if (contents == nullptr || userData == nullptr)
-    {
-        // 0 indique a libcurl qu'aucun octet n'a ete consomme.
-        return 0;
-    }
-
-    // Taille reelle du chunk recu (en bytes).
-    const size_t byteCount = size * nmemb;
-
-    // S'il n'y a rien a copier, on sort proprement.
-    if (byteCount == 0)
-    {
-        return 0;
-    }
-
-    // Reinterprete le pointeur utilisateur en std::string*.
-    std::string* outBody = static_cast<std::string*>(userData);
-
-    // Concatene le chunk recu a la fin du body HTTP accumule.
-    outBody->append(static_cast<const char*>(contents), byteCount);
-
-    // Retourne le nombre d'octets consommes pour confirmer a libcurl.
-    return byteCount;
-}
-
-// Lit un champ string obligatoire dans un objet JSON.
-static bool ClientHttp_AuthSignIn_ReadRequiredString(
-    const cJSON* jsonObject,
-    const char* key,
-    std::string& outValue)
-{
-    // Sans objet source ni nom de champ, lecture impossible.
-    if (jsonObject == nullptr || key == nullptr)
-    {
-        return false;
-    }
-
-    // Chercher le champ cible dans l'objet.
-    const cJSON* valueItem = cJSON_GetObjectItemCaseSensitive(jsonObject, key);
-    if (!cJSON_IsString(valueItem) || valueItem->valuestring == nullptr)
-    {
-        // Echec si le champ est absent ou n'est pas une string valide.
-        return false;
-    }
-
-    // Copier la valeur string en sortie.
-    outValue = valueItem->valuestring;
-    return true;
-}
-
-// Retourne true si l'URL est en HTTPS.
-static bool ClientHttp_AuthSignIn_IsHttpsUrl(const std::string& url)
-{
-    return url.rfind("https://", 0) == 0;
-}
-
-// Configure les options TLS cURL pour les endpoints HTTPS.
-static bool ClientHttp_AuthSignIn_ConfigureTls(
-    CURL* curl,
-    const std::string& url,
-    std::string& outError)
-{
-    if (curl == nullptr || !ClientHttp_AuthSignIn_IsHttpsUrl(url))
-    {
-        return true;
-    }
-
-    // Exiger la verification TLS du certificat serveur.
-    CURLcode curlCode = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-    if (curlCode != CURLE_OK)
-    {
-        outError = std::string("Failed to set CURLOPT_SSL_VERIFYPEER: ") + curl_easy_strerror(curlCode);
-        return false;
-    }
-
-    curlCode = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
-    if (curlCode != CURLE_OK)
-    {
-        outError = std::string("Failed to set CURLOPT_SSL_VERIFYHOST: ") + curl_easy_strerror(curlCode);
-        return false;
-    }
-
-#if defined(LIBCURL_VERSION_NUM) && (LIBCURL_VERSION_NUM >= 0x074D00)
-    curl_blob caBundleBlob{};
-    caBundleBlob.data = const_cast<char*>(kClientHttpTlsCaBundlePem);
-    caBundleBlob.len = kClientHttpTlsCaBundlePemSize;
-    caBundleBlob.flags = CURL_BLOB_NOCOPY;
-
-    curlCode = curl_easy_setopt(curl, CURLOPT_CAINFO_BLOB, &caBundleBlob);
-    if (curlCode != CURLE_OK)
-    {
-        outError = std::string("Failed to set CURLOPT_CAINFO_BLOB: ") + curl_easy_strerror(curlCode);
-        return false;
-    }
-
-    return true;
-#else
-    outError = "This libcurl build does not support CAINFO_BLOB (requires libcurl >= 7.77.0).";
-    return false;
-#endif
-}
 
 AuthSignInHTTPResponse ClientHttp_Auth_SignInRequest(const AuthSignInHTTPRequest& request)
 {
@@ -220,7 +108,7 @@ AuthSignInHTTPResponse ClientHttp_Auth_SignInRequest(const AuthSignInHTTPRequest
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, static_cast<long>(requestBody.size()));
 
     // Enregistre le callback de reception du body HTTP.
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, ClientHttp_AuthSignIn_WriteResponseBodyCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, ClientHttp_Common_WriteResponseBodyCallback);
 
     // Passe la destination de sortie au callback.
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseBody);
@@ -236,7 +124,7 @@ AuthSignInHTTPResponse ClientHttp_Auth_SignInRequest(const AuthSignInHTTPRequest
 
     // Configuration TLS pour les URLs HTTPS.
     std::string tlsConfigurationError;
-    if (!ClientHttp_AuthSignIn_ConfigureTls(curl, url, tlsConfigurationError))
+    if (!ClientHttp_Common_ConfigureTlsForHttps(curl, url, tlsConfigurationError))
     {
         response.success = false;
         response.message = std::string("Signin TLS configuration failed: ") + tlsConfigurationError;
@@ -330,13 +218,13 @@ AuthSignInHTTPResponse ClientHttp_Auth_SignInRequest(const AuthSignInHTTPRequest
 
             // Lire les champs string obligatoires.
             const bool tokenTypeOk = cJSON_IsObject(tokenItem) &&
-                ClientHttp_AuthSignIn_ReadRequiredString(tokenItem, "type", response.tokenType);
+                ClientHttp_Common_ReadRequiredString(tokenItem, "type", response.tokenType);
             const bool tokenValueOk = cJSON_IsObject(tokenItem) &&
-                ClientHttp_AuthSignIn_ReadRequiredString(tokenItem, "value", response.tokenValue);
+                ClientHttp_Common_ReadRequiredString(tokenItem, "value", response.tokenValue);
             const bool tokenExpiresAtOk = cJSON_IsObject(tokenItem) &&
-                ClientHttp_AuthSignIn_ReadRequiredString(tokenItem, "expiresAt", response.tokenExpiresAt);
+                ClientHttp_Common_ReadRequiredString(tokenItem, "expiresAt", response.tokenExpiresAt);
             const bool quilkinDnsOk =
-                ClientHttp_AuthSignIn_ReadRequiredString(responseJson, "quilkin_dns", response.quilkinDns);
+                ClientHttp_Common_ReadRequiredString(responseJson, "quilkin_dns", response.quilkinDns);
 
             // Lire quilkin_port (doit etre un entier valide dans [1..65535]).
             bool quilkinPortOk = false;
@@ -391,8 +279,8 @@ AuthSignInHTTPResponse ClientHttp_Auth_SignInRequest(const AuthSignInHTTPRequest
     if (responseJson != nullptr)
     {
         // Lire les champs d'erreur quand presents.
-        ClientHttp_AuthSignIn_ReadRequiredString(responseJson, "code", response.code);
-        ClientHttp_AuthSignIn_ReadRequiredString(responseJson, "message", response.message);
+        ClientHttp_Common_ReadRequiredString(responseJson, "code", response.code);
+        ClientHttp_Common_ReadRequiredString(responseJson, "message", response.message);
 
         // Nettoyer l'arbre JSON parse.
         cJSON_Delete(responseJson);
