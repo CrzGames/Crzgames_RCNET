@@ -5,6 +5,8 @@ Crzgames_Libraries=https://github.com/CrzGames/Crzgames_Libraries.git:08fab457e1
 nats=https://github.com/nats-io/nats.c.git:v3.12.0
 cpp-httplib=https://github.com/yhirose/cpp-httplib.git:v0.38.0
 cJSON=https://github.com/DaveGamble/cJSON:v1.7.19
+grpc=https://github.com/grpc/grpc.git:v1.76.0
+agones=https://github.com/agones-dev/agones.git:v1.55.0
 
 # Dependencies for executable example client :
 Crzgames_RC2D=https://github.com/CrzGames/Crzgames_RC2D.git:37340b024ac43bfb1f1dee39f2dae3f472eb1e4b

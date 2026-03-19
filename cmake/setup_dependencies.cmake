@@ -67,3 +67,48 @@ if(EXISTS "${RC2D_DEPENDENCIES_SCRIPT}")
     WORKING_DIRECTORY "${VENDORED_DIR}/Crzgames_RC2D"
   )
 endif()
+
+# ============================================================
+# Patch Agones CMakeLists.txt pour compatibilité add_subdirectory(grpc)
+# ============================================================
+set(AGONES_CMAKELISTS "${VENDORED_DIR}/agones/sdks/cpp/CMakeLists.txt")
+
+if(EXISTS "${AGONES_CMAKELISTS}")
+  file(READ "${AGONES_CMAKELISTS}" AGONES_CMAKE_CONTENT)
+
+  set(AGONES_OLD_BLOCK [=[
+# gRPC
+find_package(Protobuf REQUIRED)
+find_package(gRPC CONFIG REQUIRED)
+find_package(Threads REQUIRED)
+]=])
+
+  set(AGONES_NEW_BLOCK [=[
+# gRPC
+if(NOT TARGET protobuf::libprotobuf)
+  find_package(Protobuf REQUIRED)
+endif()
+
+if(NOT TARGET gRPC::grpc++_unsecure)
+  find_package(gRPC CONFIG REQUIRED)
+endif()
+
+if(NOT TARGET Threads::Threads)
+  find_package(Threads REQUIRED)
+endif()
+]=])
+
+  string(FIND "${AGONES_CMAKE_CONTENT}" "${AGONES_NEW_BLOCK}" AGONES_ALREADY_PATCHED_POS)
+  if(NOT AGONES_ALREADY_PATCHED_POS EQUAL -1)
+    message(STATUS "✅ Patché le CMakeLists.txt d'Agones déjà appliqué")
+  else()
+    string(FIND "${AGONES_CMAKE_CONTENT}" "${AGONES_OLD_BLOCK}" AGONES_OLD_BLOCK_POS)
+    if(NOT AGONES_OLD_BLOCK_POS EQUAL -1)
+      string(REPLACE "${AGONES_OLD_BLOCK}" "${AGONES_NEW_BLOCK}" AGONES_CMAKE_CONTENT "${AGONES_CMAKE_CONTENT}")
+      file(WRITE "${AGONES_CMAKELISTS}" "${AGONES_CMAKE_CONTENT}")
+      message(STATUS "✅ Patché le CMakeLists.txt d'Agones appliqué avec succès")
+    else()
+      message(WARNING "⚠️ Bloc gRPC attendu introuvable dans ${AGONES_CMAKELISTS} ; patch non appliqué")
+    endif()
+  endif()
+endif()
