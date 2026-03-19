@@ -1,6 +1,7 @@
 #include "services/http/requests/auth_signuprequest.h"
 
 #include "core/context.h"
+#include "services/http/tls/ca_bundle_pem.h"
 
 #include <RC2D/RC2D.h>
 #include <curl/curl.h>
@@ -76,21 +77,48 @@ static bool ClientHttp_AuthSignUp_IsHttpsUrl(const std::string& url)
 }
 
 // Configure les options TLS cURL pour les endpoints HTTPS.
-static void ClientHttp_AuthSignUp_ConfigureTls(CURL* curl, const std::string& url)
+static bool ClientHttp_AuthSignUp_ConfigureTls(
+    CURL* curl,
+    const std::string& url,
+    std::string& outError)
 {
     if (curl == nullptr || !ClientHttp_AuthSignUp_IsHttpsUrl(url))
     {
-        return;
+        return true;
     }
 
     // Exiger la verification TLS du certificat serveur.
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+    CURLcode curlCode = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+    if (curlCode != CURLE_OK)
+    {
+        outError = std::string("Failed to set CURLOPT_SSL_VERIFYPEER: ") + curl_easy_strerror(curlCode);
+        return false;
+    }
 
-#if defined(CURLSSLOPT_NATIVE_CA)
-    // Demande l'utilisation du magasin de certificats natif si
-    // le backend TLS courant de libcurl le supporte.
-    curl_easy_setopt(curl, CURLOPT_SSL_OPTIONS, static_cast<long>(CURLSSLOPT_NATIVE_CA));
+    curlCode = curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+    if (curlCode != CURLE_OK)
+    {
+        outError = std::string("Failed to set CURLOPT_SSL_VERIFYHOST: ") + curl_easy_strerror(curlCode);
+        return false;
+    }
+
+#if defined(LIBCURL_VERSION_NUM) && (LIBCURL_VERSION_NUM >= 0x074D00)
+    curl_blob caBundleBlob{};
+    caBundleBlob.data = const_cast<char*>(kClientHttpTlsCaBundlePem);
+    caBundleBlob.len = kClientHttpTlsCaBundlePemSize;
+    caBundleBlob.flags = CURL_BLOB_NOCOPY;
+
+    curlCode = curl_easy_setopt(curl, CURLOPT_CAINFO_BLOB, &caBundleBlob);
+    if (curlCode != CURLE_OK)
+    {
+        outError = std::string("Failed to set CURLOPT_CAINFO_BLOB: ") + curl_easy_strerror(curlCode);
+        return false;
+    }
+
+    return true;
+#else
+    outError = "This libcurl build does not support CAINFO_BLOB (requires libcurl >= 7.77.0).";
+    return false;
 #endif
 }
 
@@ -210,7 +238,21 @@ AuthSignUpHTTPResponse ClientHttp_Auth_SignUpRequest(const AuthSignUpHTTPRequest
     curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 10000L);
 
     // Configuration TLS pour les URLs HTTPS.
-    ClientHttp_AuthSignUp_ConfigureTls(curl, url);
+    std::string tlsConfigurationError;
+    if (!ClientHttp_AuthSignUp_ConfigureTls(curl, url, tlsConfigurationError))
+    {
+        response.success = false;
+        response.message = std::string("Signup TLS configuration failed: ") + tlsConfigurationError;
+
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+
+        RC2D_log(
+            RC2D_LOG_ERROR,
+            "[CLIENT] [HTTP] [AUTH_SIGNUP] %s",
+            response.message.c_str());
+        return response;
+    }
 
     // Log de debug/trace pour savoir quel endpoint est appele.
     RC2D_log(
