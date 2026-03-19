@@ -150,21 +150,11 @@ set(ENABLE_CJSON_TEST   OFF CACHE BOOL "" FORCE) # Désactiver les tests
 set(ENABLE_CJSON_UTILS  OFF CACHE BOOL "" FORCE) # Désactiver les outils
 
 # ============================================================
-# gRPC — Configuration build
-# ============================================================
-set(gRPC_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(gRPC_INSTALL OFF CACHE BOOL "" FORCE)
-
-# ============================================================
 # Exemple client — Configuration build
 # Toutes les options RC2D_* qui permettent d'activer/désactiver
 # des modules, features ou intégrations SDK.
 # ============================================================
 if(RCNET_BUILD_EXAMPLE)
-  # On désactiver zlib de SDL_image qui rentre en conflit avec le zlib de GRPC.
-  set(SDLIMAGE_PNG_LIBPNG OFF CACHE BOOL "" FORCE)
-  set(SDLIMAGE_BACKEND_STB ON CACHE BOOL "" FORCE)
-
   set(RC2D_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
   set(RC2D_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
   set(RC2D_EOS_SDK_ENABLED OFF CACHE BOOL "")
@@ -190,17 +180,6 @@ endif()
 # On inclut SDL + modules, et cJSON depuis dependencies/.
 # EXCLUDE_FROM_ALL : évite de builder ces targets si aucune target ne les référence.
 # ============================================================
-add_subdirectory(dependencies/grpc EXCLUDE_FROM_ALL)
-if(TARGET libprotobuf AND NOT TARGET protobuf::libprotobuf)
-  add_library(protobuf::libprotobuf ALIAS libprotobuf)
-endif()
-if(TARGET grpc++_unsecure AND NOT TARGET gRPC::grpc++_unsecure)
-  add_library(gRPC::grpc++_unsecure ALIAS grpc++_unsecure)
-endif()
-if(TARGET grpc++ AND NOT TARGET gRPC::grpc++)
-  add_library(gRPC::grpc++ ALIAS grpc++)
-endif()
-add_subdirectory(dependencies/agones/sdks/cpp EXCLUDE_FROM_ALL)
 if(RCNET_BUILD_EXAMPLE)
   add_subdirectory(dependencies/Crzgames_RC2D EXCLUDE_FROM_ALL)
 endif()
@@ -210,15 +189,6 @@ endif()
 if(UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
   add_subdirectory(dependencies/nats EXCLUDE_FROM_ALL)
 endif()
-
-# ============================================================
-# rcnet_configure_agones_sdk
-# ============================================================
-function(rcnet_configure_agones_sdk target_name)
-  target_link_libraries(${target_name} PUBLIC
-    agones
-  )
-endfunction()
 
 # ============================================================
 # rcnet_configure_libsodium
@@ -530,8 +500,6 @@ rcnet_configure_cpphttplib(${PROJECT_NAME})
 # Libsodium (cryptographie moderne pour le chiffrement, signatures, etc.)
 rcnet_configure_libsodium(${PROJECT_NAME})
 
-# agones SDK (intégration avec Agones pour le matchmaking, l'allocation de serveurs, etc.)
-rcnet_configure_agones_sdk(${PROJECT_NAME})
 
 
 
