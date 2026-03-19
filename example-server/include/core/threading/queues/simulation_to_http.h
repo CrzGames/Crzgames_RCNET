@@ -44,7 +44,7 @@ struct SimulationToHttpQueue
         cv.notify_one();
     }
 
-    bool waitAndPop(SimulationToHttpMessage& out)
+    bool waitAndDrain(std::deque<SimulationToHttpMessage>& out)
     {
         std::unique_lock<std::mutex> lock(mtx);
 
@@ -57,8 +57,8 @@ struct SimulationToHttpQueue
             return false;
         }
 
-        out = std::move(q.front());
-        q.pop_front();
+        // Echange atomique sous lock: le thread HTTP traite ensuite hors lock.
+        out.swap(q);
         return true;
     }
 

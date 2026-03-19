@@ -68,8 +68,10 @@ void rcnet_load(void)
 
 void rcnet_http_update(void)
 {
-    // Exécute une unité de travail du thread HTTP.
-    // Cette fonction peut bloquer en attendant un job depuis la queue Simulation -> HTTP.
+    // Exécute une passe du thread HTTP :
+    // - bloque jusqu'a avoir au moins un job
+    // - draine un batch de jobs Simulation -> HTTP
+    // - traite le batch hors lock
     ServerHttp_WaitAndProcessOneSimulationMessage_And_RunHttpLogic();
 }
 
@@ -117,8 +119,10 @@ void rcnet_simulation_update(uint64_t currentTick, uint64_t serverTimeNs, uint64
 
 void rcnet_nats_update(RCNET_NATSContext* natsContext)
 {
-    // Exécute une unité de travail du thread NATS.
-    // Cette fonction peut bloquer en attendant un job depuis la queue Simulation -> NATS.
+    // Exécute une passe du thread NATS :
+    // - bloque jusqu'a avoir au moins un job
+    // - draine un batch de jobs Simulation -> NATS
+    // - traite le batch hors lock
     ServerNats_WaitAndProcessOneSimulationMessage_And_RunNatsLogic(natsContext);
 }
 

@@ -51,7 +51,7 @@ struct SimulationToNatsQueue
         cv.notify_one();
     }
 
-    bool waitAndPop(SimulationToNatsMessage& out)
+    bool waitAndDrain(std::deque<SimulationToNatsMessage>& out)
     {
         std::unique_lock<std::mutex> lock(mtx);
 
@@ -64,8 +64,8 @@ struct SimulationToNatsQueue
             return false;
         }
 
-        out = std::move(q.front());
-        q.pop_front();
+        // Echange atomique sous lock: le thread NATS traite ensuite hors lock.
+        out.swap(q);
         return true;
     }
 
