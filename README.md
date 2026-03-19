@@ -55,7 +55,7 @@
 
 | Platform | Architectures | System Version | Compatible |
 |----------|---------------|----------------|------------|
-| **Windows** | x64/arm64 | Windows 10+ | 🟢 |
+| **Windows** | x64 | Windows 10+ | 🟢 |
 | **macOS** | Apple Silicon arm64 | macOS 15.0+ | 🟢 |
 | **Linux** | x64/arm64 | glibc 2.35+ | 🟢 |
 
@@ -89,16 +89,16 @@
 
 ## 🎯 Raisons techniques des versions minimales et autres par plateforme
 
-### Linux
+### Linux x64/arm64
 - **Version minimale** : glibc 2.35+
 - **Raison** :
   - CI/CD basée sur Ubuntu 22.04 LTS (donc librairie RCNET + dépendences construite sur glibc 2.35)
 
-### Windows
+### Windows x64
 - **Version minimale** : Windows 10+
 - **Raison** :
 
-### macOS
+### macOS arm64
 - **Version minimale** : macOS 15.0+ / M1+
 - **Raison** :
 
@@ -137,7 +137,7 @@
   ```
 2. Steps by Platform :
   ```bash  
-  # Windows (x64/arm64) :
+  # Windows (x64) :
   1. Requirements : Windows >= 10.
   2. Download and Install Visual Studio == 2022 (MSVC >= v143 + Windows SDK >= 10) : https://visualstudio.microsoft.com/fr/downloads/
   3. Download and Install CMake >= 3.28.0 : https://cmake.org/download/ and add PATH ENVIRONMENT.
@@ -245,10 +245,6 @@ chmod +x ./build-scripts/generate-project/macos-arm64.sh
 
 # Windows - x64
 .\build-scripts\generate-project\windows-x64.bat
-
-
-# Windows - arm64
-.\build-scripts\generate-project\windows-arm64.bat
 ```
 3. Il y a un dossier `build` à la racine qui est générer.
 ```bash
