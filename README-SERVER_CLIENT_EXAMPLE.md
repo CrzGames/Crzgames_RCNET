@@ -5,8 +5,12 @@ SERVER_ED25519_PRIVATE_SEED_HEX
 NATS_NKEY_PUBLIC_KEY
 NATS_NKEY_PRIVATE_KEY
 
-## Cote client variable d'environnement obligatoire pour staging/prod :
-CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX
+## Cote client pour staging/prod :
+Pas de variable d'environnement requise pour la cle secure-session pinnee.
+La cle publique Ed25519 du serveur est hardcodee selon l'environnement de build dans :
+`example-client/include/network/protocol/secure_session.h`
+- `CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX_STAGING`
+- `CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX_PRODUCTION`
 
 ### Generer `SERVER_ED25519_PRIVATE_SEED_HEX` et `SERVER_ED25519_PUBLIC_KEY_HEX`
 ```bash

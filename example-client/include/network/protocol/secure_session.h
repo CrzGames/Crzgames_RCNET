@@ -25,8 +25,18 @@ static constexpr char CLIENT_SECURE_SESSION_SIGNING_DOMAIN[] =
 // Cette valeur est derivee de la seed serveur (DEV) et sert a verifier
 // ServerSecureSessionHelloResponsePacketReliable::signature.
 // La seed privee serveur NE DOIT JAMAIS etre presente cote client.
-static constexpr char CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX[] =
+static constexpr char CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX_DEV[] =
     "af110dde7833e9aa3784e6b44af5754a67b659a09dd85877bdc0330c79e7e02f";
+
+// Cle publique Ed25519 pinnee cote client pour l'environnement STAGING.
+// Remplacer par la cle publique reelle de l'environnement staging.
+static constexpr char CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX_STAGING[] =
+    "8dd7caa479c6f3ee450605e2bb0d47fdcef9687314c5101f1ad03db54f28ac0c";
+
+// Cle publique Ed25519 pinnee cote client pour l'environnement PRODUCTION.
+// Remplacer par la cle publique reelle de l'environnement production.
+static constexpr char CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX_PRODUCTION[] =
+    "8dd7caa479c6f3ee450605e2bb0d47fdcef9687314c5101f1ad03db54f28ac0c";
 
 // Duree maximale attendue pour une attestation secure-session (en secondes).
 // Le client peut refuser une attestation dont la fenetre de validite est
@@ -34,7 +44,7 @@ static constexpr char CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX[] =
 static constexpr uint64_t CLIENT_SECURE_SESSION_SIGNATURE_TTL_SECONDS = 10;
 
 // Initialise (une seule fois) la cle publique pinnee binaire a partir de
-// CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX.
+// la constante hardcodee de l'environnement courant (DEV/STAGING/PRODUCTION).
 // Retourne false si la valeur HEX est invalide.
 bool ClientSecureSession_InitializePinnedServerSigningPublicKey();
 

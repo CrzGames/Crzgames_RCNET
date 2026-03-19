@@ -2,7 +2,6 @@
 
 #include <RC2D/RC2D.h>
 
-#include <cstdlib> // std::getenv
 #include <cstring> // std::strlen
 
 static bool gClientSecureSessionPinnedServerPublicKeyInitialized = false;
@@ -36,22 +35,16 @@ static bool ClientSecureSession_TryResolvePinnedServerSigningPublicKeyHex(
     const char*& outSourceLabel)
 {
 #if GAME_ENV_DEV
-    outHexKey = CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX;
+    outHexKey = CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX_DEV;
     outSourceLabel = "hardcoded-dev";
     return true;
-#elif GAME_ENV_STAGING || GAME_ENV_PRODUCTION
-    // STAGING et PRODUCTION utilisent la meme source runtime.
-    // Valeur attendue: cle Ed25519 publique HEX (64 caracteres).
-    outHexKey = std::getenv("CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX");
-    outSourceLabel = "CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX";
-    if (outHexKey == nullptr || outHexKey[0] == '\0')
-    {
-        RC2D_log(
-            RC2D_LOG_ERROR,
-            "[CLIENT] [SECURE_SESSION] Missing env var '%s' for staging/production pinned signing key.",
-            outSourceLabel);
-        return false;
-    }
+#elif GAME_ENV_STAGING
+    outHexKey = CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX_STAGING;
+    outSourceLabel = "hardcoded-staging";
+    return true;
+#elif GAME_ENV_PRODUCTION
+    outHexKey = CLIENT_SECURE_SESSION_SERVER_ED25519_PUBLIC_KEY_HEX_PRODUCTION;
+    outSourceLabel = "hardcoded-production";
     return true;
 #else
     outHexKey = nullptr;
