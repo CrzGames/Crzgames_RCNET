@@ -1,7 +1,6 @@
 #include "core/callbacks.h"
 
 #include "core/context.h"
-#include "core/bootstrap/auth_dev_accounts.h"
 #include "crypto/kx.h"
 #include "game/game_screen.h"
 #include "game/scenes/scene-editormap.h"
@@ -73,49 +72,18 @@ void rc2d_load(void)
     // --------------------------------------------------------------------
     SimulationToHttpQueue& simToHttpQueue = GetSimulationToHttpQueue();
 
-    // Choisir l'index de compte depuis la ligne de commande.
-    // Exemples:
-    // - --account-index 7
-    // - --account-index=7
-    // - --account 7
-    size_t accountIndex = 0;
-    if (!ClientBootstrap_TryGetAccountIndexFromCmdline(accountIndex))
-    {
-        accountIndex = 0;
-    }
-
-    const size_t accountCount = ClientBootstrap_GetAuthAccountCount();
-    if (accountCount == 0)
-    {
-        RC2D_log(RC2D_LOG_ERROR, "[CLIENT] [BOOTSTRAP] - No auth bootstrap account configured.");
-        rc2d_event_quit();
-        return;
-    }
-
-    // Index protege (utile si on passe un index > nombre de comptes).
-    accountIndex %= accountCount;
-
-    const ClientBootstrapSignUpAccount& signUpAccount = ClientBootstrap_GetSignUpAccount(accountIndex);
-    const ClientBootstrapSignInAccount& signInAccount = ClientBootstrap_GetSignInAccount(accountIndex);
-
     SimulationToHttpMessage signUpMessage{};
     signUpMessage.type = SimulationToHttpMessageType::AUTH_SIGNUP_REQUEST;
-    signUpMessage.authSignUpRequest.username = signUpAccount.username;
-    signUpMessage.authSignUpRequest.email = signUpAccount.email;
-    signUpMessage.authSignUpRequest.password = signUpAccount.password;
+    signUpMessage.authSignUpRequest.username = "coco";
+    signUpMessage.authSignUpRequest.email = "coco@orangexxx.fr";
+    signUpMessage.authSignUpRequest.password = "toto35000!xx";
     simToHttpQueue.push(signUpMessage);
 
     SimulationToHttpMessage signInMessage{};
     signInMessage.type = SimulationToHttpMessageType::AUTH_SIGNIN_REQUEST;
-    signInMessage.authSignInRequest.email = signInAccount.email;
-    signInMessage.authSignInRequest.password = signInAccount.password;
+    signInMessage.authSignInRequest.email = "coco@orangexxx.fr";
+    signInMessage.authSignInRequest.password = "toto35000!xx";
     simToHttpQueue.push(signInMessage);
-
-    RC2D_log(
-        RC2D_LOG_INFO,
-        "[CLIENT] [BOOTSTRAP] - Startup auth queued with accountIndex=%u email=%s",
-        static_cast<unsigned>(accountIndex),
-        signInAccount.email.c_str());
 }
 
 void rc2d_update(double dt)
