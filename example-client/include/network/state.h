@@ -22,7 +22,7 @@ struct NetworkState
     ENetPeer* peerServer = nullptr;
 
     // Adresse du serveur de jeu, recuperee depuis la reponse sign-in du backend d'authentification.
-    const char* peerServerAddress = "51.254.137.3";
+    const char* peerServerAddress = "localhost";
 
     // Port du serveur de jeu, recuperee depuis la reponse sign-in du backend d'authentification.
     uint16_t peerServerPort = 12345;

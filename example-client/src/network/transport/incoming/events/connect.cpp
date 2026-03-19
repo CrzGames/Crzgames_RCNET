@@ -37,17 +37,15 @@ void ClientNetworkIncoming_Event_HandleConnect(
     {
         RC2D_log(
             RC2D_LOG_INFO,
-            "[CLIENT] [NETWORK_IN] [CONNECT] - Connected to server (address: %s, port: %u).",
-            hostName,
-            static_cast<unsigned>(event->peer->address.port)
+            "[CLIENT] [NETWORK_IN] [CONNECT] - Connected to server (address: %s).",
+            hostName
         );
     }
     else
     {
         RC2D_log(
             RC2D_LOG_INFO,
-            "[CLIENT] [NETWORK_IN] [CONNECT] - Connected to server (address: <unknown>, port: %u).",
-            (unsigned) event->peer->address.port
+            "[CLIENT] [NETWORK_IN] [CONNECT] - Connected to server (address: <unknown>)."
         );
     }
 }
