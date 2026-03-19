@@ -40,9 +40,9 @@ struct ServerConfig
 #if SERVER_ENV_DEV
     static constexpr std::string_view baseUrlApi = "http://localhost:3400";
 #elif SERVER_ENV_STAGING
-    static constexpr std::string_view baseUrlApi = "https://staging.api.aetherroyale.crzgames.com";
+    static constexpr std::string_view baseUrlApi = "https://staging-aetherroyale-backend-service.staging-aetherroyale-backend.svc.cluster.local:3333";
 #elif SERVER_ENV_PRODUCTION
-    static constexpr std::string_view baseUrlApi = "https://api.aetherroyale.crzgames.com";
+    static constexpr std::string_view baseUrlApi = "https://prod-aetherroyale-backend-service.prod-aetherroyale-backend.svc.cluster.local:3333";
 #else
 #error "Define one of SERVER_ENV_DEV, SERVER_ENV_STAGING or SERVER_ENV_PRODUCTION"
 #endif
