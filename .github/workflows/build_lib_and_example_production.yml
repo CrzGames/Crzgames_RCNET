@@ -20,7 +20,6 @@ jobs:
       matrix:
         config:
         - { runner: windows-2025,     platform: windows,  arch: x64 }
-        - { runner: windows-11-arm,   platform: windows,  arch: arm64 }
         - { runner: ubuntu-22.04,     platform: linux,    arch: x64 }
         - { runner: ubuntu-22.04-arm, platform: linux,    arch: arm64 }
         - { runner: macos-26,         platform: macos,    arch: arm64, sdk: macosx } 
@@ -94,16 +93,12 @@ jobs:
             ./build-scripts/generate-project/linux-arm64.sh
           fi
 
-      - name: Build RCNET (scripts) - Windows (x64/arm64)
+      - name: Build RCNET (scripts) - Windows (x64)
         if: matrix.config.platform == 'windows'
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          if ("${{ matrix.config.arch }}" -eq "x64") {
-            .\build-scripts\generate-project\windows-x64.bat
-          } else {
-            .\build-scripts\generate-project\windows-arm64.bat
-          }
+          .\build-scripts\generate-project\windows-x64.bat
 
       - name: Build RCNET (scripts) - macOS (arm64)
         if: matrix.config.platform == 'macos'
