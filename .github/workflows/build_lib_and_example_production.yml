@@ -56,13 +56,13 @@ jobs:
           sudo apt-get update
           sudo apt-get -y install build-essential
 
-      - name: Install patchelf, for example client - Linux (x64/arm64)
+      - name: Install patchelf, for example client (RC2D) - Linux (x64/arm64)
         if: matrix.config.platform == 'linux'
         run: |
           sudo apt-get update
           sudo apt-get -y install patchelf
 
-      - name: Install dev dependencies SDL3, for example Client - Linux (x64/arm64)
+      - name: Install dev dependencies SDL3, for example Client (RC2D) - Linux (x64/arm64)
         if: matrix.config.platform == 'linux'
         run: |
           sudo apt-get update
@@ -73,12 +73,6 @@ jobs:
           libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev \
           libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev libthai-dev \
           libpipewire-0.3-dev libwayland-dev libdecor-0-dev liburing-dev
-
-      - name: Install fuse for Generate .AppImage, for example client - Linux (x64/arm64)
-        if: matrix.config.platform == 'linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get -y install libfuse2
 
       - name: Build RCNET (scripts) - Linux (x64/arm64)
         if: matrix.config.platform == 'linux'
