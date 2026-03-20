@@ -121,6 +121,12 @@ if (UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
   set(OPENSSL_ROOT_DIR "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/${RCNET_ARCH}" CACHE PATH "" FORCE)
   set(OPENSSL_SSL_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/${RCNET_ARCH}/libssl.a" CACHE FILEPATH "" FORCE)
   set(OPENSSL_CRYPTO_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/${RCNET_ARCH}/libcrypto.a" CACHE FILEPATH "" FORCE)
+
+  # gRPC ne devrait plus construire/utiliser son BoringSSL embarqué comme provider SSL, mais passer par OpenSSL trouvé par find_package(OpenSSL)
+  # Sans cela on se retrouve avec deux versions, qui cause des conflits au moment du linking.
+  set(OPENSSL_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
+  set(gRPC_SSL_PROVIDER "package" CACHE STRING "" FORCE)
+  find_package(OpenSSL REQUIRED)
 endif()
 
 # ============================================================
@@ -150,6 +156,7 @@ set(AGONES_INSTALL OFF CACHE BOOL "" FORCE)
 # =============================================================
 set(gRPC_DIR "${CMAKE_BINARY_DIR}/dependencies/grpc" CACHE PATH "" FORCE)
 set(Protobuf_DIR "${CMAKE_BINARY_DIR}/dependencies/grpc/third_party/protobuf/cmake/protobuf" CACHE PATH "" FORCE)
+set(_RCNET_OLD_FIND_PACKAGE_PREFER_CONFIG "${CMAKE_FIND_PACKAGE_PREFER_CONFIG}")
 set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
 list(PREPEND CMAKE_PREFIX_PATH
   "${gRPC_DIR}"
@@ -192,6 +199,11 @@ endif()
 # ============================================================
 add_subdirectory(dependencies/grpc EXCLUDE_FROM_ALL)
 add_subdirectory(dependencies/agones/sdks/cpp EXCLUDE_FROM_ALL)
+if(DEFINED _RCNET_OLD_FIND_PACKAGE_PREFER_CONFIG)
+  set(CMAKE_FIND_PACKAGE_PREFER_CONFIG "${_RCNET_OLD_FIND_PACKAGE_PREFER_CONFIG}")
+else()
+  unset(CMAKE_FIND_PACKAGE_PREFER_CONFIG)
+endif()
 if(RCNET_BUILD_EXAMPLE)
   add_subdirectory(dependencies/Crzgames_RC2D EXCLUDE_FROM_ALL)
 endif()
