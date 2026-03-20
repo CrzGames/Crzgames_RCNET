@@ -108,26 +108,6 @@ set(DEPENDENCIES_PATH "${PROJECT_SOURCE_DIR}/dependencies")
 set(CRZGAMES_LIBRARIES_PATH "${DEPENDENCIES_PATH}/Crzgames_Libraries")
 
 # ============================================================
-# Pour certaines librairies, on doit configurer manuellement les chemins d'inclusion et de liaison selon la plateforme, car elles ne sont pas toujours compatibles avec find_package ou ont des exigences spécifiques (ex: OpenSSL qui demande des chemins d'inclusion particuliers pour les headers).
-# ============================================================
-if(APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin") # macOS
-  set(OPENSSL_INCLUDE_DIR "${CRZGAMES_LIBRARIES_PATH}/macos/include/include_openssl" CACHE PATH "" FORCE)
-  set(OPENSSL_ROOT_DIR "${CRZGAMES_LIBRARIES_PATH}/macos/lib/OpenSSL" CACHE PATH "" FORCE)
-  set(OPENSSL_SSL_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/macos/lib/OpenSSL/libssl.a" CACHE FILEPATH "" FORCE)
-  set(OPENSSL_CRYPTO_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/macos/lib/OpenSSL/libcrypto.a" CACHE FILEPATH "" FORCE)
-elseif(WIN32) # Windows
-  set(OPENSSL_INCLUDE_DIR "${CRZGAMES_LIBRARIES_PATH}/windows/include/include_openssl" CACHE PATH "" FORCE)
-  set(OPENSSL_ROOT_DIR "${CRZGAMES_LIBRARIES_PATH}/windows/lib/OpenSSL/${RCNET_ARCH}" CACHE PATH "" FORCE)
-  set(OPENSSL_SSL_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/windows/lib/OpenSSL/${RCNET_ARCH}/libssl.lib" CACHE FILEPATH "" FORCE)
-  set(OPENSSL_CRYPTO_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/windows/lib/OpenSSL/${RCNET_ARCH}/libcrypto.lib" CACHE FILEPATH "" FORCE)
-elseif (UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
-  set(OPENSSL_INCLUDE_DIR "${CRZGAMES_LIBRARIES_PATH}/linux/include/include_openssl" CACHE PATH "" FORCE)
-  set(OPENSSL_ROOT_DIR "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/${RCNET_ARCH}" CACHE PATH "" FORCE)
-  set(OPENSSL_SSL_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/${RCNET_ARCH}/libssl.a" CACHE FILEPATH "" FORCE)
-  set(OPENSSL_CRYPTO_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/${RCNET_ARCH}/libcrypto.a" CACHE FILEPATH "" FORCE)
-endif()
-
-# ============================================================
 # NATS Client C — Configuration build
 # ============================================================
 if (UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
@@ -135,6 +115,11 @@ if (UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
   set(NATS_BUILD_LIB_SHARED OFF CACHE BOOL "" FORCE) # Pas besoin de la lib dynamique
   set(NATS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)   # Pas besoin des exemples
   set(NATS_BUILD_STREAMING OFF CACHE BOOL "" FORCE)  # Déprécié, maintenant on utilise JetStreaming
+
+  # Nats client C dépend d'OpenSSL pour la partie TLS, et à besoin de connaître les chemins d'inclusion et de liaison pour trouver les headers et libs OpenSSL.
+  set(OPENSSL_ROOT_DIR "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/${RCNET_ARCH}" CACHE PATH "" FORCE)
+  set(OPENSSL_SSL_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/${RCNET_ARCH}/libssl.a" CACHE FILEPATH "" FORCE)
+  set(OPENSSL_CRYPTO_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/${RCNET_ARCH}/libcrypto.a" CACHE FILEPATH "" FORCE)
 endif()
 
 # ============================================================
