@@ -150,11 +150,35 @@ set(ENABLE_CJSON_TEST   OFF CACHE BOOL "" FORCE) # Désactiver les tests
 set(ENABLE_CJSON_UTILS  OFF CACHE BOOL "" FORCE) # Désactiver les outils
 
 # ============================================================
+# gRPC/Protobuf for agones - Configuration build
+# ============================================================
+set(gRPC_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(gRPC_INSTALL OFF CACHE BOOL "" FORCE)
+set(protobuf_INSTALL OFF CACHE BOOL "" FORCE)
+set(utf8_range_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+set(AGONES_INSTALL OFF CACHE BOOL "" FORCE)
+
+# =============================================================
+# Agones SDK Client C++ — Configuration build
+# =============================================================
+set(gRPC_DIR "${CMAKE_BINARY_DIR}/dependencies/grpc" CACHE PATH "" FORCE)
+set(Protobuf_DIR "${CMAKE_BINARY_DIR}/dependencies/grpc/third_party/protobuf/cmake/protobuf" CACHE PATH "" FORCE)
+set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
+list(PREPEND CMAKE_PREFIX_PATH
+  "${gRPC_DIR}"
+  "${Protobuf_DIR}"
+)
+
+# ============================================================
 # Exemple client — Configuration build
 # Toutes les options RC2D_* qui permettent d'activer/désactiver
 # des modules, features ou intégrations SDK.
 # ============================================================
 if(RCNET_BUILD_EXAMPLE)
+  # On désactiver zlib de SDL_image qui rentre en conflit avec le zlib de GRPC.
+  set(SDLIMAGE_PNG_LIBPNG OFF CACHE BOOL "" FORCE)
+  set(SDLIMAGE_BACKEND_STB ON CACHE BOOL "" FORCE)
+  
   set(RC2D_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
   set(RC2D_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
   set(RC2D_EOS_SDK_ENABLED OFF CACHE BOOL "")
@@ -177,9 +201,10 @@ endif()
 # ============================================================
 # Dépendances vendored — add_subdirectory
 # ============================================================
-# On inclut SDL + modules, et cJSON depuis dependencies/.
 # EXCLUDE_FROM_ALL : évite de builder ces targets si aucune target ne les référence.
 # ============================================================
+add_subdirectory(dependencies/grpc EXCLUDE_FROM_ALL)
+add_subdirectory(dependencies/agones/sdks/cpp EXCLUDE_FROM_ALL)
 if(RCNET_BUILD_EXAMPLE)
   add_subdirectory(dependencies/Crzgames_RC2D EXCLUDE_FROM_ALL)
 endif()
@@ -189,6 +214,15 @@ endif()
 if(UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
   add_subdirectory(dependencies/nats EXCLUDE_FROM_ALL)
 endif()
+
+# ============================================================
+# Agones — Configuration build
+# ============================================================
+function(rcnet_configure_agones target_name)
+  target_link_libraries(${target_name} PUBLIC
+    agones
+  )
+endfunction()
 
 # ============================================================
 # rcnet_configure_libsodium
@@ -428,6 +462,11 @@ function(rcnet_target_compile_definitions target_name)
     target_compile_definitions(${target_name} PUBLIC 
       SODIUM_STATIC
     )
+
+    # Pour gRPC avec MSVC, on doit définir NOMINMAX pour éviter les conflits avec les macros min/max de Windows.
+    target_compile_definitions(${target_name} PUBLIC 
+      NOMINMAX
+    )
   endif()
 endfunction()
 
@@ -481,6 +520,9 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 # Applique à la target RCNET toutes les compile definitions
 # ============================================================
 rcnet_target_compile_definitions(${PROJECT_NAME})
+
+# Agones
+rcnet_configure_agones(${PROJECT_NAME})
 
 # OpenSSL
 rcnet_configure_openssl(${PROJECT_NAME})

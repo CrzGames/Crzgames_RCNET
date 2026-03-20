@@ -30,6 +30,11 @@ using namespace std::chrono;
 #include <sodium.h> // sodium_init
 
 // ============================================================================
+// Dépendances Agones
+// ============================================================================
+#include <agones/sdk.h>
+
+// ============================================================================
 // Dépendances système pour les threads et l'affinité CPU
 // ============================================================================
 #if defined(__linux__)
@@ -1826,6 +1831,7 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, const RCNET_ServerConfig* 
     // ------------------------------------------------------------------------
     // E) Initialisation moteur
     // ------------------------------------------------------------------------
+    agones::SDK *sdk = new agones::SDK();
 
     // Si l'init échoue, on nettoie puis on retourne false.
     if (!rcnet_engine_init())
