@@ -108,15 +108,21 @@ set(DEPENDENCIES_PATH "${PROJECT_SOURCE_DIR}/dependencies")
 set(CRZGAMES_LIBRARIES_PATH "${DEPENDENCIES_PATH}/Crzgames_Libraries")
 
 # ============================================================
-# NATS Client C — Configuration build
+# NATS Client C - Unix — Configuration build
 # ============================================================
 if (UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
   set(NATS_BUILD_LIB_STATIC ON CACHE BOOL "" FORCE)  # Pour forcer en static
   set(NATS_BUILD_LIB_SHARED OFF CACHE BOOL "" FORCE) # Pas besoin de la lib dynamique
   set(NATS_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)   # Pas besoin des exemples
   set(NATS_BUILD_STREAMING OFF CACHE BOOL "" FORCE)  # Déprécié, maintenant on utilise JetStreaming
+endif()
 
-  # Nats client C dépend d'OpenSSL pour la partie TLS, et à besoin de connaître les chemins d'inclusion et de liaison pour trouver les headers et libs OpenSSL.
+# ============================================================
+# NATS Client C / gRPC - Unix — Configuration build
+# ============================================================
+if (UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
+  # Nats client C / gRPC dépend d'OpenSSL pour la partie TLS, et à besoin de connaître les chemins d'inclusion et de liaison pour trouver les headers et libs OpenSSL.
+  set(OPENSSL_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
   set(OPENSSL_INCLUDE_DIR "${CRZGAMES_LIBRARIES_PATH}/linux/include/include_openssl" CACHE PATH "" FORCE)
   set(OPENSSL_ROOT_DIR "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/${RCNET_ARCH}" CACHE PATH "" FORCE)
   set(OPENSSL_SSL_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/linux/lib/OpenSSL/${RCNET_ARCH}/libssl.a" CACHE FILEPATH "" FORCE)
@@ -124,8 +130,22 @@ if (UNIX AND NOT APPLE AND NOT ANDROID) # Linux, Raspberry PI 5 etc.
 
   # gRPC ne devrait plus construire/utiliser son BoringSSL embarqué comme provider SSL, mais passer par OpenSSL trouvé par find_package(OpenSSL)
   # Sans cela on se retrouve avec deux versions, qui cause des conflits au moment du linking.
-  set(OPENSSL_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
   set(gRPC_SSL_PROVIDER "package" CACHE STRING "" FORCE)
+
+  # 
+  find_package(OpenSSL REQUIRED)
+endif()
+
+# ============================================================
+# OpenSSL - macOS — Configuration build
+# ============================================================
+if(APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  set(OPENSSL_USE_STATIC_LIBS ON CACHE BOOL "" FORCE)
+  set(OPENSSL_INCLUDE_DIR "${CRZGAMES_LIBRARIES_PATH}/macos/include/include_openssl" CACHE PATH "" FORCE)
+  set(OPENSSL_ROOT_DIR "${CRZGAMES_LIBRARIES_PATH}/macos/lib/OpenSSL" CACHE PATH "" FORCE)
+  set(OPENSSL_SSL_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/macos/lib/OpenSSL/libssl.a" CACHE FILEPATH "" FORCE)
+  set(OPENSSL_CRYPTO_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/macos/lib/OpenSSL/libcrypto.a" CACHE FILEPATH "" FORCE)
+
   find_package(OpenSSL REQUIRED)
 endif()
 
