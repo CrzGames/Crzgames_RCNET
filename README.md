@@ -139,7 +139,7 @@
   ```bash  
   # Windows (x64) :
   1. Requirements : Windows >= 10.
-  2. Download and Install Visual Studio == 2022 (MSVC >= v143 + Windows SDK >= 10) : https://visualstudio.microsoft.com/fr/downloads/
+  2. Download and Install Visual Studio == 2022 (composant MSVC == v143 + composant Windows SDK >= 10) : https://visualstudio.microsoft.com/fr/downloads/
   3. Download and Install CMake >= 3.28.0 : https://cmake.org/download/ and add PATH ENVIRONMENT.
   4. Activer le support long path dans Windows (Powershell en adminstrateur) : 
      reg add HKLM\SYSTEM\CurrentControlSet\Control\FileSystem /v LongPathsEnabled /t REG_DWORD /d 1 /f
