@@ -9,4 +9,4 @@ grpc=https://github.com/grpc/grpc.git:v1.76.0
 agones=https://github.com/agones-dev/agones.git:v1.55.0
 
 # Dependencies for executable example client :
-Crzgames_RC2D=https://github.com/CrzGames/Crzgames_RC2D.git:36935351c83ef79942865c5512de6ddf14fb8647
+Crzgames_RC2D=https://github.com/CrzGames/Crzgames_RC2D.git:3b84ab79bf3dd4a12cbd23b14f4d7464481c9f57
