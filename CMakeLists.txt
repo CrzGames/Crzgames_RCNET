@@ -145,7 +145,12 @@ if(APPLE AND CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   set(OPENSSL_ROOT_DIR "${CRZGAMES_LIBRARIES_PATH}/macos/lib/OpenSSL" CACHE PATH "" FORCE)
   set(OPENSSL_SSL_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/macos/lib/OpenSSL/libssl.a" CACHE FILEPATH "" FORCE)
   set(OPENSSL_CRYPTO_LIBRARY "${CRZGAMES_LIBRARIES_PATH}/macos/lib/OpenSSL/libcrypto.a" CACHE FILEPATH "" FORCE)
+  
+  # gRPC ne devrait plus construire/utiliser son BoringSSL embarqué comme provider SSL, mais passer par OpenSSL trouvé par find_package(OpenSSL)
+  # Sans cela on se retrouve avec deux versions, qui cause des conflits au moment du linking.
+  set(gRPC_SSL_PROVIDER "package" CACHE STRING "" FORCE)
 
+  # 
   find_package(OpenSSL REQUIRED)
 endif()
 
