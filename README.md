@@ -208,17 +208,7 @@ cmake -P cmake/setup_dependencies.cmake
 <br /><br />
 
 ## 🧱 Générer RCNET (lib statique) + Projet d'exemple Client/Serveur
-1. **Par défaut** : ces scripts **génèrent un projet CMake** dans `./build/`, puis **compilent RCNET en bibliothèque statique** et **construisent le projet d’exemple** pour la plateforme choisie.
-
-   - ✅ **Si le projet est déjà généré** (ex: solution **Visual Studio 2022**, projet Xcode, Ninja, etc.) : vous pouvez simplement **recompiler depuis votre IDE** ou via votre outil de build (Build/Run) **sans relancer les scripts**, tant que la configuration CMake ne change pas.
-
-   - 🔁 **Quand relancer les scripts (ou rerun CMake)** :
-     - Si vous modifiez des options CMake / flags / dépendances (ex: activation d’un module, ajout de libs, changement de toolchain, mise à jour `dependencies.txt`, etc.)
-     - Si vous supprimez le dossier `build/` ou changez de plateforme/architecture/générateur.
-
-   - 🧩 **Qu’est-ce qui demande une recompilation ?**
-     - Si vous modifiez `src/RCNET/**` ou `include/RCNET/**` → vous modifiez la **lib RCNET** → **recompiler RCNET** (IDE ou scripts).
-     - Si vous modifiez `example-client/src/**` / `example-client/include/**` ou `example-server/src/**` / `example-server/include/**` → vous modifiez **l’exemple** → **recompiler l’exemple** (IDE ou scripts).
+1. **Première fois uniquement** : utilisez les scripts `generate-project` pour **générer le projet CMake** dans `./build/` puis faire un build initial.
 
 ```bash
 # Linux - x64
@@ -239,16 +229,59 @@ chmod +x ./build-scripts/generate-project/macos-arm64.sh
 # Windows - x64
 .\build-scripts\generate-project\windows-x64.bat
 ```
-3. Il y a un dossier `build` à la racine qui est générer.
+
+2. **Développement quotidien (après génération initiale)** : utilisez les scripts du dossier `build-project-development-debug`.
+   - Sans argument : build **Debug** des 3 targets par défaut :
+     - `rcnet`
+     - `rcnet_example_server`
+     - `rcnet_example_client`
+   - Avec argument : build **Debug** d'une target spécifique uniquement (plus rapide).
+
 ```bash
-# Pour Windows x64 par exemple, un projet Visual Studio 2022 à été générer au path suivant :
+# Linux - x64 (3 targets par défaut)
+chmod +x ./build-scripts/build-project-development-debug/linux-x64.sh
+./build-scripts/build-project-development-debug/linux-x64.sh
+
+# Linux - x64 (target spécifique)
+./build-scripts/build-project-development-debug/linux-x64.sh rcnet_example_server
+
+
+# Linux - arm64 (3 targets par défaut)
+chmod +x ./build-scripts/build-project-development-debug/linux-arm64.sh
+./build-scripts/build-project-development-debug/linux-arm64.sh
+
+# Linux - arm64 (target spécifique)
+./build-scripts/build-project-development-debug/linux-arm64.sh rcnet_example_server
+
+
+# macOS - arm64 (3 targets par défaut)
+chmod +x ./build-scripts/build-project-development-debug/macos-arm64.sh
+./build-scripts/build-project-development-debug/macos-arm64.sh
+
+# macOS - arm64 (target spécifique)
+./build-scripts/build-project-development-debug/macos-arm64.sh rcnet_example_client
+
+
+# Windows - x64 (3 targets par défaut)
+.\build-scripts\build-project-development-debug\windows-x64.bat
+
+# Windows - x64 (target spécifique)
+.\build-scripts\build-project-development-debug\windows-x64.bat rcnet_example_server
+```
+
+3. **Quand relancer `generate-project` (ou rerun CMake)** :
+   - Si vous modifiez des options CMake / flags / dépendances (activation de module, ajout de libs, changement de toolchain, mise à jour `dependencies.txt`, etc.).
+   - Si vous supprimez le dossier `build/` ou changez de plateforme/architecture/générateur.
+
+4. Dossier de sortie (exemple Windows x64) :
+```bash
+# Projet Visual Studio généré :
 .\build\windows\x64
 
-# La librairie RCNET static + l'exemple générer dans le même dossier :
-Release : .\build\windows\x64\Debug
-Debug : .\build\windows\x64\Release
+# Binaries générés :
+Debug   : .\build\windows\x64\Debug
+Release : .\build\windows\x64\Release
 ```
-4. Ouvrir le projet générer dans votre IDE favoris.
 
 <br /><br />
 
