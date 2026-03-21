@@ -101,3 +101,348 @@ jobs:
           set -euxo pipefail
           chmod +x ./build-scripts/generate-project/macos-arm64.sh
           ./build-scripts/generate-project/macos-arm64.sh
+
+      - name: Print runtime minimums - Linux
+        if: matrix.config.platform == 'linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          platform="${{ matrix.config.platform }}"
+          arch="${{ matrix.config.arch }}"
+          build_dir="build/${platform}/${arch}/Release"
+          exe="${build_dir}/rcnet_example_server"
+
+          if ! command -v readelf >/dev/null 2>&1; then
+            echo "[runtime-check][$platform][$arch] ERROR: readelf is not available"
+            exit 1
+          fi
+
+          if [ ! -f "$exe" ]; then
+            echo "[runtime-check][$platform][$arch] ERROR: executable not found at $exe"
+            exit 1
+          fi
+
+          glibc_from_file() {
+            local file="$1"
+            readelf --version-info "$file" 2>/dev/null \
+              | grep -oE 'GLIBC_[0-9]+(\.[0-9]+)+' \
+              | sed 's/^GLIBC_//' \
+              | sort -V \
+              | tail -n1 || true
+          }
+
+          max_version() {
+            local current="${1:-}"
+            local candidate="${2:-}"
+            if [ -z "$candidate" ]; then
+              printf '%s' "$current"
+              return
+            fi
+            if [ -z "$current" ]; then
+              printf '%s' "$candidate"
+              return
+            fi
+            if [ "$(printf '%s\n%s\n' "$current" "$candidate" | sort -V | tail -n1)" = "$candidate" ]; then
+              printf '%s' "$candidate"
+            else
+              printf '%s' "$current"
+            fi
+          }
+
+          missing_libs="$(ldd "$exe" | awk '/=> not found/ {print $1}' || true)"
+          if [ -n "$missing_libs" ]; then
+            echo "[runtime-check][$platform][$arch] ERROR: unresolved shared libraries for $exe"
+            echo "$missing_libs" | sed "s/^/[runtime-check][$platform][$arch]   missing=/"
+            exit 1
+          fi
+
+          closure_file="$(mktemp)"
+          {
+            echo "$exe"
+            ldd "$exe" | awk '
+              /=>/ && $3 ~ /^\// { print $3 }
+              $1 ~ /^\// { print $1 }
+            '
+          } | awk '!seen[$0]++' > "$closure_file"
+
+          closure_max_glibc=""
+          closure_count=0
+          while IFS= read -r file; do
+            [ -f "$file" ] || continue
+            closure_count=$((closure_count + 1))
+            file_glibc="$(glibc_from_file "$file")"
+            closure_max_glibc="$(max_version "$closure_max_glibc" "$file_glibc")"
+          done < "$closure_file"
+
+          rm -f "$closure_file"
+
+          echo "[runtime-check][$platform][$arch] executable=$exe"
+          echo "[runtime-check][$platform][$arch] runtime closure files (exe + resolved shared libs)=$closure_count"
+          echo "[runtime-check][$platform][$arch] required GLIBC for runtime closure (max symbol version)=${closure_max_glibc:-none-detected}"
+
+      - name: Print runtime minimums - Windows
+        if: matrix.config.platform == 'windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          $platform = "${{ matrix.config.platform }}"
+          $arch = "${{ matrix.config.arch }}"
+          $buildDir = "build/windows/$arch"
+          $exe = "$buildDir/Release/rcnet_example_server.exe"
+          $cachePath = "$buildDir/CMakeCache.txt"
+
+          function Get-CMakeCacheValue {
+            param(
+              [string]$Path,
+              [string]$Key
+            )
+            if (-not (Test-Path $Path)) {
+              return $null
+            }
+            $line = Select-String -Path $Path -Pattern ("^" + [regex]::Escape($Key) + ":[^=]*=") | Select-Object -First 1
+            if (-not $line) {
+              return $null
+            }
+            return ($line.Line -split "=", 2)[1]
+          }
+
+          function Get-PeInfo {
+            param([string]$Path)
+
+            [byte[]]$bytes = [System.IO.File]::ReadAllBytes($Path)
+            if ($bytes.Length -lt 256) {
+              throw "File is too small to be a valid PE: $Path"
+            }
+
+            if ($bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) {
+              throw "Missing MZ signature: $Path"
+            }
+
+            $peOffset = [BitConverter]::ToInt32($bytes, 0x3C)
+            if ($peOffset -lt 0 -or ($peOffset + 88) -ge $bytes.Length) {
+              throw "Invalid PE header offset: $Path"
+            }
+
+            $peSignature = [BitConverter]::ToUInt32($bytes, $peOffset)
+            if ($peSignature -ne 0x00004550) {
+              throw "Missing PE signature: $Path"
+            }
+
+            $machine = [BitConverter]::ToUInt16($bytes, $peOffset + 4)
+            $optOffset = $peOffset + 24
+            $magic = [BitConverter]::ToUInt16($bytes, $optOffset)
+
+            $majorOs = [BitConverter]::ToUInt16($bytes, $optOffset + 40)
+            $minorOs = [BitConverter]::ToUInt16($bytes, $optOffset + 42)
+            $majorImage = [BitConverter]::ToUInt16($bytes, $optOffset + 44)
+            $minorImage = [BitConverter]::ToUInt16($bytes, $optOffset + 46)
+            $majorSubsystem = [BitConverter]::ToUInt16($bytes, $optOffset + 48)
+            $minorSubsystem = [BitConverter]::ToUInt16($bytes, $optOffset + 50)
+
+            $machineLabel = switch ($machine) {
+              0x8664 { "x64" }
+              0xAA64 { "arm64" }
+              0x014C { "x86" }
+              default { "unknown" }
+            }
+
+            $formatLabel = switch ($magic) {
+              0x20B { "PE32+" }
+              0x10B { "PE32" }
+              default { "unknown" }
+            }
+
+            return [PSCustomObject]@{
+              Machine = $machine
+              MachineLabel = $machineLabel
+              Format = $formatLabel
+              MajorOs = $majorOs
+              MinorOs = $minorOs
+              MajorImage = $majorImage
+              MinorImage = $minorImage
+              MajorSubsystem = $majorSubsystem
+              MinorSubsystem = $minorSubsystem
+            }
+          }
+
+          if (-not (Test-Path $exe)) {
+            Write-Host "[runtime-check][$platform][$arch] ERROR: executable not found at $exe"
+            exit 1
+          }
+
+          $cmakeSystemVersion = Get-CMakeCacheValue -Path $cachePath -Key "CMAKE_SYSTEM_VERSION"
+          $pe = Get-PeInfo -Path $exe
+
+          $dllDir = Split-Path -Parent $exe
+          $bundledDlls = @(Get-ChildItem -Path $dllDir -Filter *.dll -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName)
+
+          $closureCount = 1 + $bundledDlls.Count
+          $closureMaxOs = "{0}.{1}" -f $pe.MajorOs, $pe.MinorOs
+          $closureMaxSubsystem = "{0}.{1}" -f $pe.MajorSubsystem, $pe.MinorSubsystem
+
+          foreach ($dll in $bundledDlls) {
+            try {
+              $dllPe = Get-PeInfo -Path $dll
+            } catch {
+              Write-Host "[runtime-check][$platform][$arch] WARN: failed to parse DLL header: $dll"
+              continue
+            }
+
+            $dllOs = "{0}.{1}" -f $dllPe.MajorOs, $dllPe.MinorOs
+            $dllSubsystem = "{0}.{1}" -f $dllPe.MajorSubsystem, $dllPe.MinorSubsystem
+
+            if ([version]$dllOs -gt [version]$closureMaxOs) {
+              $closureMaxOs = $dllOs
+            }
+            if ([version]$dllSubsystem -gt [version]$closureMaxSubsystem) {
+              $closureMaxSubsystem = $dllSubsystem
+            }
+          }
+
+          Write-Host "[runtime-check][$platform][$arch] executable=$exe"
+          if ($cmakeSystemVersion) {
+            Write-Host "[runtime-check][$platform][$arch] CMAKE_SYSTEM_VERSION=$cmakeSystemVersion"
+          }
+          Write-Host "[runtime-check][$platform][$arch] runtime closure files (exe + bundled dll)=$closureCount"
+          Write-Host "[runtime-check][$platform][$arch] PE format=$($pe.Format)"
+          Write-Host "[runtime-check][$platform][$arch] PE machine=$($pe.MachineLabel) (0x$("{0:X4}" -f $pe.Machine))"
+          Write-Host "[runtime-check][$platform][$arch] PE OS version=$($pe.MajorOs).$($pe.MinorOs)"
+          Write-Host "[runtime-check][$platform][$arch] PE image version=$($pe.MajorImage).$($pe.MinorImage)"
+          Write-Host "[runtime-check][$platform][$arch] PE subsystem version=$($pe.MajorSubsystem).$($pe.MinorSubsystem)"
+          Write-Host "[runtime-check][$platform][$arch] required PE OS version for runtime closure=$closureMaxOs"
+          Write-Host "[runtime-check][$platform][$arch] required PE subsystem version for runtime closure=$closureMaxSubsystem"
+
+      - name: Print runtime minimums - macOS
+        if: matrix.config.platform == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          platform="${{ matrix.config.platform }}"
+          arch="${{ matrix.config.arch }}"
+
+          minos_from_macho() {
+            local file="$1"
+            otool -l "$file" | awk '
+              $1=="cmd" && $2=="LC_BUILD_VERSION" { mode="build"; next }
+              mode=="build" && $1=="minos" { print $2; exit }
+              $1=="cmd" && ($2=="LC_VERSION_MIN_MACOSX" || $2=="LC_VERSION_MIN_IPHONEOS") { mode="legacy"; next }
+              mode=="legacy" && $1=="version" { print $2; exit }
+            '
+          }
+
+          max_version() {
+            local current="${1:-}"
+            local candidate="${2:-}"
+            if [ -z "$candidate" ]; then
+              printf '%s' "$current"
+              return
+            fi
+            if [ -z "$current" ]; then
+              printf '%s' "$candidate"
+              return
+            fi
+            if [ "$(printf '%s\n%s\n' "$current" "$candidate" | sort -V | tail -n1)" = "$candidate" ]; then
+              printf '%s' "$candidate"
+            else
+              printf '%s' "$current"
+            fi
+          }
+
+          root="build/macos/$arch"
+          cache="$root/CMakeCache.txt"
+          exe_path="$root/Release/rcnet_example_server"
+
+          if [ ! -f "$exe_path" ]; then
+            exe_path="$(find "$root" -type f -path "*/Release*/rcnet_example_server" -print -quit || true)"
+          fi
+          if [ -z "${exe_path:-}" ] || [ ! -f "$exe_path" ]; then
+            exe_path="$(find "$root" -type f -name "rcnet_example_server" -print -quit || true)"
+          fi
+
+          if [ -z "${exe_path:-}" ] || [ ! -f "$exe_path" ]; then
+            echo "[runtime-check][$platform][$arch] ERROR: executable not found in $root"
+            exit 1
+          fi
+
+          cmake_target="$(awk -F= '/^CMAKE_OSX_DEPLOYMENT_TARGET:/{print $2; exit}' "$cache" 2>/dev/null || true)"
+          exe_minos="$(minos_from_macho "$exe_path")"
+
+          echo "[runtime-check][$platform][$arch] executable=$exe_path"
+          if [ -n "$cmake_target" ]; then
+            echo "[runtime-check][$platform][$arch] CMAKE_OSX_DEPLOYMENT_TARGET=$cmake_target"
+          fi
+          echo "[runtime-check][$platform][$arch] executable minos=${exe_minos:-unknown}"
+
+          add_unique_line() {
+            local list_file="$1"
+            local value="$2"
+            if ! grep -Fqx "$value" "$list_file" 2>/dev/null; then
+              printf '%s\n' "$value" >> "$list_file"
+            fi
+          }
+
+          closure_list="$(mktemp)"
+          external_non_system_list="$(mktemp)"
+          unresolved_absolute_list="$(mktemp)"
+
+          add_unique_line "$closure_list" "$exe_path"
+
+          idx=1
+          while true; do
+            total="$(wc -l < "$closure_list" | tr -d ' ')"
+            if [ "$idx" -gt "$total" ]; then
+              break
+            fi
+
+            current="$(sed -n "${idx}p" "$closure_list")"
+            idx=$((idx + 1))
+            [ -f "$current" ] || continue
+
+            while IFS= read -r dep; do
+              case "$dep" in
+                /*)
+                  if [ -f "$dep" ]; then
+                    if file -b "$dep" 2>/dev/null | grep -q "Mach-O"; then
+                      add_unique_line "$closure_list" "$dep"
+                    fi
+                    case "$dep" in
+                      /System/*|/usr/lib/*) ;;
+                      *) add_unique_line "$external_non_system_list" "$dep" ;;
+                    esac
+                  else
+                    add_unique_line "$unresolved_absolute_list" "$dep"
+                  fi
+                ;;
+              esac
+            done < <(otool -L "$current" | tail -n +2 | awk '{print $1}')
+          done
+
+          closure_max_minos=""
+          closure_count=0
+          while IFS= read -r file; do
+            [ -f "$file" ] || continue
+            closure_count=$((closure_count + 1))
+            file_minos="$(minos_from_macho "$file")"
+            closure_max_minos="$(max_version "$closure_max_minos" "$file_minos")"
+          done < "$closure_list"
+
+          external_non_system_count="$(wc -l < "$external_non_system_list" | tr -d ' ')"
+          unresolved_absolute_count="$(wc -l < "$unresolved_absolute_list" | tr -d ' ')"
+
+          echo "[runtime-check][$platform][$arch] runtime closure files (exe + resolved absolute dylibs)=$closure_count"
+          echo "[runtime-check][$platform][$arch] required minos for runtime closure=${closure_max_minos:-unknown}"
+
+          if [ "$external_non_system_count" -gt 0 ]; then
+            echo "[runtime-check][$platform][$arch] external non-system dylibs detected=$external_non_system_count"
+            sed "s|^|[runtime-check][$platform][$arch]   external_dylib=|" "$external_non_system_list"
+          fi
+
+          if [ "$unresolved_absolute_count" -gt 0 ]; then
+            echo "[runtime-check][$platform][$arch] WARN: unresolved absolute dylibs in load commands=$unresolved_absolute_count"
+            sed "s|^|[runtime-check][$platform][$arch]   unresolved_dylib=|" "$unresolved_absolute_list"
+          fi
+
+          rm -f "$closure_list" "$external_non_system_list" "$unresolved_absolute_list"
