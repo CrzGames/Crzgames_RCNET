@@ -12,10 +12,16 @@ if [[ ! -f "${CACHE_FILE}" ]]; then
 fi
 
 echo -e "\e[32m[INFO ] Rebuilding Debug configuration (Linux arm64)...\e[0m"
-if [[ -z "${TARGET}" ]]; then
-  cmake --build "${BUILD_DIR}" --parallel 8
+if [[ -n "${TARGET}" ]]; then
+  targets=("${TARGET}")
 else
-  cmake --build "${BUILD_DIR}" --target "${TARGET}" --parallel 8
+  targets=("rcnet" "rcnet_example_server" "rcnet_example_client")
+  echo -e "\e[32m[INFO ] No target specified, building default development targets...\e[0m"
 fi
+
+for t in "${targets[@]}"; do
+  echo -e "\e[32m[INFO ] Building target ${t} (Debug)...\e[0m"
+  cmake --build "${BUILD_DIR}" --target "${t}" --parallel 8
+done
 
 echo -e "\e[32m[OK   ] Debug build completed.\e[0m"
