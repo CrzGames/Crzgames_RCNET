@@ -12,7 +12,7 @@ spec:
     # "Static" Obligatoire pour du développement de serveur local
     portPolicy: Static
     # Le port exposé sur l'hôte, requis uniquement lorsque `portPolicy` est défini sur « Static ».
-    hostPort: 17654
+    hostPort: 12345
     # le port ouvert sur le processus du serveur de jeu (donc le port UDP Server ENet par exemple)
     containerPort: 12345 # Remplace par le port que ton serveur de jeu utilise pour écouter les connexions des clients
 
