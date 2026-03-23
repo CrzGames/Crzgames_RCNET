@@ -12,6 +12,8 @@
 #include <algorithm>  // std::sort
 #include <vector>
 #include <mutex>
+#include <string>
+#include <cstring>    // std::memcpy
 
 using namespace std::chrono;
 
@@ -32,7 +34,9 @@ using namespace std::chrono;
 // ============================================================================
 // Dépendances Agones
 // ============================================================================
+#if RCNET_AGONES_ENABLED
 #include <agones/sdk.h>
+#endif
 
 // ============================================================================
 // Dépendances système pour les threads et l'affinité CPU
@@ -636,6 +640,10 @@ static void rcnet_engine_setCallbacks(RCNET_Callbacks* callbacksUser)
     if (callbacksUser->rcnet_nats_update)
         callbacksServerEngine.rcnet_nats_update = callbacksUser->rcnet_nats_update;
 
+    // Si le callback d'etat GameServer Agones existe, on l'enregistre.
+    if (callbacksUser->rcnet_agones_gameserver_update)
+        callbacksServerEngine.rcnet_agones_gameserver_update = callbacksUser->rcnet_agones_gameserver_update;
+
     // Si le callback de réveil des threads bloqués existe, on l'enregistre.
     if (callbacksUser->rcnet_wake_blocking_threads)
         callbacksServerEngine.rcnet_wake_blocking_threads = callbacksUser->rcnet_wake_blocking_threads;
@@ -1032,7 +1040,140 @@ static void rcnet_engine_natsThreadMain(void)
 }
 
 // ============================================================================
-// 17) Thread simulation
+// 17-bis) Thread Agones Health
+// ============================================================================
+#if RCNET_AGONES_ENABLED
+
+static inline void rcnet_engine_copyStringToFixedBuffer(
+    char* destination,
+    size_t destinationSize,
+    const std::string& source)
+{
+    if (destination == nullptr || destinationSize == 0)
+    {
+        return;
+    }
+
+    const size_t bytesToCopy =
+        (source.size() < (destinationSize - 1))
+            ? source.size()
+            : (destinationSize - 1);
+
+    std::memcpy(destination, source.data(), bytesToCopy);
+    destination[bytesToCopy] = '\0';
+}
+
+static inline void rcnet_engine_emitAgonesGameServerUpdate(
+    const agones::dev::sdk::GameServer& gameServer)
+{
+    if (callbacksServerEngine.rcnet_agones_gameserver_update == nullptr)
+    {
+        return;
+    }
+
+    RCNET_AgonesGameServerInfo info = {};
+
+    rcnet_engine_copyStringToFixedBuffer(info.name, sizeof(info.name), gameServer.object_meta().name());
+    rcnet_engine_copyStringToFixedBuffer(info.state, sizeof(info.state), gameServer.status().state());
+    rcnet_engine_copyStringToFixedBuffer(info.address, sizeof(info.address), gameServer.status().address());
+
+    if (gameServer.status().addresses_size() > 0)
+    {
+        rcnet_engine_copyStringToFixedBuffer(
+            info.addressType,
+            sizeof(info.addressType),
+            gameServer.status().addresses(0).type()
+        );
+    }
+
+    if (gameServer.status().ports_size() > 0)
+    {
+        info.port = static_cast<uint32_t>(gameServer.status().ports(0).port());
+    }
+
+    callbacksServerEngine.rcnet_agones_gameserver_update(&info);
+}
+
+/**
+ * \brief Point d'entree du thread WatchGameServer Agones (bloquant).
+ */
+static void rcnet_engine_agonesWatchGameServerThreadMain(agones::SDK* sdk)
+{
+    if (sdk == nullptr)
+    {
+        RCNET_log(RCNET_LOG_ERROR, "Thread Agones WatchGameServer termine immediatement: SDK null.");
+        return;
+    }
+
+    if (callbacksServerEngine.rcnet_agones_gameserver_update == nullptr)
+    {
+        return;
+    }
+
+    RCNET_log(RCNET_LOG_INFO, "Thread Agones WatchGameServer demarrer.");
+
+    const grpc::Status watchStatus = sdk->WatchGameServer(
+        [](const agones::dev::sdk::GameServer& gameServer)
+        {
+            if (!serverIsRunning.load(std::memory_order_relaxed))
+            {
+                return;
+            }
+
+            rcnet_engine_emitAgonesGameServerUpdate(gameServer);
+        }
+    );
+
+    if (!watchStatus.ok())
+    {
+        RCNET_log(
+            RCNET_LOG_WARN,
+            "Agones WatchGameServer termine avec erreur (code=%d, message=%s).",
+            (int)watchStatus.error_code(),
+            watchStatus.error_message().c_str()
+        );
+
+        if (serverIsRunning.load(std::memory_order_relaxed))
+        {
+            rcnet_engine_eventQuit();
+        }
+    }
+
+    RCNET_log(RCNET_LOG_INFO, "Thread Agones WatchGameServer terminer.");
+}
+
+/**
+ * \brief Point d'entree du thread de health ping Agones.
+ *
+ * Ce thread envoie un ping de sante toutes les 2 secondes,
+ * tant que le serveur est en execution.
+ */
+static void rcnet_engine_agonesHealthThreadMain(agones::SDK* sdk)
+{
+    if (sdk == nullptr)
+    {
+        RCNET_log(RCNET_LOG_ERROR, "Thread Agones Health termine immediatement: SDK null.");
+        return;
+    }
+
+    RCNET_log(RCNET_LOG_INFO, "Thread Agones Health demarrer.");
+
+    while (serverIsRunning.load(std::memory_order_relaxed))
+    {
+        if (!sdk->Health())
+        {
+            RCNET_log(RCNET_LOG_WARN, "Agones Health ping a echoue.");
+        }
+
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+    }
+
+    RCNET_log(RCNET_LOG_INFO, "Thread Agones Health terminer.");
+}
+#endif
+
+// ============================================================================
+// 18) Thread simulation
 // ============================================================================
 
 static void rcnet_engine_simulationThreadMain(void)
@@ -1454,7 +1595,7 @@ static void rcnet_engine_simulationThreadMain(void)
 }
 
 // ============================================================================
-// 18) Thread réseau
+// 19) Thread réseau
 // ============================================================================
 
 /**
@@ -1731,7 +1872,7 @@ static void rcnet_engine_networkThreadMain(void)
 }
 
 // ============================================================================
-// 19) Point d'entrée public moteur
+// 20) Point d'entrée public moteur
 // ============================================================================
 
 bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, const RCNET_ServerConfig* config)
@@ -1831,7 +1972,11 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, const RCNET_ServerConfig* 
     // ------------------------------------------------------------------------
     // E) Initialisation moteur
     // ------------------------------------------------------------------------
-    agones::SDK *sdk = new agones::SDK();
+    bool agonesReadyOk = true;
+
+#if RCNET_AGONES_ENABLED
+    agones::SDK sdk;
+#endif
 
     // Si l'init échoue, on nettoie puis on retourne false.
     if (!rcnet_engine_init())
@@ -1839,6 +1984,26 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, const RCNET_ServerConfig* 
         rcnet_engine_quit();
         return false;
     }
+
+#if RCNET_AGONES_ENABLED
+    // Tente la connexion au serveur SDK Agones avant de demarrer les threads.
+    if (!sdk.Connect())
+    {
+        RCNET_log(RCNET_LOG_ERROR, "Impossible de se connecter au serveur SDK Agones.");
+        rcnet_engine_quit();
+        return false;
+    }
+
+    RCNET_log(RCNET_LOG_INFO, "Connexion au serveur SDK Agones reussie.");
+#else
+    if (callbacksServerEngine.rcnet_agones_gameserver_update != nullptr)
+    {
+        RCNET_log(
+            RCNET_LOG_WARN,
+            "Callback rcnet_agones_gameserver_update configure, mais RCNET_AGONES_ENABLED est a OFF."
+        );
+    }
+#endif
 
     // ------------------------------------------------------------------------
     // F) Callback utilisateur de chargement
@@ -1883,6 +2048,43 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, const RCNET_ServerConfig* 
         natsThread = std::thread(rcnet_engine_natsThreadMain);
     }
 
+#if RCNET_AGONES_ENABLED
+    // Lance le thread Agones Health ping (toutes les 2 secondes).
+    std::thread agonesHealthThread(rcnet_engine_agonesHealthThreadMain, &sdk);
+
+    // Thread WatchGameServer Agones (optionnel si callback present).
+    std::thread agonesWatchGameServerThread;
+    bool hasAgonesWatchGameServerThread = false;
+
+    // Une fois les threads lances, on peut marquer le GameServer comme Ready.
+    const grpc::Status readyStatus = sdk.Ready();
+    if (!readyStatus.ok())
+    {
+        RCNET_log(
+            RCNET_LOG_ERROR,
+            "Agones Ready a echoue (code=%d, message=%s).",
+            (int)readyStatus.error_code(),
+            readyStatus.error_message().c_str()
+        );
+
+        agonesReadyOk = false;
+        rcnet_engine_eventQuit();
+    }
+    else
+    {
+        RCNET_log(RCNET_LOG_INFO, "Agones Ready envoye avec succes.");
+
+        if (callbacksServerEngine.rcnet_agones_gameserver_update != nullptr)
+        {
+            hasAgonesWatchGameServerThread = true;
+            agonesWatchGameServerThread = std::thread(
+                rcnet_engine_agonesWatchGameServerThreadMain,
+                &sdk
+            );
+        }
+    }
+#endif
+
     // ------------------------------------------------------------------------
     // H) Attente de fin des threads
     // ------------------------------------------------------------------------
@@ -1905,6 +2107,33 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, const RCNET_ServerConfig* 
         natsThread.join();
     }
 
+#if RCNET_AGONES_ENABLED
+    // Attend la fin du thread Agones Health.
+    agonesHealthThread.join();
+
+    // Notifie Agones que le serveur se termine.
+    const grpc::Status shutdownStatus = sdk.Shutdown();
+    if (!shutdownStatus.ok())
+    {
+        RCNET_log(
+            RCNET_LOG_WARN,
+            "Agones Shutdown a echoue (code=%d, message=%s).",
+            (int)shutdownStatus.error_code(),
+            shutdownStatus.error_message().c_str()
+        );
+    }
+    else
+    {
+        RCNET_log(RCNET_LOG_INFO, "Agones Shutdown envoye avec succes.");
+    }
+
+    // Attend la fin du thread WatchGameServer si actif.
+    if (hasAgonesWatchGameServerThread)
+    {
+        agonesWatchGameServerThread.join();
+    }
+#endif
+
     // ------------------------------------------------------------------------
     // I) Callback utilisateur de déchargement
     // ------------------------------------------------------------------------
@@ -1920,6 +2149,6 @@ bool rcnet_engine_run(RCNET_Callbacks* callbacksUser, const RCNET_ServerConfig* 
     // Nettoie les dépendances.
     rcnet_engine_quit();
 
-    // Indique que l'exécution s'est terminée normalement.
-    return true;
+    // Indique si l'execution s'est terminee normalement.
+    return agonesReadyOk;
 }

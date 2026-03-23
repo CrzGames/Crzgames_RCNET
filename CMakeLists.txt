@@ -30,6 +30,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Build Options
 # ============================================================
 option(RCNET_BUILD_EXAMPLE "Build the example server and client targets" ON)
+option(RCNET_AGONES_ENABLED "Enable Agones SDK integration" ON)
 
 # ============================================================
 # Output Directories
@@ -170,23 +171,27 @@ set(ENABLE_CJSON_UTILS  OFF CACHE BOOL "" FORCE) # Désactiver les outils
 # ============================================================
 # gRPC/Protobuf for agones - Configuration build
 # ============================================================
-set(gRPC_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(gRPC_INSTALL OFF CACHE BOOL "" FORCE)
-set(protobuf_INSTALL OFF CACHE BOOL "" FORCE)
-set(utf8_range_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
-set(AGONES_INSTALL OFF CACHE BOOL "" FORCE)
+if(RCNET_AGONES_ENABLED)
+  set(gRPC_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(gRPC_INSTALL OFF CACHE BOOL "" FORCE)
+  set(protobuf_INSTALL OFF CACHE BOOL "" FORCE)
+  set(utf8_range_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+  set(AGONES_INSTALL OFF CACHE BOOL "" FORCE)
+endif()
 
 # =============================================================
 # Agones SDK Client C++ — Configuration build
 # =============================================================
-set(gRPC_DIR "${CMAKE_BINARY_DIR}/dependencies/grpc" CACHE PATH "" FORCE)
-set(Protobuf_DIR "${CMAKE_BINARY_DIR}/dependencies/grpc/third_party/protobuf/cmake/protobuf" CACHE PATH "" FORCE)
-set(_RCNET_OLD_FIND_PACKAGE_PREFER_CONFIG "${CMAKE_FIND_PACKAGE_PREFER_CONFIG}")
-set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
-list(PREPEND CMAKE_PREFIX_PATH
-  "${gRPC_DIR}"
-  "${Protobuf_DIR}"
-)
+if(RCNET_AGONES_ENABLED)
+  set(gRPC_DIR "${CMAKE_BINARY_DIR}/dependencies/grpc" CACHE PATH "" FORCE)
+  set(Protobuf_DIR "${CMAKE_BINARY_DIR}/dependencies/grpc/third_party/protobuf/cmake/protobuf" CACHE PATH "" FORCE)
+  set(_RCNET_OLD_FIND_PACKAGE_PREFER_CONFIG "${CMAKE_FIND_PACKAGE_PREFER_CONFIG}")
+  set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)
+  list(PREPEND CMAKE_PREFIX_PATH
+    "${gRPC_DIR}"
+    "${Protobuf_DIR}"
+  )
+endif()
 
 # ============================================================
 # Exemple client — Configuration build
@@ -222,12 +227,14 @@ endif()
 # ============================================================
 # EXCLUDE_FROM_ALL : évite de builder ces targets si aucune target ne les référence.
 # ============================================================
-add_subdirectory(dependencies/grpc EXCLUDE_FROM_ALL)
-add_subdirectory(dependencies/agones/sdks/cpp EXCLUDE_FROM_ALL)
-if(DEFINED _RCNET_OLD_FIND_PACKAGE_PREFER_CONFIG)
-  set(CMAKE_FIND_PACKAGE_PREFER_CONFIG "${_RCNET_OLD_FIND_PACKAGE_PREFER_CONFIG}")
-else()
-  unset(CMAKE_FIND_PACKAGE_PREFER_CONFIG)
+if(RCNET_AGONES_ENABLED)
+  add_subdirectory(dependencies/grpc EXCLUDE_FROM_ALL)
+  add_subdirectory(dependencies/agones/sdks/cpp EXCLUDE_FROM_ALL)
+  if(DEFINED _RCNET_OLD_FIND_PACKAGE_PREFER_CONFIG)
+    set(CMAKE_FIND_PACKAGE_PREFER_CONFIG "${_RCNET_OLD_FIND_PACKAGE_PREFER_CONFIG}")
+  else()
+    unset(CMAKE_FIND_PACKAGE_PREFER_CONFIG)
+  endif()
 endif()
 if(RCNET_BUILD_EXAMPLE)
   add_subdirectory(dependencies/Crzgames_RC2D EXCLUDE_FROM_ALL)
@@ -243,9 +250,11 @@ endif()
 # Agones — Configuration build
 # ============================================================
 function(rcnet_configure_agones target_name)
-  target_link_libraries(${target_name} PUBLIC
-    agones
-  )
+  if(RCNET_AGONES_ENABLED)
+    target_link_libraries(${target_name} PUBLIC
+      agones
+    )
+  endif()
 endfunction()
 
 # ============================================================
@@ -481,6 +490,10 @@ endfunction()
 # rcnet_target_compile_definitions
 # ============================================================
 function(rcnet_target_compile_definitions target_name)
+  target_compile_definitions(${target_name} PUBLIC
+    RCNET_AGONES_ENABLED=$<IF:$<BOOL:${RCNET_AGONES_ENABLED}>,1,0>
+  )
+
   if(MSVC)
     # Pour libsodium avec MSVC, on doit définir SODIUM_STATIC pour indiquer qu'on utilise la version statique de la librairie.
     target_compile_definitions(${target_name} PUBLIC 

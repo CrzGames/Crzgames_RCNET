@@ -39,6 +39,15 @@ typedef struct RCNET_NATSConfig
     const char* privateKeySeedNKey;
 } RCNET_NATSConfig;
 
+typedef struct RCNET_AgonesGameServerInfo
+{
+    char name[128];
+    char state[64];
+    char address[128];
+    char addressType[64];
+    uint32_t port;
+} RCNET_AgonesGameServerInfo;
+
 /**
  * \brief Configuration runtime du serveur RCNET.
  *
@@ -77,6 +86,7 @@ typedef struct RCNET_ServerConfig
  * - rcnet_network_outgoing_update  : envoi des données réseau sortantes
  * - rcnet_http_update              : logique de traitement HTTP (ex: pour l'API du jeu, etc.)
  * - rcnet_nats_update              : logique de traitement NATS (ex: pour la communication inter-serveurs, etc.)
+ * - rcnet_agones_gameserver_update : snapshot periodique des infos GameServer Agones
  * - rcnet_wake_blocking_threads    : callback pour réveiller les threads bloqués (ex: en cas de shutdown)
  *
  * IMPORTANT :
@@ -87,6 +97,7 @@ typedef struct RCNET_ServerConfig
  * - rcnet_network_outgoing_update() tourne dans le thread réseau
  * - rcnet_http_update() tourne dans le thread HTTP
  * - rcnet_nats_update() tourne dans le thread NATS
+ * - rcnet_agones_gameserver_update() tourne dans le thread Agones WatchGameServer
  */
 typedef struct RCNET_Callbacks
 {
@@ -98,6 +109,7 @@ typedef struct RCNET_Callbacks
     void (*rcnet_network_outgoing_update)(ENetHost* host);
     void (*rcnet_http_update)(void);
     void (*rcnet_nats_update)(RCNET_NATSContext* natsContext);
+    void (*rcnet_agones_gameserver_update)(const RCNET_AgonesGameServerInfo* gameServerInfo);
     void (*rcnet_wake_blocking_threads)(void);
 } RCNET_Callbacks;
 
