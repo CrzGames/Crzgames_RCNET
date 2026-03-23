@@ -1,0 +1,27 @@
+apiVersion: "agones.dev/v1"
+kind: GameServer
+metadata:
+  name: my-local-game-server
+  namespace: gameservers # Change le namespace si nécessaire
+  annotations:
+    # IP de la machine qui exécute réellement le serveur de jeu (ton PC / VM)
+    agones.dev/dev-address: "86.223.84.88" # Remplace par l'IP de ta machine locale
+spec:
+  ports:
+  - name: default
+    # "Static" Obligatoire pour du développement de serveur local
+    portPolicy: Static
+    # Le port exposé sur l'hôte, requis uniquement lorsque `portPolicy` est défini sur « Static ».
+    hostPort: 17654
+    # le port ouvert sur le processus du serveur de jeu (donc le port UDP Server ENet par exemple)
+    containerPort: 12345 # Remplace par le port que ton serveur de jeu utilise pour écouter les connexions des clients
+
+  # IMPORTANT :
+  # Ce template est IGNORÉ dans ce mode, mais OBLIGATOIRE pour la validation du CRD.
+  # L'image ci-dessous ne sera pas utilisée pour exécuter ton vrai serveur.
+  template:
+    spec:
+      containers:
+      - name: simple-game-server
+        image: us-docker.pkg.dev/agones-images/examples/simple-game-server:0.41
+        imagePullPolicy: Always
