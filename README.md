@@ -18,7 +18,8 @@
 ```
 📦 Crzgames_RCNET
 ├── 📁 .github                        # Configuration GitHub (workflows CI/CD)
-├── 📁 build-scripts                  # Scripts de build, puis les scripts utilise le CMakelists.txt
+├── 📁 agones-sdk-server-binaries     # Agones SDK Server Local
+├── 📁 build-scripts                  # Scripts
 ├── 📁 cmake                          
 │   └── 📄 setup_dependencies.cmake   # Script CMake chargé de lire `dependencies.txt` et cloner/configurer les dépendances dans `/dependencies`
 ├── 📁 dependencies (git ignored)     # Répertoire local contenant les dépendances clonées (ignoré par Git pour ne pas polluer le repo)
@@ -119,9 +120,9 @@
 | **RCENet** | v1.6.1 | Communication réseau UDP (fork ENet) | ⭐ Obligatoire |
 | **OpenSSL** | v3.6.1 | cpp-httplib, nats client c et grpc à besoin de OpenSSL >= 3.x.x | ⭐ Obligatoire |
 | **cpp-httplib** | v0.38.0 | HTTP/HTTPS | ⭐ Obligatoire |
-| **nats** | v3.12.0 | Communication inter services | ⭐ Obligatoire |
+| **nats client c** | v3.12.0 | Communication inter services | ⭐ Obligatoire |
 | **libsodium** | v1.0.21 | Crypto | ⭐ Obligatoire |
-| **agones sdk client** | v1.56.0 | Utiliser dans le cluster kubernetes entre le serveur de jeu et kubernetes | ⭐ Obligatoire |
+| **agones sdk client** | v1.55.0 | Utiliser dans le cluster kubernetes entre le serveur de jeu et kubernetes | ⭐ Obligatoire |
 | **grpc** | v1.76.0 | agones à besoin de grpc == 1.76.0 | ⭐ Obligatoire |
 
 <br /><br />
