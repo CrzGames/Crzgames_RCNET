@@ -145,6 +145,7 @@
      reg add HKLM\SYSTEM\CurrentControlSet\Control\FileSystem /v LongPathsEnabled /t REG_DWORD /d 1 /f
   5. Activer long paths dans Git :
      git config --global core.longpaths true
+  6. Pour utilisé Agones le temps du développment en local voir : https://github.com/CrzGames/Crzgames_Agones-Quilkin_Documentation/blob/main/docs/07-dev-local-out-of-cluster.md
 
 
 
@@ -164,7 +165,7 @@
     libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev libgles2-mesa-dev \
     libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev libudev-dev libthai-dev \
     ibpipewire-0.3-dev libwayland-dev libdecor-0-dev liburing-dev
-
+  6. Pour utilisé Agones le temps du développment en local voir : https://github.com/CrzGames/Crzgames_Agones-Quilkin_Documentation/blob/main/docs/07-dev-local-out-of-cluster.md
 
 
   # macOS (Apple Silicon arm64) :
@@ -173,6 +174,7 @@
   3. Download and Install Command Line Tools : xcode-select --install
   4. Download and Install brew : /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   5. Download and Install CMake >= 3.28.0 : brew install cmake
+  6. Pour utilisé Agones le temps du développment en local voir : https://github.com/CrzGames/Crzgames_Agones-Quilkin_Documentation/blob/main/docs/07-dev-local-out-of-cluster.md
 ```
   
 3. Avant toute compilation, exécute le script suivant :
