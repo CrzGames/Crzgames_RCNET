@@ -231,11 +231,11 @@ chmod +x ./build-scripts/generate-project/macos-arm64.sh
 ```
 
 2. **Développement quotidien (après génération initiale)** : utilisez les scripts du dossier `build-project-development-debug`.
-   - Sans argument : build **Debug** des 3 targets par défaut :
+   - Sans argument : build en mode **Debug** des 3 targets par défaut :
      - `rcnet`
      - `rcnet_example_server`
      - `rcnet_example_client`
-   - Avec argument : build **Debug** d'une target spécifique uniquement (plus rapide).
+   - Avec argument : build en mode **Debug** d'une target spécifique uniquement (plus rapide).
 
 ```bash
 # Linux - x64 (3 targets par défaut)
