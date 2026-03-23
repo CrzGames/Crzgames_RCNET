@@ -210,6 +210,29 @@ cmake -P cmake/setup_dependencies.cmake
 <br /><br />
 
 ## 🧱 Générer RCNET (lib statique) + Projet d'exemple Client/Serveur
+0. **Si vous utilisez Agones en local** : lancez le SDK server avant de démarrer votre GameServer.  
+   Si vous n'utilisez pas Agones, passez directement à l'étape 1.
+
+```bash
+# Linux - x64
+chmod +x ./build-scripts/run-agones-sdk-server/linux-x64.sh
+./build-scripts/run-agones-sdk-server/linux-x64.sh
+
+
+# Linux - arm64
+chmod +x ./build-scripts/run-agones-sdk-server/linux-arm64.sh
+./build-scripts/run-agones-sdk-server/linux-arm64.sh
+
+
+# macOS - Apple Silicon arm64
+chmod +x ./build-scripts/run-agones-sdk-server/macos-arm64.sh
+./build-scripts/run-agones-sdk-server/macos-arm64.sh
+
+
+# Windows - x64
+.\build-scripts\run-agones-sdk-server\windows-x64.bat
+```
+
 1. **Première fois uniquement** : utilisez les scripts `generate-project` pour **générer le projet CMake** dans `./build/` puis faire un build initial.
 
 ```bash
