@@ -2,7 +2,7 @@ apiVersion: "agones.dev/v1"
 kind: GameServer
 metadata:
   name: my-local-game-server
-  namespace: gameservers # Change le namespace si nécessaire
+  namespace: staging-aetherroyale-agones-gameservers # Change le namespace si nécessaire
   annotations:
     # IP de la machine qui exécute réellement le serveur de jeu (ton PC / VM)
     agones.dev/dev-address: "86.223.84.88" # Remplace par l'IP de ta machine locale
