@@ -3,7 +3,7 @@
 # Dependencies for lib RCNET :
 Crzgames_Libraries=https://github.com/CrzGames/Crzgames_Libraries.git:08fab457e1cc9d26f79990216bd70e5c745afe0f
 nats=https://github.com/nats-io/nats.c.git:v3.12.0
-cpp-httplib=https://github.com/yhirose/cpp-httplib.git:v0.38.0
+cpp-httplib=https://github.com/yhirose/cpp-httplib.git:v0.40.0
 cJSON=https://github.com/DaveGamble/cJSON.git:v1.7.19
 grpc=https://github.com/grpc/grpc.git:v1.76.0
 agones=https://github.com/agones-dev/agones.git:v1.55.0
